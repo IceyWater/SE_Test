@@ -1,0 +1,278 @@
+{
+    "checked_at": "2026-10-23T14:46:31+00:00",
+    "pages": [
+        {
+            "role": "Student",
+            "url": "/dashboard",
+            "status": 200,
+            "component": "dashboard/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Student",
+            "url": "/defense-requirements",
+            "status": 200,
+            "component": "student/submissions/defense-requirements/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Student",
+            "url": "/schedule",
+            "status": 200,
+            "component": "coordinator/schedule/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Adviser",
+            "url": "/dashboard",
+            "status": 200,
+            "component": "dashboard/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Adviser",
+            "url": "/all-defense-requirements",
+            "status": 200,
+            "component": "adviser/defense-requirements/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Adviser",
+            "url": "/adviser/students-list",
+            "status": 200,
+            "component": "adviser/students-list/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Coordinator",
+            "url": "/dashboard",
+            "status": 200,
+            "component": "dashboard/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Coordinator",
+            "url": "/coordinator/defense-requests",
+            "status": 200,
+            "component": "coordinator/submissions/defense-request/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Coordinator",
+            "url": "/coordinator/defense-management",
+            "status": 200,
+            "component": "coordinator/defense-management/CoordinatorDefenseDashboard",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Coordinator",
+            "url": "/coordinator/adviser-list",
+            "status": 200,
+            "component": "coordinator/adviser-list/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Coordinator",
+            "url": "/panelists",
+            "status": 200,
+            "component": "coordinator/panelists/index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Coordinator",
+            "url": "/schedule",
+            "status": 200,
+            "component": "coordinator/schedule/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Administrative Assistant",
+            "url": "/dashboard",
+            "status": 200,
+            "component": "dashboard/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Administrative Assistant",
+            "url": "/assistant/all-defense-list",
+            "status": 200,
+            "component": "assistant/all-defense-list/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Administrative Assistant",
+            "url": "/honorarium-summary",
+            "status": 200,
+            "component": "honorarium/honorarium-summary/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Dean",
+            "url": "/dashboard",
+            "status": 200,
+            "component": "dashboard/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Dean",
+            "url": "/dean/payment-rates",
+            "status": 200,
+            "component": "dean/payment-rates/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Dean",
+            "url": "/settings/documents",
+            "status": 200,
+            "component": "settings/documents/Index",
+            "component_exists": true,
+            "error": null
+        }
+    ],
+    "broken_routes": [
+        {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "api/coordinator/code",
+            "action": "App\\Http\\Controllers\\CoordinatorAdviserController@getCoordinatorCode"
+        },
+        {
+            "methods": [
+                "POST"
+            ],
+            "uri": "api/adviser/register-with-coordinator-code",
+            "action": "App\\Http\\Controllers\\CoordinatorAdviserController@registerWithCode"
+        },
+        {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "api/coordinator/students/search",
+            "action": "App\\Http\\Controllers\\CoordinatorAdviserController@searchStudents"
+        },
+        {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "assistant/defense-batches",
+            "action": "App\\Http\\Controllers\\Assistant\\DefenseBatchController@index"
+        },
+        {
+            "methods": [
+                "POST"
+            ],
+            "uri": "assistant/defense-batches",
+            "action": "App\\Http\\Controllers\\Assistant\\DefenseBatchController@store"
+        },
+        {
+            "methods": [
+                "POST"
+            ],
+            "uri": "assistant/defense-batches/{batch}/status",
+            "action": "App\\Http\\Controllers\\Assistant\\DefenseBatchController@updateStatus"
+        },
+        {
+            "methods": [
+                "DELETE"
+            ],
+            "uri": "defense-requests/bulk-remove",
+            "action": "App\\Http\\Controllers\\DefenseRequestController@bulkDelete"
+        },
+        {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "defense-requests/adviser-suggestion",
+            "action": "App\\Http\\Controllers\\DefenseRequestController@adviserSuggestion"
+        },
+        {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "defense-requests/adviser-candidates",
+            "action": "App\\Http\\Controllers\\DefenseRequestController@adviserCandidates"
+        },
+        {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "defense-requests/pending",
+            "action": "App\\Http\\Controllers\\DefenseRequestController@pending"
+        },
+        {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "storage/defense-attachments/{filename}",
+            "action": "App\\Http\\Controllers\\DefenseRequestController@downloadAttachment"
+        },
+        {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "defense-requests/{defense_request}",
+            "action": "App\\Http\\Controllers\\DefenseRequestController@show"
+        },
+        {
+            "methods": [
+                "PUT",
+                "PATCH"
+            ],
+            "uri": "defense-requests/{defense_request}",
+            "action": "App\\Http\\Controllers\\DefenseRequestController@update"
+        },
+        {
+            "methods": [
+                "DELETE"
+            ],
+            "uri": "defense-requests/{defense_request}",
+            "action": "App\\Http\\Controllers\\DefenseRequestController@destroy"
+        },
+        {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "coordinator/panel-members",
+            "action": "App\\Http\\Controllers\\CoordinatorDefenseController@panelMembersAll"
+        },
+        {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "api/adviser/registered-coordinator",
+            "action": "App\\Http\\Controllers\\CoordinatorAdviserController@getRegisteredCoordinator"
+        }
+    ],
+    "tables": {
+        "settings": true,
+        "adviser_settings": true
+    }
+}
