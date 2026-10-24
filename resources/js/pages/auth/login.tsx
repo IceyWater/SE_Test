@@ -14,27 +14,27 @@ export default function Login({ status, canResetPassword, googleEnabled }: Login
         post(route('login'), { onFinish: () => reset('password') });
     };
     const inputClass =
-        'mt-1.5 h-[50px] w-full rounded-[10px] border border-[#e4e4e7] bg-white px-5 text-[18px] text-[#111] placeholder:text-[#808080] outline-none transition focus:border-[#df2050] focus:ring-2 focus:ring-[#df2050]/15 disabled:opacity-60';
+        'mt-1.5 h-11 w-full rounded-lg border border-input bg-background px-3 text-base text-foreground placeholder:text-muted-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60';
 
     return (
-        <main className="flex min-h-svh items-center justify-center bg-[#f5f5f5] p-5 text-[#111] [color-scheme:light]">
+        <main className="bg-muted/40 text-foreground flex min-h-svh items-center justify-center px-4 py-6 [color-scheme:light] dark:[color-scheme:dark]">
             <Head title="Log in" />
-            <div className="grid w-full max-w-[960px] overflow-hidden rounded-2xl border border-[#e9e9e9] bg-white shadow-[0_12px_18px_-8px_rgba(0,0,0,0.17)] md:grid-cols-2">
-                <section className="px-6 py-10 sm:px-[60px] md:min-h-[680px] md:px-[60px] md:py-[50px]" aria-labelledby="login-title">
+            <div className="border-border bg-card text-card-foreground grid w-full max-w-[800px] overflow-hidden rounded-2xl border shadow-lg md:grid-cols-2">
+                <section className="px-6 py-8 sm:px-10 md:py-9" aria-labelledby="login-title">
                     <header className="text-center">
-                        <h1 id="login-title" className="text-[26px] leading-8 font-semibold tracking-[-0.6px]">
+                        <h1 id="login-title" className="text-[22px] leading-7 font-semibold tracking-tight">
                             Graduate School System
                         </h1>
-                        <p className="mt-2 text-[18px] leading-7 text-[#808080]">Login to your UIC account</p>
+                        <p className="text-muted-foreground mt-2 text-sm leading-5">Login to your UIC account</p>
                     </header>
                     {status && (
-                        <p role="status" className="mt-4 text-center text-sm text-green-700">
+                        <p role="status" className="mt-4 text-center text-sm text-green-700 dark:text-green-400">
                             {status}
                         </p>
                     )}
-                    <form onSubmit={submit} className="mt-[38px]">
+                    <form onSubmit={submit} className="mt-7">
                         <div>
-                            <label htmlFor="identifier" className="block text-[18px] leading-6 font-medium">
+                            <label htmlFor="identifier" className="block text-sm leading-5 font-medium">
                                 Email or Student Number
                             </label>
                             <input
@@ -54,15 +54,15 @@ export default function Login({ status, canResetPassword, googleEnabled }: Login
                                 <InputError message={errors.identifier} className="mt-1" />
                             </div>
                         </div>
-                        <div className="mt-8">
-                            <div className="flex items-center justify-between gap-2 text-[18px] leading-6">
+                        <div className="mt-5">
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-sm leading-5">
                                 <label htmlFor="password" className="font-medium">
                                     Password
                                 </label>
                                 {canResetPassword && (
                                     <Link
                                         href={route('password.request')}
-                                        className="whitespace-nowrap underline decoration-[#d4d4d8] underline-offset-4 hover:text-[#df2050] focus-visible:outline-2 focus-visible:outline-offset-4"
+                                        className="text-muted-foreground decoration-border hover:text-foreground focus-visible:outline-ring whitespace-nowrap underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4"
                                     >
                                         Forgot password?
                                     </Link>
@@ -85,34 +85,34 @@ export default function Login({ status, canResetPassword, googleEnabled }: Login
                                 <InputError message={errors.password} className="mt-1" />
                             </div>
                         </div>
-                        <label htmlFor="remember" className="mt-[30px] flex w-fit cursor-pointer items-center gap-3.5 text-[18px] leading-6">
+                        <label htmlFor="remember" className="mt-5 flex w-fit cursor-pointer items-center gap-2 text-sm leading-5">
                             <input
                                 id="remember"
                                 name="remember"
                                 type="checkbox"
                                 checked={data.remember}
                                 onChange={(e) => setData('remember', e.target.checked)}
-                                className="h-5 w-5 cursor-pointer rounded border-[#e4e4e7] accent-[#df2050]"
+                                className="border-input accent-primary focus-visible:outline-ring h-4 w-4 cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2"
                             />
                             Remember me
                         </label>
                         <button
                             type="submit"
                             disabled={processing}
-                            className="mt-[46px] flex h-[45px] w-full items-center justify-center gap-2 rounded-[9px] bg-[#df2050] text-[18px] font-medium text-white transition hover:bg-[#c91c47] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#df2050] disabled:cursor-wait disabled:opacity-70"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-ring mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-4 disabled:cursor-wait disabled:opacity-70"
                         >
                             {processing && <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />}Log in
                         </button>
                     </form>
-                    <div className="mt-8 flex items-center gap-3 text-[14px] leading-6 text-[#808080]" aria-hidden="true">
-                        <span className="h-px flex-1 bg-[#dedede]" />
+                    <div className="text-muted-foreground mt-5 flex items-center gap-3 text-xs leading-5" aria-hidden="true">
+                        <span className="bg-border h-px flex-1" />
                         OR
-                        <span className="h-px flex-1 bg-[#dedede]" />
+                        <span className="bg-border h-px flex-1" />
                     </div>
                     {googleEnabled ? (
                         <a
                             href={route('auth.google.redirect')}
-                            className="mt-8 flex h-[46px] w-full items-center justify-center rounded-[10px] border border-[#e4e4e7] bg-white text-[18px] font-medium text-[#111] shadow-sm transition hover:bg-[#fafafa] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#df2050]"
+                            className="border-input bg-background text-foreground hover:bg-accent focus-visible:outline-ring mt-5 flex h-11 w-full items-center justify-center rounded-lg border text-sm font-medium shadow-sm transition focus-visible:outline-2 focus-visible:outline-offset-4"
                         >
                             Continue with Google
                         </a>
@@ -121,7 +121,7 @@ export default function Login({ status, canResetPassword, googleEnabled }: Login
                             type="button"
                             disabled
                             title="Google sign-in is currently unavailable"
-                            className="mt-8 h-[46px] w-full rounded-[10px] border border-[#e4e4e7] bg-white text-[18px] font-medium text-[#808080] shadow-sm disabled:cursor-not-allowed"
+                            className="border-input bg-background text-muted-foreground mt-5 h-11 w-full rounded-lg border text-sm font-medium shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             Continue with Google
                         </button>
@@ -132,8 +132,9 @@ export default function Login({ status, canResetPassword, googleEnabled }: Login
                         </div>
                     )}
                 </section>
-                <div className="relative hidden bg-[#ff466b] md:block" aria-hidden="true">
-                    <img src="/grad_logo.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <div className="relative hidden items-center justify-center bg-[#ff4b64] p-6 md:flex" aria-hidden="true">
+                    <img src="/grad_logo.png" alt="" className="w-full max-w-[350px] object-contain" />
+                    <div className="pointer-events-none absolute inset-0 bg-black/0 dark:bg-black/15" />
                 </div>
             </div>
         </main>
