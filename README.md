@@ -1,6 +1,12 @@
 # Integrated Graduate School System
 
-Local integration of the existing Comprehensive Exam and Defense Request project with the Honorarium additions.
+Integration of the existing Comprehensive Exam and Defense Request project with the Honorarium additions.
+
+## First time setup for groupmates
+
+Follow [the groupmate setup guide](docs/groupmate-setup.md) to clone this repository, create your own empty database, install dependencies, and create local demo accounts. No database export or existing uploaded documents are included.
+
+## Running an installation that is already configured
 
 Open this folder in VS Code. Start XAMPP MySQL, then run `npm.cmd run dev`. Open http://127.0.0.1:8001.
 
