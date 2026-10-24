@@ -196,6 +196,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     /* Notifications */
     Route::get('/notification', [NotificationController::class, 'index'])->name('notification.index');
+    // Honorarium module additions, preserving the defense and comprehensive exam routes.
+    Route::get('/honorarium-workspace', [\App\Http\Controllers\HonorariumWorkspaceController::class, 'index'])->name('honorarium-workspace.index');
+    Route::post('/honorarium-workspace/{defenseRequest}/submit-to-finance', [\App\Http\Controllers\HonorariumWorkspaceController::class, 'submitToFinance'])->name('honorarium-workspace.submit-to-finance');
+    Route::post('/honorarium-workspace/finance/{submission}/status', [\App\Http\Controllers\HonorariumWorkspaceController::class, 'updateFinanceStatus'])->name('honorarium-workspace.finance-status');
+    Route::get('/honorarium-documents', [\App\Http\Controllers\FinanceDocumentWorkflowController::class, 'index'])->name('honorarium-documents.index');
+    Route::post('/honorarium-documents/{defenseRequest}/submit-one', [\App\Http\Controllers\FinanceDocumentWorkflowController::class, 'submitFirst'])->name('honorarium-documents.submit-one');
+    Route::post('/honorarium-documents/{defenseRequest}/submit-two', [\App\Http\Controllers\FinanceDocumentWorkflowController::class, 'submitSecond'])->name('honorarium-documents.submit-two');
+    Route::post('/honorarium-documents/finance/{submission}/review', [\App\Http\Controllers\FinanceDocumentWorkflowController::class, 'review'])->name('honorarium-documents.review');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/feed', [NotificationController::class, 'feed'])->name('notifications.feed');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');

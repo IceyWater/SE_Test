@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
 class UserRoleController extends Controller
 {
     public const ASSIGNABLE_ROLES = [
-        'Student', 'Adviser', 'Coordinator', 'Administrative Assistant', 'Dean',
+        'Student', 'Adviser', 'Coordinator', 'Administrative Assistant', 'Dean', 'Finance',
     ];
 
     public function update(Request $request, User $user): JsonResponse

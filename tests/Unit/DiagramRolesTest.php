@@ -110,3 +110,11 @@ it('prevents non-deans from uploading document templates', function () {
         else $response->assertForbidden();
     }
 });
+it('authenticates the Finance demo locally without contacting school services', function () {
+    $this->artisan('demo:finance-account')->assertSuccessful();
+    $this->artisan('demo:finance-account')->assertSuccessful();
+    expect(User::where('email','finance@uic.edu.ph')->count())->toBe(1);
+    $this->mock(LegacyPortalClient::class)->shouldNotReceive('login','loginCoordinator');
+    $request=LoginRequest::create('/login','POST',['identifier'=>'finance@uic.edu.ph','password'=>'password']);
+    $request->setContainer(app());$request->authenticate();expect(Auth::user()->role)->toBe('Finance');
+});

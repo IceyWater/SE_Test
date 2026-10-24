@@ -99,7 +99,7 @@ const assistantNavItems: MainNavItem[] = [
             { title: 'Payment Receipt', href: '/coordinator/compre-payment' },
         ],
     },
-    { title: 'Honorarium', href: '/honorarium-summary', icon: DollarSign },
+    { title: 'Honorarium Summary', href: '/honorarium-summary', icon: DollarSign },
     { title: 'Student Records', href: '/student-records', icon: Users },
      { title: 'Payment Rates', href: '/dean/payment-rates', icon: DollarSign },
     { title: 'Schedules', href: '/schedules', icon: CalendarFold },
@@ -138,8 +138,17 @@ export function AppSidebar() {
         navItems = assistantNavItems;
     } else if (user.role === 'Adviser') {
         navItems = adviserNavItems;
+    } else if (['Finance', 'Finance Office', 'Finance Officer'].includes(user.role)) {
+        navItems = [{ title: 'Dashboard', href: '/dashboard', icon: LayoutGrid }];
     } else {
         navItems = studentNavItems;
+    }
+
+    if (['Administrative Assistant', 'Dean', 'Super Admin', 'SuperAdmin', 'Finance', 'Finance Office', 'Finance Officer', 'Adviser', 'Coordinator'].includes(user.role)) {
+        navItems = [...navItems, { title: 'Honorarium Tracking', href: '/honorarium-workspace', icon: DollarSign }];
+        if (['Administrative Assistant', 'Dean', 'Super Admin', 'SuperAdmin', 'Finance', 'Finance Office', 'Finance Officer'].includes(user.role)) {
+            navItems.push({ title: 'Finance Documents', href: '/honorarium-documents', icon: FileText });
+        }
     }
 
     // Expanded menus state

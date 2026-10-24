@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'finance_accounts' => ['finance@uic.edu.ph' => ['role' => 'Finance']],
     'accounts' => [
         'student@uic.edu.ph' => ['role' => 'Student', 'first_name' => 'Demo', 'last_name' => 'Student', 'school_id' => 'DEMO-STUDENT'],
         'adviser@uic.edu.ph' => ['role' => 'Adviser', 'first_name' => 'Demo', 'last_name' => 'Adviser', 'school_id' => 'DEMO-ADVISER'],

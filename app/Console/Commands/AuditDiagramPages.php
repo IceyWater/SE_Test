@@ -22,10 +22,11 @@ class AuditDiagramPages extends Command
         }
 
         $pages = [
-            'student@uic.edu.ph' => ['/dashboard', '/defense-requirements', '/schedule'],
+            'student@uic.edu.ph' => ['/dashboard', '/defense-requirements', '/comprehensive-exam', '/schedule'],
             'adviser@uic.edu.ph' => ['/dashboard', '/all-defense-requirements', '/adviser/students-list'],
-            'acadcoor@uic.edu.ph' => ['/dashboard', '/coordinator/defense-requests', '/coordinator/defense-management', '/coordinator/adviser-list', '/panelists', '/schedule'],
-            'aa@uic.edu.ph' => ['/dashboard', '/assistant/all-defense-list', '/honorarium-summary'],
+            'acadcoor@uic.edu.ph' => ['/dashboard', '/coordinator/defense-requests', '/coordinator/defense-management', '/coordinator/adviser-list', '/coordinator/compre-exam', '/honorarium-workspace', '/panelists', '/schedule'],
+            'aa@uic.edu.ph' => ['/dashboard', '/assistant/all-defense-list', '/honorarium-summary', '/honorarium-workspace', '/honorarium-documents'],
+            'finance@uic.edu.ph' => ['/dashboard', '/honorarium-workspace', '/honorarium-documents'],
             'dean@uic.edu.ph' => ['/dashboard', '/dean/payment-rates', '/settings/documents'],
         ];
         $results = [];

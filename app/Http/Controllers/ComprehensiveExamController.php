@@ -71,6 +71,7 @@ class ComprehensiveExamController extends Controller
 
     public function store(Request $request)
     {
+        abort_unless($request->user()?->role === 'Student', 403);
         $validated = $request->validate([
             'schoolYear'                  => ['required','string','max:20'],
             'program'                     => ['required','string','max:255'],
@@ -90,6 +91,7 @@ class ComprehensiveExamController extends Controller
             return back()->withErrors(['student_id' => 'Your account has no student ID associated.']);
         }
 
+        return DB::transaction(function () use ($studentId, $validated) {
         // Enforce one application per student per school year
         $application = ExamApplication::firstOrCreate(
             ['student_id' => $studentId, 'school_year' => $validated['schoolYear']],
@@ -119,5 +121,6 @@ class ComprehensiveExamController extends Controller
         }
 
         return to_route('comprehensive-exam.index')->with('success', 'Application submitted.');
+        });
     }
 }

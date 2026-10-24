@@ -70,7 +70,7 @@ class LoginRequest extends FormRequest
         }
 
         // Explicit local demo accounts use local passwords, never school services.
-        if (app()->environment(['local', 'testing']) && array_key_exists(strtolower($identifier), config('demo.accounts', []))) {
+        if (app()->environment(['local', 'testing']) && array_key_exists(strtolower($identifier), (config('demo.accounts', []) + config('demo.finance_accounts', [])))) {
             $demo = User::where('email', strtolower($identifier))->where('is_demo_account', true)->first();
             if (! $demo || ! Hash::check($password, $demo->password)) {
                 RateLimiter::hit($this->throttleKey());
