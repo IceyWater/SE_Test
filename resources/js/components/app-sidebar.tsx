@@ -145,7 +145,7 @@ export function AppSidebar() {
     }
 
     if (['Administrative Assistant', 'Dean', 'Super Admin', 'SuperAdmin', 'Finance', 'Finance Office', 'Finance Officer', 'Adviser', 'Coordinator'].includes(user.role)) {
-        navItems = [...navItems, { title: 'Honorarium Tracking', href: '/honorarium-workspace', icon: DollarSign }];
+        navItems = [...navItems, { title: 'Honorarium Tracking', href: '/honorarium-workspace', icon: DollarSign }, { title: 'Honorarium Payments', href: '/honorarium-ledger', icon: DollarSign }];
         if (['Administrative Assistant', 'Dean', 'Super Admin', 'SuperAdmin', 'Finance', 'Finance Office', 'Finance Officer'].includes(user.role)) {
             navItems.push({ title: 'Finance Documents', href: '/honorarium-documents', icon: FileText });
         }

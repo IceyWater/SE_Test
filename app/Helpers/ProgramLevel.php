@@ -13,17 +13,9 @@ class ProgramLevel
 
         $p = strtolower(trim(preg_replace('/\s+/', ' ', $program)));
 
-        // Doctorate keywords and abbreviations
-        $doctorateKeywords = [
-            'phd', 'ph.d', 'doctor', 'doctoral', 'doctorate',
-            'edd', 'ed.d',
-            'dm', 'd.m', 'dba', 'd.b.a',
-        ];
-
-        foreach ($doctorateKeywords as $kw) {
-            if (str_contains($p, $kw)) {
-                return 'Doctorate';
-            }
+        // Match degree words or whole abbreviations; "dm" inside "administration" is not a doctorate.
+        if (preg_match('/\\bdoctor(?:al|ate)?\\b|\\b(?:ph\\.?d\\.?|ed\\.?d\\.?|d\\.?m\\.?|dba)\\b/i', $p)) {
+            return 'Doctorate';
         }
 
         // Fallback by leading letter D- vs M-

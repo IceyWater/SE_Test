@@ -26,19 +26,19 @@ AA opens Honorarium Tracking, then Manage Finance Documents. Approved defenses w
 
 Both Honorarium screens read the same Finance document records. Faculty/Adviser visibility uses panelist email or the assigned adviser account; Coordinator visibility uses assigned requests. Student receipt entry stays in the existing Defense Request module. No real payments are executed.
 
-The imported draft does not complete Disbursed/Claimed tracking, panel invitation acceptance, or a direct Finance-system integration. Document verification is not confirmation of a paid honorarium.
+The Honorarium Payments page now records prepared, approved, disbursed and claimed recipient statuses. Panel invitation acceptance and direct Finance-system integration remain separate work. See implemented-improvements-2026-10-24.md for the new ledger and review rules. Document verification is not confirmation of a paid honorarium.
 
 ## Comprehensive Exam findings
 
 Verified locally: application creation, subject schedule storage, duplicate submission handling per school year, invalid time validation, and student-specific application display. Added missing exam subject schedule columns through a migration and made application+subjects save in one transaction. Only Student accounts can submit.
 
-Live eligibility still depends on the school portal session; demo accounts and current Google sign-in do not establish that session. Without it the eligibility API reports that verification is unavailable. The existing coordinator local-development eligibility bypass is separate from the student's check. The student frontend eligibility check is not a full server-side eligibility gate; this existing limitation needs review before production. This integration does not certify Registrar/Dean approval, results release, or proctor invitation workflows as complete.
+Live eligibility still depends on the school portal session; demo accounts and current Google sign-in do not establish that session. Without it the eligibility API reports that verification is unavailable. The existing coordinator local-development eligibility bypass is separate from the student's check. Exam submission now enforces the existing eligibility result on the server; unverified eligibility blocks submission. This integration does not certify Registrar/Dean approval, results release, or proctor invitation workflows as complete.
 
-The inherited route audit still finds16 pre-existing route handlers that are absent. Their details are in `docs/diagram-audit-results.json`. They are not part of the newly integrated Finance endpoints.
+The inherited route audit still finds15 pre-existing route handlers that are absent. Their details are in `docs/diagram-audit-results.json`. They are not part of the newly integrated Finance endpoints.
 
 ## Notifications and configuration
 
-Existing Defense Request corrections, progress history, local reminders, Google SSO code, and account management are preserved. Finance actions create in-app notices. Mail remains `log`; no live emails are sent. The daily defense reminder and Finance document unlock schedules are both registered in Philippine time. The dev command starts the queue worker and scheduler; a plain preview server does not run those workers. Finance documents also catch up when the AA/Finance opens the page.
+Existing Defense Request corrections, progress history, local reminders, Google SSO code, and account management are preserved. Finance actions create in-app notices. Countdown emails are optional and disabled by default (DEFENSE_REMINDER_EMAILS). Mail remains `log`; no live emails are sent. The daily defense reminder and Finance document unlock schedules are both registered in Philippine time. The dev command starts the queue worker and scheduler; a plain preview server does not run those workers. Finance documents also catch up when the AA/Finance opens the page.
 
 Google SSO on the integration URL requires adding `http://127.0.0.1:8001/auth/google/callback` to the Google OAuth client's authorized redirect URIs. Existing credentials remain private in the local ignored .env file.
 

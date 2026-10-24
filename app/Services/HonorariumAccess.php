@@ -30,9 +30,12 @@ class HonorariumAccess
     public function panelNames(DefenseRequest $request): array
     {
         $ids = collect([$request->defense_chairperson,$request->defense_panelist1,$request->defense_panelist2,$request->defense_panelist3,$request->defense_panelist4])->filter()->unique()->values();
-        $panels = Panelist::whereIn('id', $ids)->get()->keyBy('id');
-        return $ids->map(fn ($id) => $panels->get($id)?->name)->filter()->values()->all();
+        return $ids->map(function ($value) {
+            $panel = is_numeric($value) ? Panelist::find($value) : Panelist::where('name', $value)->first();
+            return $panel?->name ?? (string) $value;
+        })->filter()->values()->all();
     }
+
     public function receiptUrl(?string $path): ?string
     {
         if (!$path) return null;

@@ -130,179 +130,12 @@ class CoordinatorDefenseController extends Controller
 
     public function assignPanels(Request $request, DefenseRequest $defenseRequest)
     {
-        if (in_array($defenseRequest->workflow_state, ['adviser-corrections', 'coordinator-corrections'], true)) {
-            return response()->json(['error' => 'Wait for the student to resubmit corrections before continuing this request.'], 422);
-        }
-
-        $this->authorizeRole();
-
-        $validated = $request->validate([
-            'defense_chairperson' => 'required|string|max:255',
-            'defense_panelist1'   => 'required|string|max:255',
-            'defense_panelist2'   => 'nullable|string|max:255',
-            'defense_panelist3'   => 'nullable|string|max:255',
-            'defense_panelist4'   => 'nullable|string|max:255',
-        ]);
-
-        // Only allow from adviser-approved / coordinator-approved / panels-assigned
-        if (!in_array($defenseRequest->workflow_state, [
-            'adviser-approved','coordinator-approved','panels-assigned'
-        ])) {
-            $msg = "Cannot assign panels from state '{$defenseRequest->workflow_state}'";
-            if ($request->expectsJson()) {
-                return response()->json(['error'=>$msg],422);
-            }
-            return back()->withErrors(['error'=>$msg]);
-        }
-
-        try {
-            DB::transaction(function () use ($defenseRequest,$validated) {
-                $defenseRequest->assignPanels(
-                    $validated['defense_chairperson'],
-                    $validated['defense_panelist1'],
-                    $validated['defense_panelist2'] ?? null,
-                    $validated['defense_panelist3'] ?? null,
-                    $validated['defense_panelist4'] ?? null,
-                    Auth::id()
-                );
-                // CREATE HONORARIUM PAYMENTS HERE
-                $defenseRequest->createHonorariumPayments();
-            });
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'ok'=>true,
-                    'workflow_state'=>$defenseRequest->workflow_state
-                ]);
-            }
-
-            return back()->with([
-                'success'=>'Defense panel assigned. Proceed to scheduling.',
-                'assigned_request_id'=>$defenseRequest->id
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('assignPanels failure',[
-
-                'id'=>$defenseRequest->id,
-                'error'=>$e->getMessage()
-            ]);
-            if ($request->expectsJson()) {
-                return response()->json(['error'=>'Assign panels failed'],500);
-            }
-            return back()->withErrors(['error'=>'Failed to assign defense panel.']);
-        }
+        return $this->assignPanelsJson($request, $defenseRequest);
     }
 
     public function scheduleDefense(Request $request, DefenseRequest $defenseRequest)
     {
-        if (in_array($defenseRequest->workflow_state, ['adviser-corrections', 'coordinator-corrections'], true)) {
-            return response()->json(['error' => 'Wait for the student to resubmit corrections before continuing this request.'], 422);
-        }
-
-        // Check if this is an update (defense already has a schedule) or new schedule
-        $isUpdate = !empty($defenseRequest->scheduled_date);
-        
-        // For new schedules, require future date. For updates, allow any date including past.
-        $dateRule = $isUpdate ? 'required|date' : 'required|date|after_or_equal:today';
-        
-        $validated = $request->validate([
-            'scheduled_date' => $dateRule,
-            'scheduled_time' => 'required|date_format:H:i',
-            'scheduled_end_time' => 'required|date_format:H:i',
-            'defense_mode' => 'required|in:face-to-face,online',
-            'defense_venue' => 'required|string|max:255',
-            'scheduling_notes' => 'nullable|string|max:1000',
-        ]);
-        
-        // Validate that end time is after start time manually
-        if ($validated['scheduled_end_time'] <= $validated['scheduled_time']) {
-            return back()->withErrors([
-                'scheduled_end_time' => 'End time must be after start time.'
-            ])->withInput();
-        }
-
-        try {
-            $conflictService = new DefenseConflictService();
-            $panels = [
-                'defense_chairperson' => $defenseRequest->defense_chairperson,
-                'defense_panelist1' => $defenseRequest->defense_panelist1,
-                'defense_panelist2' => $defenseRequest->defense_panelist2,
-                'defense_panelist3' => $defenseRequest->defense_panelist3,
-                'defense_panelist4' => $defenseRequest->defense_panelist4,
-            ];
-
-            $conflicts = $conflictService->findPanelSchedulingConflicts(
-                $defenseRequest,
-                $panels,
-                $validated['scheduled_date'],
-                $validated['scheduled_time'],
-                $validated['scheduled_end_time']
-            );
-            if ($conflicts) {
-                $startTime = Carbon::parse($validated['scheduled_time']);
-                $endTime = Carbon::parse($validated['scheduled_end_time']);
-                $timeRange = $startTime->format('g:i A').' - '.$endTime->format('g:i A');
-
-                $conflictMessages = [];
-                foreach ($conflicts as $c) {
-                    $conflictMessages[] = sprintf(
-                        "%s (serving as %s) is already scheduled as %s for %s's defense during %s",
-                        $c['person'],
-                        $c['current_role'],
-                        $c['conflicting_role'],
-                        $c['student_name'],
-                        $c['time_range']
-                    );
-                }
-
-                $message = "Scheduling conflict for {$timeRange}:\n".implode("\n",$conflictMessages);
-                return back()->withErrors(['scheduled_time'=>$message])->withInput();
-            }
-
-            if ($conflictService->hasVenueConflict(
-                $defenseRequest,
-                $validated['defense_venue'],
-                $validated['scheduled_date'],
-                $validated['scheduled_time'],
-                $validated['scheduled_end_time']
-            )) {
-                $startTime = Carbon::parse($validated['scheduled_time']);
-                $endTime = Carbon::parse($validated['scheduled_end_time']);
-                $timeRange = $startTime->format('g:i A').' - '.$endTime->format('g:i A');
-                $date = Carbon::parse($validated['scheduled_date'])->format('M d, Y');
-                return back()->withErrors([
-                    'defense_venue'=>"Venue conflict: {$validated['defense_venue']} already used on {$date} during {$timeRange}"
-                ])->withInput();
-            }
-
-            DB::transaction(function () use ($defenseRequest,$validated) {
-                $defenseRequest->scheduleDefense(
-                    Carbon::parse($validated['scheduled_date']),
-                    Carbon::parse($validated['scheduled_time']),
-                    Carbon::parse($validated['scheduled_end_time']),
-                    $validated['defense_mode'],
-                    $validated['defense_venue'],
-                    $validated['scheduling_notes'],
-                    Auth::id()
-                );
-            });
-
-            $scheduleDate = Carbon::parse($validated['scheduled_date'])->format('M d, Y');
-            $timeRange = Carbon::parse($validated['scheduled_time'])->format('g:i A')
-                .' - '.Carbon::parse($validated['scheduled_end_time'])->format('g:i A');
-            $this->createSchedulingNotifications($defenseRequest,$scheduleDate,$timeRange,$validated);
-
-            return back()->with([
-                'success'=>"Defense scheduled for {$scheduleDate} ({$timeRange})",
-                'scheduling_completed'=>true
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Failed to schedule defense',[
-                'defense_request_id'=>$defenseRequest->id,
-                'error'=>$e->getMessage()
-            ]);
-            return back()->withErrors(['error'=>'Failed to schedule defense.'])->withInput();
-        }
+        return $this->scheduleDefenseJson($request, $defenseRequest);
     }
 
     public function sendNotifications(Request $request, DefenseRequest $defenseRequest)
@@ -328,47 +161,8 @@ class CoordinatorDefenseController extends Controller
 
     public function updateDefense(Request $request, DefenseRequest $defenseRequest)
     {
-        if (in_array($defenseRequest->workflow_state, ['adviser-corrections', 'coordinator-corrections'], true)) {
-            return response()->json(['error' => 'Wait for the student to resubmit corrections before continuing this request.'], 422);
-        }
-
-        $validated = $request->validate([
-            'defense_chairperson' => 'nullable|string|max:255',
-            'defense_panelist1' => 'nullable|string|max:255',
-            'defense_panelist2' => 'nullable|string|max:255',
-            'defense_panelist3' => 'nullable|string|max:255',
-            'defense_panelist4' => 'nullable|string|max:255',
-            'scheduled_date' => 'nullable|date',
-            'scheduled_time' => 'nullable|date_format:H:i',
-            'defense_mode' => 'nullable|in:face-to-face,online',
-            'defense_venue' => 'nullable|string|max:255',
-            'scheduling_notes' => 'nullable|string|max:1000',
-        ]);
-
-        try {
-            DB::transaction(function () use ($defenseRequest,$validated) {
-                $changes = [];
-                foreach ($validated as $field => $value) {
-                    if ($defenseRequest->$field !== $value) {
-                        $changes[$field] = ['from'=>$defenseRequest->$field,'to'=>$value];
-                    }
-                }
-                if ($changes) {
-                    $defenseRequest->update($validated);
-                    $desc = 'Defense details updated: '.implode(', ',
-                        array_map(fn($k,$c) => "{$k}: {$c['from']} → {$c['to']}", array_keys($changes), $changes));
-                    $defenseRequest->addWorkflowEntry('defense-updated',$desc,Auth::id());
-                }
-            });
-
-            return back()->with('success','Defense details updated successfully!');
-        } catch (\Throwable $e) {
-            Log::error('Defense update failed',[
-                'defense_request_id'=>$defenseRequest->id,
-                'error'=>$e->getMessage()
-            ]);
-            return back()->withErrors(['error'=>'Failed to update defense details.']);
-        }
+        if ($request->filled('scheduled_date')) return $this->scheduleDefenseJson($request, $defenseRequest);
+        return $this->assignPanelsJson($request, $defenseRequest);
     }
 
     public function show(DefenseRequest $defenseRequest)
@@ -389,7 +183,7 @@ class CoordinatorDefenseController extends Controller
             'defense_panelist3' => $defenseRequest->defense_panelist3,
             'defense_panelist4' => $defenseRequest->defense_panelist4,
             'scheduled_date' => $defenseRequest->scheduled_date?->format('Y-m-d'),
-            'scheduled_time' => $defenseRequest->scheduled_time?->format('H:i'),
+            'scheduled_time' => $defenseRequest->scheduled_time ? substr((string) $defenseRequest->scheduled_time,0,5) : null,
             'defense_mode' => $defenseRequest->defense_mode,
             'defense_venue' => $defenseRequest->defense_venue,
             'scheduling_notes' => $defenseRequest->scheduling_notes,
@@ -762,6 +556,12 @@ class CoordinatorDefenseController extends Controller
     /**
      * Adviser + available panelists
      */
+    public function panelMembersAll(Request $request)
+    {
+        $this->authorizeRole();
+        return app(PanelistController::class)->allCombined();
+    }
+
     public function availablePanelMembersJson(Request $request)
     {
         $user = Auth::user();
@@ -843,111 +643,20 @@ class CoordinatorDefenseController extends Controller
      */
     public function assignPanelsJson(Request $request, DefenseRequest $defenseRequest)
     {
-        if (in_array($defenseRequest->workflow_state, ['adviser-corrections', 'coordinator-corrections'], true)) {
-            return response()->json(['error' => 'Wait for the student to resubmit corrections before continuing this request.'], 422);
-        }
-
-        $data = $request->validate([
-            'defense_chairperson' => 'nullable|string|max:255',
-            'defense_panelist1' => 'nullable|string|max:255',
-            'defense_panelist2' => 'nullable|string|max:255',
-            'defense_panelist3' => 'nullable|string|max:255',
-            'defense_panelist4' => 'nullable|string|max:255',
-        ]);
-
-        $defenseRequest->update($data);
-
-        return response()->json(['ok' => true, 'request' => $defenseRequest]);
+        if(in_array($defenseRequest->workflow_state,['adviser-corrections','coordinator-corrections'],true)) return response()->json(['error'=>'Wait for the student to resubmit corrections before continuing this request.'],422);
+        $service=app(\App\Services\DefenseSchedulingService::class);$service->authorize($defenseRequest,$request->user());
+        $data=$request->validate(['defense_chairperson'=>'required|string|max:255','defense_panelist1'=>'required|string|max:255','defense_panelist2'=>'nullable|string|max:255','defense_panelist3'=>'nullable|string|max:255','defense_panelist4'=>'nullable|string|max:255']);
+        $updated=$service->persist($defenseRequest,$data,$request->user(),false);
+        return $request->expectsJson()?response()->json(['ok'=>true,'request'=>$updated]):back()->with('success','Panel assignments saved.');
     }
 
     public function scheduleDefenseJson(Request $request, DefenseRequest $defenseRequest)
     {
-        if (in_array($defenseRequest->workflow_state, ['adviser-corrections', 'coordinator-corrections'], true)) {
-            return response()->json(['error' => 'Wait for the student to resubmit corrections before continuing this request.'], 422);
-        }
-
-        $this->authorizeRole();
-
-        // Check if this is an update (defense already has a schedule) or new schedule
-        $isUpdate = !empty($defenseRequest->scheduled_date);
-        
-        // For new schedules, require future date. For updates, allow any date.
-        $dateRule = $isUpdate ? 'required|date' : 'required|date|after_or_equal:today';
-
-        $data = $request->validate([
-            'scheduled_date'      => $dateRule,
-            'scheduled_time'      => 'required|date_format:H:i',
-            'scheduled_end_time'  => 'required|date_format:H:i',
-            'defense_mode'        => 'required|in:face-to-face,online',
-            'defense_venue'       => 'required|string|max:255',
-            'scheduling_notes'    => 'nullable|string|max:1000'
-        ]);
-        
-        // Validate that end time is after start time manually
-        if ($data['scheduled_end_time'] <= $data['scheduled_time']) {
-            return response()->json([
-                'error' => 'End time must be after start time.',
-                'errors' => ['scheduled_end_time' => ['End time must be after start time.']]
-            ], 422);
-        }
-
-        try {
-            DB::beginTransaction();
-
-            $origState = $defenseRequest->workflow_state;
-            // Allow scheduling from coordinator-review, coordinator-approved, panels-assigned, or scheduled
-            if (!in_array($origState, [
-                'coordinator-review', 'coordinator-approved', 'panels-assigned', 'scheduled'
-            ])) {
-                return response()->json([
-                    'error'=>"Cannot schedule from state '{$origState}'"
-                ],422);
-            }
-
-            foreach ($data as $k=>$v) {
-                $defenseRequest->{$k} = $v;
-            }
-
-            $defenseRequest->scheduled_date = $data['scheduled_date'];
-            $defenseRequest->scheduled_time = $data['scheduled_time'];
-            $defenseRequest->scheduled_end_time = $data['scheduled_end_time'];
-            $defenseRequest->defense_mode = $data['defense_mode'];
-            $defenseRequest->defense_venue = $data['defense_venue'];
-
-            if ($defenseRequest->workflow_state !== 'scheduled') {
-                $defenseRequest->workflow_state = 'scheduled';
-                $defenseRequest->addWorkflowEntry(
-                    'scheduled',
-                    $data['scheduling_notes'] ?? null,
-                    Auth::id(),
-                    $origState,
-                    'scheduled'
-                );
-            }
-
-            if (property_exists($defenseRequest,'scheduling_status') || isset($defenseRequest->scheduling_status)) {
-                $defenseRequest->scheduling_status = 'scheduled';
-            }
-
-            $defenseRequest->last_status_updated_at = now();
-            $defenseRequest->last_status_updated_by = Auth::id();
-            $defenseRequest->save();
-
-            DB::commit();
-
-            return response()->json([
-                'ok'=>true,
-                'request'=>$this->mapForDetails($defenseRequest)
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('scheduleDefenseJson error',[
-
-                'id'=>$defenseRequest->id,
-                'error'=>$e->getMessage()
-            ]);
-            return response()->json(['error'=>'Scheduling failed'],500);
-        }
+        if(in_array($defenseRequest->workflow_state,['adviser-corrections','coordinator-corrections'],true)) return response()->json(['error'=>'Wait for the student to resubmit corrections before continuing this request.'],422);
+        $service=app(\App\Services\DefenseSchedulingService::class);$service->authorize($defenseRequest,$request->user());
+        $data=$request->validate(['scheduled_date'=>'required|date_format:Y-m-d','scheduled_time'=>'required|date_format:H:i','scheduled_end_time'=>'required|date_format:H:i|after:scheduled_time','defense_mode'=>'required|in:face-to-face,online','defense_venue'=>'required|string|max:255','scheduling_notes'=>'nullable|string|max:1000']);
+        $updated=$service->persist($defenseRequest,$data,$request->user(),true);
+        return $request->expectsJson()?response()->json(['ok'=>true,'request'=>$updated]):back()->with('success','Defense schedule saved.');
     }
 
     private function mapForDetails(DefenseRequest $r): array

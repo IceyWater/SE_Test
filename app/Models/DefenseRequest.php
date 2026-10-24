@@ -51,6 +51,22 @@ class DefenseRequest extends Model
     }
 
     // Helper: get all panelists as models (Panelist or User)
+    public function getPanelDisplayAttribute(): array
+    {
+        $names = [];
+        foreach (\App\Services\DefenseConflictService::PANEL_FIELDS as $field) {
+            $value = $this->{$field};
+            $panel = $value && is_numeric($value) ? Panelist::find($value) : null;
+            $names[$field] = $panel?->name ?? $value;
+        }
+        return $names;
+    }
+
+    public function getPanelsListAttribute(): array
+    {
+        return array_values(array_filter($this->panel_display));
+    }
+
     public function getPanelists()
     {
         $ids = [

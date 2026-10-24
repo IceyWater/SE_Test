@@ -1,5 +1,5 @@
 {
-    "checked_at": "2026-10-24T12:43:11+00:00",
+    "checked_at": "2026-10-24T13:42:12+00:00",
     "pages": [
         {
             "role": "Student",
@@ -54,6 +54,14 @@
             "url": "/adviser/students-list",
             "status": 200,
             "component": "adviser/students-list/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Adviser",
+            "url": "/honorarium-ledger",
+            "status": 200,
+            "component": "honorarium/ledger/Index",
             "component_exists": true,
             "error": null
         },
@@ -158,6 +166,14 @@
             "url": "/honorarium-documents",
             "status": 200,
             "component": "honorarium/documents/Index",
+            "component_exists": true,
+            "error": null
+        },
+        {
+            "role": "Administrative Assistant",
+            "url": "/honorarium-ledger",
+            "status": 200,
+            "component": "honorarium/ledger/Index",
             "component_exists": true,
             "error": null
         },
@@ -317,14 +333,6 @@
             ],
             "uri": "defense-requests/{defense_request}",
             "action": "App\\Http\\Controllers\\DefenseRequestController@destroy"
-        },
-        {
-            "methods": [
-                "GET",
-                "HEAD"
-            ],
-            "uri": "coordinator/panel-members",
-            "action": "App\\Http\\Controllers\\CoordinatorDefenseController@panelMembersAll"
         },
         {
             "methods": [

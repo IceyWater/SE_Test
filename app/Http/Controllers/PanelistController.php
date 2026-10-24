@@ -189,6 +189,7 @@ class PanelistController extends Controller
     // Kept for other endpoints used elsewhere
     public function allCombined()
     {
+        abort_unless(in_array(auth()->user()?->role, ['Coordinator', 'Administrative Assistant', 'Dean']), 403);
         $adviser = User::whereIn('role',['Adviser'])
             ->orderBy('last_name')
             ->orderBy('first_name')

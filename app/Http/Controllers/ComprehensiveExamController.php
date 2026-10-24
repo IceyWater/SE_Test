@@ -91,6 +91,9 @@ class ComprehensiveExamController extends Controller
             return back()->withErrors(['student_id' => 'Your account has no student ID associated.']);
         }
 
+        if (ExamApplication::where('student_id',$studentId)->where('school_year',$validated['schoolYear'])->exists()) return to_route('comprehensive-exam.index')->with('info','You already have an application for this school year.');
+        $eligibility=app(\App\Services\ComprehensiveEligibilityService::class)->check($request);
+        if (($eligibility['eligible']??false)!==true) throw \Illuminate\Validation\ValidationException::withMessages(['eligibility'=>'Eligibility has not been verified. Check your grades, documents, tuition clearance, and school portal session before applying.']);
         return DB::transaction(function () use ($studentId, $validated) {
         // Enforce one application per student per school year
         $application = ExamApplication::firstOrCreate(

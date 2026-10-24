@@ -6,6 +6,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 uses(Tests\TestCase::class);
 beforeEach(function(){
  $this->withoutVite();Http::preventStrayRequests();
+ $this->mock(\App\Services\ComprehensiveEligibilityService::class)->shouldReceive('check')->andReturn(['eligible'=>true]);
  Schema::create('users',function(Blueprint $t){$t->id();foreach(['first_name','last_name','school_id','role','email','program'] as $f)$t->string($f)->nullable();$t->timestamp('email_verified_at')->nullable();$t->timestamps();});
  Schema::create('advisers',function(Blueprint $t){$t->id();$t->unsignedBigInteger('user_id');$t->string('status');});
  Schema::create('defense_requests',function(Blueprint $t){$t->id();$t->unsignedBigInteger('submitted_by')->nullable();$t->string('workflow_state')->nullable();$t->string('status')->nullable();$t->date('scheduled_date')->nullable();});
@@ -38,4 +39,10 @@ it('does not claim verified eligibility without a school portal session',functio
 });
 it('does not allow Finance to submit a student exam application',function(){
  $this->actingAs(User::find(3))->postJson('/comprehensive-exam',integratedExamData())->assertForbidden();expect(DB::table('exam_application')->count())->toBe(0);
+});
+
+it('enforces eligibility on the server even if a client bypasses the disabled button',function(){
+ $this->mock(\App\Services\ComprehensiveEligibilityService::class)->shouldReceive('check')->andReturn(['eligible'=>false]);
+ $this->actingAs(User::find(1))->postJson('/comprehensive-exam',integratedExamData())->assertUnprocessable()->assertJsonValidationErrors('eligibility');
+ expect(DB::table('exam_application')->count())->toBe(0);
 });

@@ -43,6 +43,7 @@ export default function HonorariumWorkspace() {
         <Badge variant="outline" className="w-fit capitalize">{role}</Badge>
       </div>
       {canManageDocuments && <Button asChild className="w-fit"><Link href="/honorarium-documents">Manage Finance documents</Link></Button>}
+      <Button asChild variant="outline" className="w-fit"><Link href="/honorarium-ledger">View honorarium payments</Link></Button>
       {flash?.success && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{flash.success}</div>}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[{ label: 'Tracked defenses', value: items.length, icon: FileText }, { label: 'Awaiting Finance', value: items.filter(x => x.finance_status === 'submitted').length, icon: FileCheck2 }, { label: 'Verified', value: items.filter(x => x.finance_status === 'verified').length, icon: CheckCircle2 }, { label: 'Receipts available', value: items.filter(x => x.receipt_url).length, icon: ShieldCheck }].map(metric => <Card key={metric.label}><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">{metric.label}</p><p className="mt-1 text-2xl font-semibold">{metric.value}</p></div><metric.icon className="size-5 text-muted-foreground" /></CardContent></Card>)}

@@ -16,7 +16,12 @@ class DefenseRequestObserver
 
     public function updated(DefenseRequest $request): void
     {
+        app(\App\Services\HonorariumLedgerService::class)->invalidate($request);
         $service = app(DefenseActivityNotifications::class);
+        if ($request->wasChanged(\App\Services\DefenseConflictService::PANEL_FIELDS) && $request->user) {
+            $names=app(\App\Services\HonorariumAccess::class)->panelNames($request);
+            $service->sendOnce($request,$request->user,'panel-update|'.hash('sha256',json_encode([$names,$request->workflow_history])),'Defense Panel Updated','The panel assignments for “'.$request->thesis_title.'” were updated. Open your request to check the latest committee.','/defense-requirements');
+        }
         if ($request->wasChanged('workflow_state')) $service->changed($request, $request->getOriginal('workflow_state'));
         if ($request->wasChanged(['scheduled_date', 'scheduled_time', 'scheduled_end_time', 'defense_venue'])) {
             $service->clearUnreadReminders($request);

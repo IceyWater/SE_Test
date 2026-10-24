@@ -51,11 +51,11 @@ class DefenseRequirementController extends Controller
                     'avisee_adviser_attachment' => $r->avisee_adviser_attachment,
                     // defense metadata (so list rows can show schedule/panels too)
                     'defense_type' => $r->defense_type,
-                    'defense_chairperson' => $r->defense_chairperson,
-                    'defense_panelist1' => $r->defense_panelist1,
-                    'defense_panelist2' => $r->defense_panelist2,
-                    'defense_panelist3' => $r->defense_panelist3,
-                    'defense_panelist4' => $r->defense_panelist4,
+                    'defense_chairperson' => $r->panel_display['defense_chairperson'],
+                    'defense_panelist1' => $r->panel_display['defense_panelist1'],
+                    'defense_panelist2' => $r->panel_display['defense_panelist2'],
+                    'defense_panelist3' => $r->panel_display['defense_panelist3'],
+                    'defense_panelist4' => $r->panel_display['defense_panelist4'],
                     'scheduled_date' => $r->scheduled_date?->format('Y-m-d'),
                     'scheduled_time' => $r->scheduled_time,
                     'scheduled_end_time' => $r->scheduled_end_time,
@@ -78,11 +78,11 @@ class DefenseRequirementController extends Controller
                 'workflow_state' => $defenseRequest->workflow_state,
                 'workflow_state_display' => $defenseRequest->workflow_state, // keep for UI
                 // panelists / committee
-                'defense_chairperson' => $defenseRequest->defense_chairperson,
-                'defense_panelist1' => $defenseRequest->defense_panelist1,
-                'defense_panelist2' => $defenseRequest->defense_panelist2,
-                'defense_panelist3' => $defenseRequest->defense_panelist3,
-                'defense_panelist4' => $defenseRequest->defense_panelist4,
+                'defense_chairperson' => $defenseRequest->panel_display['defense_chairperson'],
+                'defense_panelist1' => $defenseRequest->panel_display['defense_panelist1'],
+                'defense_panelist2' => $defenseRequest->panel_display['defense_panelist2'],
+                'defense_panelist3' => $defenseRequest->panel_display['defense_panelist3'],
+                'defense_panelist4' => $defenseRequest->panel_display['defense_panelist4'],
                 'panels_assigned_at' => $defenseRequest->panels_assigned_at?->toIso8601String(),
                 // schedule
                 'scheduled_date' => $defenseRequest->scheduled_date?->format('Y-m-d'),

@@ -106,6 +106,8 @@ export function findPanelMember(list: any[], value?: string | number | null) {
 
   // numeric id suffix/equality
   if (/^\d+$/.test(v)) {
+    const panelById = list.find((p: any) => String(p.id) === `panelist-${v}`);
+    if (panelById) return panelById;
     const byNumeric = list.find(
       (p: any) => String(p.id) === v || String(p.id).endsWith(`-${v}`)
     );

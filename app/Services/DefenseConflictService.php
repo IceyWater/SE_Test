@@ -3,172 +3,124 @@
 namespace App\Services;
 
 use App\Models\DefenseRequest;
-use Carbon\Carbon;
+use App\Models\Panelist;
+use App\Models\User;
+use Carbon\CarbonImmutable;
 
 class DefenseConflictService
 {
-    /**
-     * Validate panel assignment for basic conflicts.
-     * - Ensure minimum panel requirements are met
-     * - Check for obvious conflicts (person cannot be multiple panelists, but can be chair + panelist)
-     *
-     * @return array<string, string> field => error
-     */
-    public function validateAssignmentBasic(DefenseRequest $defenseRequest, array $panels): array
+    public const PANEL_FIELDS = ['defense_chairperson', 'defense_panelist1', 'defense_panelist2', 'defense_panelist3', 'defense_panelist4'];
+
+    public function identity($value): string
     {
+        if (! $value) {
+            return '';
+        }
+        $p = is_numeric($value) ? Panelist::find($value) : Panelist::whereRaw('LOWER(name) = ?', [strtolower(trim((string) $value))])->first();
+
+        return $p && $p->email ? 'email:'.strtolower($p->email) : 'name:'.strtolower(trim($p?->name ?? (string) $value));
+    }
+
+    public function userIdentity($id): string
+    {
+        $u = $id ? User::find($id) : null;
+
+        return $u?->email ? 'email:'.strtolower($u->email) : 'user:'.$id;
+    }
+
+    public function validateAssignmentBasic(DefenseRequest $dr, array $panels): array
+    {
+        $seen = [];
         $errors = [];
-
-        // Normalize names (trim)
-        $chairperson = trim((string)($panels['defense_chairperson'] ?? ''));
-        $panelist1 = trim((string)($panels['defense_panelist1'] ?? ''));
-        $panelist2 = trim((string)($panels['defense_panelist2'] ?? ''));
-        $panelist3 = trim((string)($panels['defense_panelist3'] ?? ''));
-        $panelist4 = trim((string)($panels['defense_panelist4'] ?? ''));
-
-        // Basic required fields check
-        if (empty($chairperson)) {
-            $errors['defense_chairperson'] = 'A chairperson is required.';
+        foreach (self::PANEL_FIELDS as $field) {
+            $key = $this->identity($panels[$field] ?? null);
+            if (! $key) {
+                continue;
+            }if (isset($seen[$key])) {
+                $errors[$field] = 'Each panel position must be assigned to a different person.';
+            }$seen[$key] = true;
         }
-        if (empty($panelist1)) {
-            $errors['defense_panelist1'] = 'At least one panelist is required.';
-        }
-
-        // Check for duplicate panelist assignments (same person cannot be multiple panelists)
-        // Note: Chairperson can also serve as a panelist if needed
-        $panelists = array_filter([$panelist1, $panelist2, $panelist3, $panelist4]);
-        $panelistsWithoutEmpty = array_filter($panelists, fn($p) => !empty($p));
-        
-        if (count($panelistsWithoutEmpty) !== count(array_unique($panelistsWithoutEmpty))) {
-            $errors['defense_panelist2'] = 'The same person cannot be assigned to multiple panelist positions.';
-        }
-
-        // Note: We allow chairperson to also be a panelist if needed for flexibility
 
         return $errors;
     }
 
-    /**
-     * Validate scheduling conflicts using time ranges:
-     * - Any selected panelist already assigned to another defense with overlapping time range
-     * - Chair or panel roles are stored as names in DefenseRequest; compare by exact name
-     *
-     * @return array<int, array{person:string, current_role:string, conflicting_role:string, defense_id:int, time_range:string, student_name:string}>
-     */
-    public function findPanelSchedulingConflicts(DefenseRequest $current, array $panels, ?string $date, ?string $startTime, ?string $endTime): array
+    public function overlapping(DefenseRequest $current, string $date, string $start, string $end)
     {
-        $conflicts = [];
-        if (!$date || !$startTime || !$endTime) {
-            return $conflicts; // Cannot check without complete schedule
-        }
+        $from = CarbonImmutable::parse($date.' '.$start, 'Asia/Manila');
+        $to = CarbonImmutable::parse($date.' '.$end, 'Asia/Manila');
 
-        // Map selected panel members with their roles
-        $selectedWithRoles = [];
-        $roleMapping = [
-            'defense_chairperson' => 'Chairperson',
-            'defense_panelist1' => 'Panelist 1',
-            'defense_panelist2' => 'Panelist 2', 
-            'defense_panelist3' => 'Panelist 3',
-            'defense_panelist4' => 'Panelist 4'
-        ];
-        
-        foreach ($roleMapping as $field => $roleTitle) {
-            $person = trim((string)($panels[$field] ?? ''));
-            if (!empty($person)) {
-                $selectedWithRoles[$person] = $roleTitle;
-            }
-        }
+        return DefenseRequest::where('id', '!=', $current->id ?? 0)->whereDate('scheduled_date', $date)->whereNotNull('scheduled_time')
+            ->whereIn('workflow_state', ['scheduled', 'panels-assigned', 'coordinator-approved'])->where(fn ($q) => $q->whereNull('status')->orWhereNotIn('status', ['Cancelled', 'Rejected', 'Completed']))->get()->filter(function ($other) use ($date, $from, $to) {
+                $a = CarbonImmutable::parse($date.' '.$other->scheduled_time, 'Asia/Manila');
+                $b = $other->scheduled_end_time ? CarbonImmutable::parse($date.' '.$other->scheduled_end_time, 'Asia/Manila') : $a->addHour();
 
-        if (empty($selectedWithRoles)) return $conflicts;
-
-        // Calculate current defense time range
-        $currentStart = Carbon::parse($date . ' ' . $startTime);
-        $currentEnd = Carbon::parse($date . ' ' . $endTime);
-
-        // Query other defense requests at the same date with any scheduled time
-        $others = DefenseRequest::query()
-            ->where('id', '<>', $current->id)
-            ->whereDate('scheduled_date', $date)
-            ->whereNotNull('scheduled_time')
-            ->whereNotNull('scheduled_end_time')
-            ->whereIn('workflow_state', ['adviser-approved', 'coordinator-approved', 'scheduled'])
-            ->get(['id', 'scheduled_time', 'scheduled_end_time', 'formatted_time_range', 'student_first_name', 'student_last_name',
-                   'defense_chairperson', 'defense_panelist1', 'defense_panelist2', 'defense_panelist3', 'defense_panelist4']);
-
-        foreach ($others as $other) {
-            // Calculate other defense time range
-            $otherStart = Carbon::parse($date . ' ' . $other->scheduled_time);
-            $otherEnd = Carbon::parse($date . ' ' . $other->scheduled_end_time);
-            
-            // Check if time ranges overlap
-            $hasTimeOverlap = $currentStart->lt($otherEnd) && $currentEnd->gt($otherStart);
-            
-            if ($hasTimeOverlap) {
-                // Map other defense panel members with their roles
-                $otherPanelWithRoles = [];
-                $otherPanelMapping = [
-                    'defense_chairperson' => 'Chairperson',
-                    'defense_panelist1' => 'Panelist 1',
-                    'defense_panelist2' => 'Panelist 2',
-                    'defense_panelist3' => 'Panelist 3', 
-                    'defense_panelist4' => 'Panelist 4'
-                ];
-                
-                foreach ($otherPanelMapping as $field => $roleTitle) {
-                    $person = trim((string)($other->{$field} ?? ''));
-                    if (!empty($person)) {
-                        $otherPanelWithRoles[$person] = $roleTitle;
-                    }
-                }
-
-                foreach ($selectedWithRoles as $person => $currentRole) {
-                    if (isset($otherPanelWithRoles[$person])) {
-                        $studentName = trim($other->student_first_name . ' ' . $other->student_last_name);
-                        $conflicts[] = [
-                            'person' => $person,
-                            'current_role' => $currentRole,
-                            'conflicting_role' => $otherPanelWithRoles[$person],
-                            'defense_id' => $other->id,
-                            'time_range' => $other->formatted_time_range ?? $otherStart->format('g:i A') . ' - ' . $otherEnd->format('g:i A'),
-                            'student_name' => $studentName ?: 'Unknown Student'
-                        ];
-                    }
-                }
-            }
-        }
-
-        return $conflicts;
+                return $from < $b && $to > $a;
+            });
     }
 
-    /**
-     * Venue conflict: same venue, date, and overlapping time range.
-     */
-    public function hasVenueConflict(DefenseRequest $current, ?string $venue, ?string $date, ?string $startTime, ?string $endTime): bool
+    public function people(DefenseRequest $dr, array $panels = []): array
     {
-        if (!$venue || !$date || !$startTime || !$endTime) return false;
+        $out = [];
+        foreach (self::PANEL_FIELDS as $field) {
+            $value = $panels[$field] ?? $dr->{$field};
+            if ($value) {
+                $out[$this->identity($value)] = $field === 'defense_chairperson' ? 'Chairperson' : 'Panelist';
+            }
+        }
+        if ($dr->adviser_user_id) {
+            $out[$this->userIdentity($dr->adviser_user_id)] = 'Adviser';
+        }
 
-        // Calculate current defense time range
-        $currentStart = Carbon::parse($date . ' ' . $startTime);
-        $currentEnd = Carbon::parse($date . ' ' . $endTime);
+return $out;
+    }
 
-        // Check for venue conflicts with overlapping time ranges
-        $others = DefenseRequest::query()
-            ->where('id', '<>', $current->id)
-            ->where('defense_venue', $venue)
-            ->whereDate('scheduled_date', $date)
-            ->whereNotNull('scheduled_time')
-            ->whereNotNull('scheduled_end_time')
-            ->get(['scheduled_time', 'scheduled_end_time']);
-
-        foreach ($others as $other) {
-            $otherStart = Carbon::parse($date . ' ' . $other->scheduled_time);
-            $otherEnd = Carbon::parse($date . ' ' . $other->scheduled_end_time);
-            
-            // Check if time ranges overlap
-            if ($currentStart->lt($otherEnd) && $currentEnd->gt($otherStart)) {
-                return true;
+    public function findPanelSchedulingConflicts(DefenseRequest $current, array $panels, ?string $date, ?string $startTime, ?string $endTime): array
+    {
+        if (! $date || ! $startTime || ! $endTime) {
+            return [];
+        }
+        $selected = $this->people($current, $panels);
+        $found = [];
+        foreach ($this->overlapping($current, $date, $startTime, $endTime) as $other) {
+            foreach (array_intersect_key($selected, $this->people($other)) as $person => $role) {
+                $found[] = ['person' => 'A selected panelist or adviser', 'current_role' => $role, 'conflicting_role' => $this->people($other)[$person], 'defense_id' => $other->id, 'student_name' => trim($other->first_name.' '.$other->last_name), 'time_range' => $other->scheduled_time.' – '.$other->scheduled_end_time];
             }
         }
 
-        return false;
+        return $found;
+    }
+
+    public function hasVenueConflict(DefenseRequest $current, ?string $venue, ?string $date, ?string $start, ?string $end): bool
+    {
+        if (! $venue || ! $date || ! $start || ! $end || $current->defense_mode === 'online') {
+            return false;
+        }
+
+        return $this->overlapping($current, $date, $start, $end)->contains(fn ($r) => $r->defense_mode !== 'online' && strtolower(trim((string) $r->defense_venue)) === strtolower(trim($venue)));
+    }
+
+    public function assertNoConflict(DefenseRequest $dr): void
+    {
+        $errors = $this->validateAssignmentBasic($dr, $dr->getAttributes());
+        if ($errors) {
+            throw \Illuminate\Validation\ValidationException::withMessages($errors);
+        }
+        if (! $dr->scheduled_date || ! $dr->scheduled_time) {
+            return;
+        }
+        $date = $dr->scheduled_date->format('Y-m-d');
+        $end = $dr->scheduled_end_time ?: CarbonImmutable::parse($dr->scheduled_time)->addHour()->format('H:i:s');
+        if ($end <= $dr->scheduled_time) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['scheduled_end_time' => 'End time must be after start time.']);
+        }
+        if ($this->findPanelSchedulingConflicts($dr, [], $date, $dr->scheduled_time, $end)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['scheduled_time' => 'A selected panelist or adviser has an overlapping defense.']);
+        }
+        if ($this->hasVenueConflict($dr, $dr->defense_venue, $date, $dr->scheduled_time, $end)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['defense_venue' => 'The venue is already booked during this time.']);
+        }
+        if ($dr->submitted_by && $this->overlapping($dr, $date, $dr->scheduled_time, $end)->contains(fn ($r) => (int) $r->submitted_by === (int) $dr->submitted_by)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['scheduled_time' => 'This student already has a defense during this time.']);
+        }
     }
 }

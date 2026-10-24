@@ -34,7 +34,12 @@ class DefenseReminderService
                 $notification = app(DefenseActivityNotifications::class)->sendOnce($request, $request->user, $event,
                     'Defense Reminder', "{$countdown}: “{$request->thesis_title}”, {$date->format('M j, Y')} at {$time}. Venue: {$request->defense_venue}.",
                     '/defense-requirements', 'defense-reminder');
-                if ($notification->wasRecentlyCreated) $sent++;
+                if ($notification->wasRecentlyCreated) {
+                    $sent++;
+                    if (config('defense-notifications.email_enabled') && $request->user->email) {
+                        \App\Jobs\SendDefenseCountdownEmail::dispatch($notification->id, $today->toDateString(), $date->toDateString(), $request->scheduled_time)->afterCommit();
+                    }
+                }
             }
         });
         return $sent;

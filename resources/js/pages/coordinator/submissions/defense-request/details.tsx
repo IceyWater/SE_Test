@@ -173,7 +173,7 @@ function PanelMemberCombobox({
             <span
               className={`truncate ${!value ? 'text-muted-foreground' : ''}`}
             >
-              {value || `Select ${label}`}
+              {options.find(o => String(o.id) === value || o.name === value || String(o.id) === 'panelist-' + value)?.name || value || `Select ${label}`}
             </span>
             <ChevronsUpDown size={14} className="opacity-50" />
           </button>
@@ -197,8 +197,8 @@ function PanelMemberCombobox({
             </CommandEmpty>
             <CommandGroup className="max-h-72 overflow-auto">
               {filtered.map(o => {
-                const isSelected = o.name === value;
-                const dup = taken.has(o.name) && !isSelected;
+                const isSelected = String(o.id) === value || o.name === value || String(o.id) === 'panelist-' + value;
+                const dup = (taken.has(o.name) || taken.has(String(o.id)) || taken.has(String(o.id).replace(/^panelist-/, ''))) && !isSelected;
                 return (
                   <CommandItem
                     key={o.id}
@@ -206,7 +206,7 @@ function PanelMemberCombobox({
                     disabled={dup}
                     onSelect={() => {
                       if (dup) return;
-                      onChange(o.name);
+                      onChange(String(o.id));
                       setOpen(false);
                       setQ('');
                     }}
@@ -316,7 +316,7 @@ export default function DefenseRequestDetailsPage(rawProps: any) {
       setLoadingMembers(true);
       setPanelLoadError(null);
       const endpoints = [
-        '/coordinator/defense/panel-members-all',
+        '/coordinator/panel-members',
         '/api/panel-members'
       ];
       let loaded = false;
@@ -472,7 +472,7 @@ export default function DefenseRequestDetailsPage(rawProps: any) {
           ].filter(Boolean).join(', ')
         });
       } else {
-        toast.error(data.error || `Failed (${res.status})`, { id: toastId });
+        toast.error(data.error || Object.values(data.errors ?? {}).flat().join(' ') || data.message || `Failed (${res.status})`, { id: toastId });
       }
     } catch {
       toast.error('Network error saving panels', { id: toastId });

@@ -655,11 +655,11 @@ class DefenseRequestController extends Controller
             'workflow_state_display' => $defenseRequest->workflow_state_display ?? null,
             'adviser_comments' => $defenseRequest->adviser_comments,
             'coordinator_comments' => $defenseRequest->coordinator_comments,
-            'defense_chairperson' => $defenseRequest->defense_chairperson,
-            'defense_panelist1' => $defenseRequest->defense_panelist1,
-            'defense_panelist2' => $defenseRequest->defense_panelist2,
-            'defense_panelist3' => $defenseRequest->defense_panelist3,
-            'defense_panelist4' => $defenseRequest->defense_panelist4,
+            'defense_chairperson' => $defenseRequest->panel_display['defense_chairperson'],
+            'defense_panelist1' => $defenseRequest->panel_display['defense_panelist1'],
+            'defense_panelist2' => $defenseRequest->panel_display['defense_panelist2'],
+            'defense_panelist3' => $defenseRequest->panel_display['defense_panelist3'],
+            'defense_panelist4' => $defenseRequest->panel_display['defense_panelist4'],
             'scheduled_date' => $defenseRequest->scheduled_date?->format('Y-m-d'),
             'scheduled_time' => $defenseRequest->scheduled_time,
             'scheduled_end_time' => $defenseRequest->scheduled_end_time,
@@ -690,6 +690,8 @@ class DefenseRequestController extends Controller
         if (!in_array($user->role,$coordinatorRoles)) {
             return response()->json(['error'=>'Forbidden'],403);
         }
+
+        if ($user->role === 'Coordinator') abort_unless((int)$defenseRequest->coordinator_user_id === (int)$user->id, 403);
 
         $data = $request->validate([
             'status' => 'required|in:Pending,Approved,Rejected,Completed'
@@ -1269,6 +1271,8 @@ class DefenseRequestController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        abort_unless((int)$defenseRequest->adviser_user_id === (int)$user->id, 403);
+
         $data = $request->validate([
             'adviser_status' => 'required|in:Pending,Approved,Rejected',
             'coordinator_user_id' => 'nullable|integer|exists:users,id', // <-- add this
@@ -1435,58 +1439,7 @@ class DefenseRequestController extends Controller
 
     public function savePanels(Request $request, DefenseRequest $defenseRequest)
     {
-        if (in_array($defenseRequest->workflow_state, ['adviser-corrections', 'coordinator-corrections'], true)) {
-            return response()->json(['error' => 'Wait for the student to resubmit corrections before continuing this request.'], 422);
-        }
-
-        $user = Auth::user();
-        if (!$user || !in_array($user->role, ['Coordinator','Administrative Assistant','Dean'])) {
-            return response()->json(['error'=>'Unauthorized'],403);
-        }
-
-        $data = $request->validate([
-            'defense_chairperson' => 'nullable|string|max:255',
-            'defense_panelist1' => 'nullable|string|max:255',
-            'defense_panelist2' => 'nullable|string|max:255',
-            'defense_panelist3' => 'nullable|string|max:255',
-            'defense_panelist4' => 'nullable|string|max:255',
-        ]);
-
-        $originalState = $defenseRequest->workflow_state;
-
-        // Save panel assignments
-        $defenseRequest->defense_chairperson = $data['defense_chairperson'] ?? null;
-        $defenseRequest->defense_panelist1 = $data['defense_panelist1'] ?? null;
-        $defenseRequest->defense_panelist2 = $data['defense_panelist2'] ?? null;
-        $defenseRequest->defense_panelist3 = $data['defense_panelist3'] ?? null;
-        $defenseRequest->defense_panelist4 = $data['defense_panelist4'] ?? null;
-        $defenseRequest->panels_assigned_at = now();
-
-        // Always update workflow_state/history if any panel field changes
-        $defenseRequest->workflow_state = 'panels-assigned';
-
-        // Add workflow history entry
-        $hist = $defenseRequest->workflow_history ?? [];
-        $hist[] = [
-            'action' => 'Panels Assigned',
-            'timestamp' => now()->toISOString(),
-            'user_id' => $user->id,
-            'user_name' => $user->first_name . ' ' . $user->last_name,
-            'from_state' => $originalState,
-            'to_state' => 'panels-assigned'
-        ];
-        $defenseRequest->workflow_history = $hist;
-
-        $defenseRequest->last_status_updated_at = now();
-        $defenseRequest->last_status_updated_by = $user->id;
-        $defenseRequest->save();
-
-        return response()->json([
-            'ok' => true,
-            'request' => $defenseRequest,
-            'workflow_history' => $defenseRequest->workflow_history,
-            'workflow_state' => $defenseRequest->workflow_state,
-        ]);
+        return app(CoordinatorDefenseController::class)->assignPanelsJson($request, $defenseRequest);
     }
 
     public function showAADetails($id)

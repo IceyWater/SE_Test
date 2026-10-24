@@ -196,6 +196,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     /* Notifications */
     Route::get('/notification', [NotificationController::class, 'index'])->name('notification.index');
+    Route::get('/honorarium-ledger', [\App\Http\Controllers\HonorariumLedgerController::class, 'index'])->name('honorarium-ledger.index');
+    Route::post('/honorarium-ledger/{defenseRequest}/prepare', [\App\Http\Controllers\HonorariumLedgerController::class, 'prepare'])->name('honorarium-ledger.prepare');
+    Route::patch('/honorarium-ledger/{disbursement}', [\App\Http\Controllers\HonorariumLedgerController::class, 'update'])->name('honorarium-ledger.update');
     // Honorarium module additions, preserving the defense and comprehensive exam routes.
     Route::get('/honorarium-workspace', [\App\Http\Controllers\HonorariumWorkspaceController::class, 'index'])->name('honorarium-workspace.index');
     Route::post('/honorarium-workspace/{defenseRequest}/submit-to-finance', [\App\Http\Controllers\HonorariumWorkspaceController::class, 'submitToFinance'])->name('honorarium-workspace.submit-to-finance');
