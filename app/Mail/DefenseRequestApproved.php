@@ -33,6 +33,7 @@ class DefenseRequestApproved extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         $approverTitle = ucfirst($this->approvedBy);
+
         return new Envelope(
             subject: "Defense Request {$approverTitle} Approval - {$this->defenseRequest->thesis_title}",
         );

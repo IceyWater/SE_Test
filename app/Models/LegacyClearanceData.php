@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class LegacyClearanceData extends Model
 {
@@ -70,20 +70,20 @@ class LegacyClearanceData extends Model
     public static function isUserClearanceComplete(int $userId, ?string $semesterId = null): bool
     {
         $query = static::where('user_id', $userId);
-        
+
         if ($semesterId) {
             $query->where('semester_id', $semesterId);
         }
-        
+
         // Get the latest clearance data
         $latestData = $query->orderBy('scraped_at', 'desc')->get();
-        
+
         // If no data found, assume not complete
         if ($latestData->isEmpty()) {
             return false;
         }
-        
+
         // Check if all areas are cleared
-        return $latestData->every(fn($area) => $area->all_cleared);
+        return $latestData->every(fn ($area) => $area->all_cleared);
     }
 }

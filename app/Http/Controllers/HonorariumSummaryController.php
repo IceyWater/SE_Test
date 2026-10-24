@@ -1,9 +1,8 @@
-<?php 
+<?php
 
 namespace App\Http\Controllers;
 
 use App\Models\ProgramRecord;
-use App\Models\DefenseRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -31,7 +30,7 @@ class HonorariumSummaryController extends Controller
                         foreach ($dr->honorariumPayments as $payment) {
                             $programPayments[] = [
                                 'id' => $payment->id,
-                                'school_year' => $dr->created_at ? $dr->created_at->format('Y') . '-' . ($dr->created_at->format('Y') + 1) : '',
+                                'school_year' => $dr->created_at ? $dr->created_at->format('Y').'-'.($dr->created_at->format('Y') + 1) : '',
                                 'payment_date' => $payment->payment_date ?? '',
                                 'defense_status' => $dr->workflow_state_display ?? $dr->workflow_state ?? '',
                                 'amount' => $payment->amount ?? '',
@@ -52,9 +51,8 @@ class HonorariumSummaryController extends Controller
             ];
         }
 
-
         return Inertia::render('honorarium/honorarium-summary/Index', [
-            'records' => $records
+            'records' => $records,
         ]);
     }
 
@@ -69,7 +67,7 @@ class HonorariumSummaryController extends Controller
         foreach ($defenseRequests as $dr) {
             foreach ($dr->honorariumPayments as $payment) {
                 $payments[] = [
-                    'school_year' => $dr->created_at ? $dr->created_at->format('Y') . '-' . ($dr->created_at->format('Y') + 1) : '',
+                    'school_year' => $dr->created_at ? $dr->created_at->format('Y').'-'.($dr->created_at->format('Y') + 1) : '',
                     'payment_date' => $payment->payment_date ? $payment->payment_date : '',
                     'defense_status' => $dr->workflow_state_display ?? $dr->workflow_state,
                     'amount' => $payment->amount,
@@ -79,7 +77,7 @@ class HonorariumSummaryController extends Controller
             }
         }
 
-        $filename = $record->name . '_payments.csv';
+        $filename = $record->name.'_payments.csv';
 
         $headers = [
             'Content-Type' => 'text/csv',

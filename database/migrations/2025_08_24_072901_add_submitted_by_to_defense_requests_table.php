@@ -27,4 +27,4 @@ class AddSubmittedByToDefenseRequestsTable extends Migration
             $table->dropColumn('submitted_by');
         });
     }
-};
+}

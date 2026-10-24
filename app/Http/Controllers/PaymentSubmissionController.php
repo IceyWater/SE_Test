@@ -1,5 +1,7 @@
 <?php
+
 // filepath: c:\GSPS\Graduate_School_System\app\Http\Controllers\PaymentSubmissionController.php
+
 namespace App\Http\Controllers;
 
 use App\Models\PaymentSubmission;
@@ -15,7 +17,7 @@ class PaymentSubmissionController extends Controller
         $user = Auth::user();
 
         // Accept either school_id or user id stored into exam_application.student_id
-        $ids = array_values(array_filter([$user->school_id, $user->id], fn($v) => filled($v)));
+        $ids = array_values(array_filter([$user->school_id, $user->id], fn ($v) => filled($v)));
 
         $hasApp = DB::table('exam_application')
             ->whereIn('student_id', $ids)
@@ -51,7 +53,7 @@ class PaymentSubmissionController extends Controller
         $user = $request->user();
 
         // Must have an application first (school_id or id in exam_application.student_id)
-        $ids = array_values(array_filter([$user->school_id, $user->id], fn($v) => filled($v)));
+        $ids = array_values(array_filter([$user->school_id, $user->id], fn ($v) => filled($v)));
         $hasApp = DB::table('exam_application')
             ->whereIn('student_id', $ids)
             ->exists();
@@ -68,19 +70,19 @@ class PaymentSubmissionController extends Controller
             ->first();
 
         $validated = $request->validate([
-            'or_number'     => ['required','string','max:50'],
-            'payment_date'  => ['required','date'],
-            'amount_paid'   => ['required','numeric','min:0'],
+            'or_number' => ['required', 'string', 'max:50'],
+            'payment_date' => ['required', 'date'],
+            'amount_paid' => ['required', 'numeric', 'min:0'],
             'receipt_image' => [$existing && $existing->receipt_image ? 'nullable' : 'required', 'image', 'max:5120'],
         ]);
 
         $payload = [
-            'student_id'   => $user->id,
+            'student_id' => $user->id,
             'payment_type' => 'exam',
-            'or_number'    => $validated['or_number'],
+            'or_number' => $validated['or_number'],
             'payment_date' => $validated['payment_date'],
-            'amount_paid'  => $validated['amount_paid'],
-            'status'       => 'pending',
+            'amount_paid' => $validated['amount_paid'],
+            'status' => 'pending',
         ];
 
         if ($request->hasFile('receipt_image')) {

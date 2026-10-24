@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Conversation extends Model
 {
@@ -45,8 +45,8 @@ class Conversation extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'message_participants')
-                    ->withPivot(['joined_at', 'last_read_at', 'is_admin'])
-                    ->withTimestamps();
+            ->withPivot(['joined_at', 'last_read_at', 'is_admin'])
+            ->withTimestamps();
     }
 
     /**
@@ -55,8 +55,8 @@ class Conversation extends Model
     public function participants(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'message_participants')
-                    ->withPivot(['joined_at', 'last_read_at', 'is_admin'])
-                    ->withTimestamps();
+            ->withPivot(['joined_at', 'last_read_at', 'is_admin'])
+            ->withTimestamps();
     }
 
     /**
@@ -72,11 +72,11 @@ class Conversation extends Model
      */
     public function addParticipant($userId, $isAdmin = false)
     {
-        if (!$this->hasParticipant($userId)) {
+        if (! $this->hasParticipant($userId)) {
             $participants = $this->participants ?? [];
             $participants[] = $userId;
             $this->update(['participants' => $participants]);
-            
+
             $this->users()->attach($userId, [
                 'is_admin' => $isAdmin,
                 'joined_at' => now(),
@@ -90,9 +90,9 @@ class Conversation extends Model
     public function removeParticipant($userId)
     {
         $participants = $this->participants ?? [];
-        $participants = array_filter($participants, fn($id) => $id != $userId);
+        $participants = array_filter($participants, fn ($id) => $id != $userId);
         $this->update(['participants' => array_values($participants)]);
-        
+
         $this->users()->detach($userId);
     }
 
@@ -102,12 +102,12 @@ class Conversation extends Model
     public function getUnreadCountForUser($userId): int
     {
         $participant = $this->users()->where('user_id', $userId)->first();
-        if (!$participant) {
+        if (! $participant) {
             return 0;
         }
 
         $lastReadAt = $participant->pivot->last_read_at;
-        if (!$lastReadAt) {
+        if (! $lastReadAt) {
             return $this->messages()->count();
         }
 

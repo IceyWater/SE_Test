@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class LegacyGradesData extends Model
 {
@@ -94,17 +94,17 @@ class LegacyGradesData extends Model
     public static function getCompletionPercentage(int $userId): float
     {
         $totalGrades = static::where('user_id', $userId)->count();
-        
+
         if ($totalGrades === 0) {
             return 100.0; // No grades found, assume complete
         }
-        
+
         $incompleteGrades = static::where('user_id', $userId)
             ->where('is_incomplete', true)
             ->count();
-        
+
         $completeGrades = $totalGrades - $incompleteGrades;
-        
+
         return round(($completeGrades / $totalGrades) * 100, 2);
     }
 }

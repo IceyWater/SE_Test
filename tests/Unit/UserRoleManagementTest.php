@@ -42,6 +42,7 @@ afterEach(function () {
 function roleTestAccount(string $role, string $email): User
 {
     $id = DB::table('users')->insertGetId(['email' => $email, 'role' => $role]);
+
     return User::findOrFail($id);
 }
 

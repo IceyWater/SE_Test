@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class MessagingSeeder extends Seeder
@@ -16,10 +16,10 @@ class MessagingSeeder extends Seeder
     {
         // Get existing users
         $users = User::all();
-        
+
         if ($users->count() < 2) {
             $this->command->info('Need at least 2 users to create conversations. Creating sample users...');
-            
+
             // Create sample users if not exist
             $coordinator = User::firstOrCreate(
                 ['email' => 'coordinator@example.com'],
@@ -76,7 +76,9 @@ class MessagingSeeder extends Seeder
         $user1 = $users->first();
         $user2 = $users->skip(1)->first();
 
-        if (!$user1 || !$user2) return;
+        if (! $user1 || ! $user2) {
+            return;
+        }
 
         $conversation = Conversation::create([
             'type' => 'private',
@@ -89,7 +91,7 @@ class MessagingSeeder extends Seeder
             'is_admin' => true,
             'joined_at' => now(),
         ]);
-        
+
         $conversation->users()->attach($user2->id, [
             'is_admin' => false,
             'joined_at' => now(),
@@ -123,12 +125,14 @@ class MessagingSeeder extends Seeder
 
         $conversation->update(['last_message_at' => now()]);
 
-        $this->command->info('Created private conversation between ' . $user1->name . ' and ' . $user2->name);
+        $this->command->info('Created private conversation between '.$user1->name.' and '.$user2->name);
     }
 
     private function createGroupConversation($users)
     {
-        if ($users->count() < 3) return;
+        if ($users->count() < 3) {
+            return;
+        }
 
         $participantIds = $users->take(3)->pluck('id')->toArray();
 
@@ -179,6 +183,6 @@ class MessagingSeeder extends Seeder
 
         $conversation->update(['last_message_at' => now()]);
 
-        $this->command->info('Created group conversation: ' . $conversation->title);
+        $this->command->info('Created group conversation: '.$conversation->title);
     }
 }

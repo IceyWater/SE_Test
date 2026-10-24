@@ -14,12 +14,19 @@ class StudentRejectedByAdviser extends Mailable
     use Queueable, SerializesModels;
 
     public $student;
+
     public $adviser;
+
     public $coordinator;
+
     public $adviserFullName;
+
     public $studentFullName;
+
     public $adviserEmail;
+
     public $coordinatorName;
+
     public $coordinatorEmail;
 
     /**
@@ -30,20 +37,20 @@ class StudentRejectedByAdviser extends Mailable
         $this->student = $student;
         $this->adviser = $adviser;
         $this->coordinator = $coordinator;
-        
+
         // Extract full names for email display
-        $this->adviserFullName = trim(($adviser->first_name ?? '') . ' ' . 
-                                      ($adviser->middle_name ? strtoupper($adviser->middle_name[0]) . '. ' : '') . 
+        $this->adviserFullName = trim(($adviser->first_name ?? '').' '.
+                                      ($adviser->middle_name ? strtoupper($adviser->middle_name[0]).'. ' : '').
                                       ($adviser->last_name ?? ''));
-        
-        $this->studentFullName = trim(($student->first_name ?? '') . ' ' . 
-                                     ($student->middle_name ? strtoupper($student->middle_name[0]) . '. ' : '') . 
+
+        $this->studentFullName = trim(($student->first_name ?? '').' '.
+                                     ($student->middle_name ? strtoupper($student->middle_name[0]).'. ' : '').
                                      ($student->last_name ?? ''));
-        
-        $this->coordinatorName = trim(($coordinator->first_name ?? '') . ' ' . 
-                                     ($coordinator->middle_name ? strtoupper($coordinator->middle_name[0]) . '. ' : '') . 
+
+        $this->coordinatorName = trim(($coordinator->first_name ?? '').' '.
+                                     ($coordinator->middle_name ? strtoupper($coordinator->middle_name[0]).'. ' : '').
                                      ($coordinator->last_name ?? ''));
-        
+
         $this->adviserEmail = $adviser->email;
         $this->coordinatorEmail = $coordinator->email;
     }

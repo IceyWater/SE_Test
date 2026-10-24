@@ -13,6 +13,7 @@ class PaymentRateController extends Controller
     {
         abort_unless(in_array(auth()->user()?->role, ['Dean', 'Coordinator', 'Administrative Assistant', 'Super Admin']), 403);
         $rates = PaymentRate::all();
+
         return Inertia::render('dean/payment-rates/Index', [
             'rates' => $rates,
         ]);

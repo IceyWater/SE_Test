@@ -27,13 +27,15 @@ class FinanceDocumentWorkflowService
                     DB::transaction(function () use ($document, &$count) {
                         $locked = FinanceDocumentSubmission::whereKey($document->id)
                             ->where('status', 'locked')->lockForUpdate()->first();
-                        if (!$locked) return;
+                        if (! $locked) {
+                            return;
+                        }
 
                         $locked->update(['status' => 'ready']);
                         $requestId = $locked->defense_request_id;
                         $studentName = $locked->defenseRequest?->student?->full_name
                             ?? $locked->defenseRequest?->student_name
-                            ?? ('Defense request #' . $requestId);
+                            ?? ('Defense request #'.$requestId);
 
                         HonorariumActivity::create([
                             'defense_request_id' => $requestId,

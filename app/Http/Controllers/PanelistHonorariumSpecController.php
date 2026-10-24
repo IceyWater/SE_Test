@@ -11,6 +11,7 @@ class PanelistHonorariumSpecController extends Controller
     public function index()
     {
         $specs = PanelistHonorariumSpec::all();
+
         return Inertia::render('coordinator/panelists/honorarium-specs', [
             'specs' => $specs,
         ]);
@@ -30,11 +31,12 @@ class PanelistHonorariumSpecController extends Controller
                 ['amount' => $spec['amount']]
             );
         }
+
         // Return updated specs as JSON
         return response()->json([
             'success' => true,
             'honorariumSpecs' => PanelistHonorariumSpec::all(),
-            'message' => 'Honorarium rates updated.'
+            'message' => 'Honorarium rates updated.',
         ]);
     }
 }

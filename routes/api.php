@@ -1,13 +1,11 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PanelistController;
-use App\Http\Controllers\DefenseRequestController;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Api\StudentSearchController;
-use App\Http\Controllers\Api\ComprehensiveExamEligibilityController;
+use App\Http\Controllers\DefenseRequestController;
 use App\Http\Controllers\DocumentTemplateController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PanelistController;
+use Illuminate\Support\Facades\Route;
 
 // Authenticated API routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -38,9 +36,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Student search API
     Route::get('students/search', [StudentSearchController::class, 'search']);
     // Document Templates API
-    Route::get('/document-templates', [DocumentTemplateController::class,'index']);
-    Route::get('/document-templates/{template}', [DocumentTemplateController::class,'show']);
-    Route::post('/document-templates', [DocumentTemplateController::class,'store']);
-    Route::put('/document-templates/{template}/fields', [DocumentTemplateController::class,'updateFields']);
-    Route::delete('/document-templates/{template}', [DocumentTemplateController::class,'destroy']);
+    Route::get('/document-templates', [DocumentTemplateController::class, 'index']);
+    Route::get('/document-templates/{template}', [DocumentTemplateController::class, 'show']);
+    Route::post('/document-templates', [DocumentTemplateController::class, 'store']);
+    Route::put('/document-templates/{template}/fields', [DocumentTemplateController::class, 'updateFields']);
+    Route::delete('/document-templates/{template}', [DocumentTemplateController::class, 'destroy']);
 });

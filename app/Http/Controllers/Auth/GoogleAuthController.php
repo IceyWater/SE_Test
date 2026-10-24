@@ -43,6 +43,7 @@ class GoogleAuthController extends Controller
 
         if ($request->has('error')) {
             $request->session()->forget('state');
+
             return $this->failure('Google sign-in was cancelled or denied. You can try again.');
         }
 
@@ -98,6 +99,7 @@ class GoogleAuthController extends Controller
         } catch (Throwable $exception) {
             // Do not log tokens, authorization codes, or provider response bodies.
             Log::warning('Google sign-in failed.', ['exception_type' => $exception::class]);
+
             return $this->failure('Google sign-in could not be completed. Please try again or use your account credentials.');
         }
     }

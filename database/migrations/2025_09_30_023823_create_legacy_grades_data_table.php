@@ -30,14 +30,14 @@ return new class extends Migration
             $table->json('raw_grade_data')->nullable(); // Store the full raw data
             $table->timestamp('scraped_at');
             $table->timestamps();
-            
+
             // Indexes
             $table->index(['user_id', 'semester_id']);
             $table->index(['course_code']);
             $table->index(['is_incomplete']);
             $table->index(['rating_show']);
             $table->index(['scraped_at']);
-            
+
             // Unique constraint to prevent duplicates
             $table->unique(['user_id', 'semester_id', 'course_code'], 'unique_user_semester_course');
         });

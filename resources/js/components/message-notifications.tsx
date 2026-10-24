@@ -1,14 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { 
-    MessageSquare,
-    X,
-    Send
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { MessageSquare, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface Notification {
     id: number;
@@ -44,14 +38,18 @@ export default function MessageNotifications() {
     };
 
     const dismissNotification = (id: number) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
+        setNotifications((prev) => prev.filter((n) => n.id !== id));
         if (notifications.length <= 1) {
             setIsVisible(false);
         }
     };
 
     const getInitials = (name: string) => {
-        return name.split(' ').map(n => n[0]).join('').toUpperCase();
+        return name
+            .split(' ')
+            .map((n) => n[0])
+            .join('')
+            .toUpperCase();
     };
 
     if (!isVisible || notifications.length === 0) {
@@ -61,34 +59,21 @@ export default function MessageNotifications() {
     return (
         <div className="fixed top-4 right-4 z-50 space-y-2">
             {notifications.slice(0, 3).map((notification) => (
-                <Card key={notification.id} className="w-80 p-3 shadow-lg border-l-4 border-l-blue-500 animate-in slide-in-from-right">
+                <Card key={notification.id} className="animate-in slide-in-from-right w-80 border-l-4 border-l-blue-500 p-3 shadow-lg">
                     <div className="flex items-start space-x-3">
                         <Avatar className="h-8 w-8">
-                            <AvatarFallback className="text-xs">
-                                {getInitials(notification.sender_name)}
-                            </AvatarFallback>
+                            <AvatarFallback className="text-xs">{getInitials(notification.sender_name)}</AvatarFallback>
                         </Avatar>
-                        <div className="flex-1 min-w-0">
+                        <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between">
-                                <p className="text-sm font-medium truncate">
-                                    {notification.sender_name}
-                                </p>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0"
-                                    onClick={() => dismissNotification(notification.id)}
-                                >
+                                <p className="truncate text-sm font-medium">{notification.sender_name}</p>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => dismissNotification(notification.id)}>
                                     <X className="h-3 w-3" />
                                 </Button>
                             </div>
-                            <p className="text-xs text-gray-500 mb-1">
-                                {notification.conversation_title}
-                            </p>
-                            <p className="text-sm text-gray-700 truncate">
-                                {notification.content}
-                            </p>
-                            <div className="flex justify-end mt-2">
+                            <p className="mb-1 text-xs text-gray-500">{notification.conversation_title}</p>
+                            <p className="truncate text-sm text-gray-700">{notification.content}</p>
+                            <div className="mt-2 flex justify-end">
                                 <Button
                                     size="sm"
                                     variant="outline"
@@ -97,7 +82,7 @@ export default function MessageNotifications() {
                                         window.location.href = `/messages?conversation=${notification.conversation_id}`;
                                     }}
                                 >
-                                    <MessageSquare className="h-3 w-3 mr-1" />
+                                    <MessageSquare className="mr-1 h-3 w-3" />
                                     Reply
                                 </Button>
                             </div>
@@ -107,9 +92,7 @@ export default function MessageNotifications() {
             ))}
             {notifications.length > 3 && (
                 <Card className="w-80 p-2 text-center">
-                    <p className="text-xs text-gray-500">
-                        +{notifications.length - 3} more messages
-                    </p>
+                    <p className="text-xs text-gray-500">+{notifications.length - 3} more messages</p>
                 </Card>
             )}
         </div>

@@ -2,14 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use App\Models\User;
-use App\Models\Panelist;
-use App\Models\HonorariumPayment;
-use App\Models\PanelistHonorariumSpec;
-use Carbon\Carbon;
 
 class DefenseRequest extends Model
 {
@@ -20,30 +16,69 @@ class DefenseRequest extends Model
     protected $casts = [
         'correction_requested_at' => 'datetime',
         'correction_count' => 'integer',
-        'workflow_history'           => 'array',
-        'last_status_updated_at'     => 'datetime',
-        'created_at'                 => 'datetime',
-        'updated_at'                 => 'datetime',
-        'adviser_reviewed_at'        => 'datetime',
-        'coordinator_reviewed_at'    => 'datetime',
-        'submitted_at'               => 'datetime',
-        'scheduled_date'             => 'datetime',
-        'scheduled_end_time'         => 'string',
-        'coordinator_assigned_at'    => 'datetime',
+        'workflow_history' => 'array',
+        'last_status_updated_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'adviser_reviewed_at' => 'datetime',
+        'coordinator_reviewed_at' => 'datetime',
+        'submitted_at' => 'datetime',
+        'scheduled_date' => 'datetime',
+        'scheduled_end_time' => 'string',
+        'coordinator_assigned_at' => 'datetime',
         'coordinator_manually_assigned' => 'boolean',
         'amount' => 'decimal:2',
     ];
 
-    public function user()                { return $this->belongsTo(User::class,'submitted_by'); }
-    public function adviserUser()         { return $this->belongsTo(User::class,'adviser_user_id'); }
-    public function assignedTo()          { return $this->belongsTo(User::class,'assigned_to_user_id'); }
-    public function panelsAssignedBy()    { return $this->belongsTo(User::class,'panels_assigned_by'); }
-    public function scheduleSetBy()       { return $this->belongsTo(User::class,'schedule_set_by'); }
-    public function lastStatusUpdater()   { return $this->belongsTo(User::class,'last_status_updated_by'); }
-    public function adviserReviewer()     { return $this->belongsTo(User::class,'adviser_reviewed_by'); }
-    public function coordinatorReviewer() { return $this->belongsTo(User::class,'coordinator_reviewed_by'); }
-    public function student()             { return $this->belongsTo(User::class, 'submitted_by'); }
-    public function coordinator()         { return $this->belongsTo(User::class, 'coordinator_user_id'); }
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function adviserUser()
+    {
+        return $this->belongsTo(User::class, 'adviser_user_id');
+    }
+
+    public function assignedTo()
+    {
+        return $this->belongsTo(User::class, 'assigned_to_user_id');
+    }
+
+    public function panelsAssignedBy()
+    {
+        return $this->belongsTo(User::class, 'panels_assigned_by');
+    }
+
+    public function scheduleSetBy()
+    {
+        return $this->belongsTo(User::class, 'schedule_set_by');
+    }
+
+    public function lastStatusUpdater()
+    {
+        return $this->belongsTo(User::class, 'last_status_updated_by');
+    }
+
+    public function adviserReviewer()
+    {
+        return $this->belongsTo(User::class, 'adviser_reviewed_by');
+    }
+
+    public function coordinatorReviewer()
+    {
+        return $this->belongsTo(User::class, 'coordinator_reviewed_by');
+    }
+
+    public function student()
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function coordinator()
+    {
+        return $this->belongsTo(User::class, 'coordinator_user_id');
+    }
 
     public function honorariumPayments()
     {
@@ -59,6 +94,7 @@ class DefenseRequest extends Model
             $panel = $value && is_numeric($value) ? Panelist::find($value) : null;
             $names[$field] = $panel?->name ?? $value;
         }
+
         return $names;
     }
 
@@ -76,6 +112,7 @@ class DefenseRequest extends Model
             $this->defense_panelist3,
             $this->defense_panelist4,
         ];
+
         return Panelist::whereIn('id', array_filter($ids))->get();
     }
 
@@ -83,72 +120,75 @@ class DefenseRequest extends Model
     {
         $lname = strtolower($user->last_name);
         $fname = strtolower($user->first_name);
-        return $q->where(function($qq) use ($user,$lname,$fname) {
-            $qq->where('adviser_user_id',$user->id)
-               ->orWhere('assigned_to_user_id',$user->id)
-               ->orWhereRaw('LOWER(defense_adviser) LIKE ?', ["%$lname%"])
-               ->orWhereRaw('LOWER(defense_adviser) LIKE ?', ["%$fname%"]);
+
+        return $q->where(function ($qq) use ($user, $lname, $fname) {
+            $qq->where('adviser_user_id', $user->id)
+                ->orWhere('assigned_to_user_id', $user->id)
+                ->orWhereRaw('LOWER(defense_adviser) LIKE ?', ["%$lname%"])
+                ->orWhereRaw('LOWER(defense_adviser) LIKE ?', ["%$fname%"]);
         });
     }
 
     public function getWorkflowStateDisplayAttribute()
     {
-        return match($this->workflow_state) {
-            'submitted','adviser-review'    => 'Submitted',
+        return match ($this->workflow_state) {
+            'submitted','adviser-review' => 'Submitted',
             'adviser-corrections' => 'Corrections Requested by Adviser',
             'coordinator-corrections' => 'Corrections Requested by Coordinator',
-            'adviser-approved'              => 'Adviser Approved',
-            'adviser-rejected'              => 'Adviser Rejected',
-            'coordinator-approved'          => 'Coordinator Approved',
-            'coordinator-rejected'          => 'Coordinator Rejected',
-            'panels-assigned'               => 'Panels Assigned',
-            'scheduled'                     => 'Scheduled',
-            'completed'                     => 'Completed',
-            'cancelled'                     => 'Cancelled',
-            default                         => ucfirst($this->workflow_state ?? 'Unknown'),
+            'adviser-approved' => 'Adviser Approved',
+            'adviser-rejected' => 'Adviser Rejected',
+            'coordinator-approved' => 'Coordinator Approved',
+            'coordinator-rejected' => 'Coordinator Rejected',
+            'panels-assigned' => 'Panels Assigned',
+            'scheduled' => 'Scheduled',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled',
+            default => ucfirst($this->workflow_state ?? 'Unknown'),
         };
     }
 
     public function ensureSubmittedHistory()
     {
-        if (!$this->submitted_at) {
+        if (! $this->submitted_at) {
             $this->submitted_at = $this->created_at ?: now();
         }
         $hist = is_array($this->workflow_history) ? $this->workflow_history : [];
-        $hasSubmitted = collect($hist)->contains(fn($h)=>($h['action']??'')==='submitted');
-        if (!$hasSubmitted) {
+        $hasSubmitted = collect($hist)->contains(fn ($h) => ($h['action'] ?? '') === 'submitted');
+        if (! $hasSubmitted) {
             $hist[] = [
-                'action'=>'submitted',
-                'timestamp'=>($this->submitted_at ?: now())->toIso8601String(),
-                'user_id'=>$this->submitted_by,
-                'user_name'=>null,
-                'comment'=>null,
-                'from_state'=>null,
-                'to_state'=>'submitted'
+                'action' => 'submitted',
+                'timestamp' => ($this->submitted_at ?: now())->toIso8601String(),
+                'user_id' => $this->submitted_by,
+                'user_name' => null,
+                'comment' => null,
+                'from_state' => null,
+                'to_state' => 'submitted',
             ];
             $this->workflow_history = $hist;
         }
+
         return $this;
     }
 
-    public function addWorkflowEntry($action,$comment=null,$userId=null,$from=null,$to=null)
+    public function addWorkflowEntry($action, $comment = null, $userId = null, $from = null, $to = null)
     {
         $history = is_array($this->workflow_history) ? $this->workflow_history : [];
         $u = $userId ? User::find($userId) : Auth::user();
         $history[] = [
-            'action'=>$action,
-            'comment'=>$comment,
-            'user_id'=>$u?->id,
-            'user_name'=>trim(($u?->first_name ?? '').' '.($u?->last_name ?? '')),
-            'timestamp'=>now()->toIso8601String(),
-            'from_state'=>$from,
-            'to_state'=>$to ?? $action
+            'action' => $action,
+            'comment' => $comment,
+            'user_id' => $u?->id,
+            'user_name' => trim(($u?->first_name ?? '').' '.($u?->last_name ?? '')),
+            'timestamp' => now()->toIso8601String(),
+            'from_state' => $from,
+            'to_state' => $to ?? $action,
         ];
         $this->workflow_history = $history;
+
         return $this;
     }
 
-    public function approveByCoordinator(?string $comment=null, ?int $userId=null)
+    public function approveByCoordinator(?string $comment = null, ?int $userId = null)
     {
         $uid = $userId ?? Auth::id();
         $this->coordinator_comments = $comment;
@@ -160,9 +200,10 @@ class DefenseRequest extends Model
         $this->last_status_updated_by = $uid;
 
         $this->ensureSubmittedHistory()
-             ->addWorkflowEntry('coordinator-approved',$comment,$uid,'adviser-approved','coordinator-approved');
+            ->addWorkflowEntry('coordinator-approved', $comment, $uid, 'adviser-approved', 'coordinator-approved');
 
         $this->save();
+
         return $this;
     }
 
@@ -186,7 +227,7 @@ class DefenseRequest extends Model
         $this->defense_panelist4 = $panel4;
 
         // Transition only from adviser-approved or coordinator-approved
-        if (in_array($this->workflow_state, ['adviser-approved','coordinator-approved'])) {
+        if (in_array($this->workflow_state, ['adviser-approved', 'coordinator-approved'])) {
             $this->workflow_state = 'panels-assigned';
             $this->addWorkflowEntry(
                 'panels-assigned',
@@ -197,7 +238,7 @@ class DefenseRequest extends Model
             );
         }
 
-        if (property_exists($this,'scheduling_status') || isset($this->scheduling_status)) {
+        if (property_exists($this, 'scheduling_status') || isset($this->scheduling_status)) {
             $this->scheduling_status = 'panels-assigned';
         }
 
@@ -221,7 +262,9 @@ class DefenseRequest extends Model
         $defenseType = $this->defense_type ?? 'Final'; // fallback if not set
 
         foreach ($panelAssignments as $panel) {
-            if (!$panel['id']) continue;
+            if (! $panel['id']) {
+                continue;
+            }
 
             // Avoid duplicate payments for the same panelist/role/defense
             $exists = $this->honorariumPayments()
@@ -230,7 +273,9 @@ class DefenseRequest extends Model
                 ->where('panelist_type', 'Panelist')
                 ->exists();
 
-            if ($exists) continue;
+            if ($exists) {
+                continue;
+            }
 
             // Get honorarium rate for this role and defense type
             $spec = PanelistHonorariumSpec::where('role', $panel['role'])
@@ -241,11 +286,11 @@ class DefenseRequest extends Model
 
             HonorariumPayment::create([
                 'defense_request_id' => $this->id,
-                'panelist_id'        => $panel['id'],
-                'panelist_type'      => 'Panelist',
-                'role'               => $panel['role'],
-                'amount'             => $amount,
-                'status'             => 'Unpaid',
+                'panelist_id' => $panel['id'],
+                'panelist_type' => 'Panelist',
+                'role' => $panel['role'],
+                'amount' => $amount,
+                'status' => 'Unpaid',
             ]);
         }
 
@@ -265,11 +310,15 @@ class DefenseRequest extends Model
         $defenseType = $this->defense_type ?? 'Final';
 
         foreach ($panelAssignments as $panel) {
-            if (!$panel['id']) continue;
+            if (! $panel['id']) {
+                continue;
+            }
 
             // If $panel['id'] is a name, convert to panelist ID
             $panelist = \App\Models\Panelist::where('name', $panel['id'])->first();
-            if (!$panelist) continue; // skip if not found
+            if (! $panelist) {
+                continue;
+            } // skip if not found
 
             // Avoid duplicate payments
             $exists = $this->honorariumPayments()
@@ -277,7 +326,9 @@ class DefenseRequest extends Model
                 ->where('role', $panel['role'])
                 ->exists();
 
-            if ($exists) continue;
+            if ($exists) {
+                continue;
+            }
 
             $spec = \App\Models\PanelistHonorariumSpec::where('role', $panel['role'])
                 ->where('defense_type', $defenseType)
@@ -287,11 +338,11 @@ class DefenseRequest extends Model
 
             \App\Models\HonorariumPayment::create([
                 'defense_request_id' => $this->id,
-                'panelist_id'        => $panelist->id,
-                'panelist_type'      => 'Panelist',
-                'role'               => $panel['role'],
-                'amount'             => $amount,
-                'status'             => 'Unpaid',
+                'panelist_id' => $panelist->id,
+                'panelist_type' => 'Panelist',
+                'role' => $panel['role'],
+                'amount' => $amount,
+                'status' => 'Unpaid',
             ]);
         }
     }
@@ -300,16 +351,23 @@ class DefenseRequest extends Model
     {
         $hist = $value;
         if (is_string($value)) {
-            $decoded = json_decode($value,true);
-            if (json_last_error() === JSON_ERROR_NONE) $hist = $decoded; else $hist = [];
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $hist = $decoded;
+            } else {
+                $hist = [];
+            }
         }
-        if (!is_array($hist)) $hist = [];
+        if (! is_array($hist)) {
+            $hist = [];
+        }
         foreach ($hist as &$h) {
-            $h['comment']   = $h['comment']   ?? null;
+            $h['comment'] = $h['comment'] ?? null;
             $h['user_name'] = $h['user_name'] ?? '';
-            $h['action']    = $h['action']    ?? '';
+            $h['action'] = $h['action'] ?? '';
             $h['timestamp'] = $h['timestamp'] ?? now()->toIso8601String();
         }
+
         return $hist;
     }
 
@@ -322,7 +380,10 @@ class DefenseRequest extends Model
 
     public function scheduledStartAt(): ?Carbon
     {
-        if (!$this->scheduled_date || !$this->scheduled_time) return null;
+        if (! $this->scheduled_date || ! $this->scheduled_time) {
+            return null;
+        }
+
         return Carbon::parse($this->scheduled_date->format('Y-m-d').' '.$this->scheduled_time);
     }
 
@@ -333,16 +394,21 @@ class DefenseRequest extends Model
             return Carbon::parse($this->scheduled_date->format('Y-m-d').' '.$this->scheduled_end_time);
         }
         $start = $this->scheduledStartAt();
-        if ($start) return (clone $start)->addHour();
+        if ($start) {
+            return (clone $start)->addHour();
+        }
         if ($this->scheduled_date) {
             return Carbon::parse($this->scheduled_date->format('Y-m-d').' 23:59:59');
         }
+
         return null;
     }
 
     public function attemptAutoComplete(?int $systemUserId = null): bool
     {
-        if ($this->workflow_state !== 'scheduled') return false;
+        if ($this->workflow_state !== 'scheduled') {
+            return false;
+        }
         $end = $this->scheduledEndAt();
         if ($end && now()->greaterThan($end)) {
             $from = $this->workflow_state;
@@ -359,8 +425,10 @@ class DefenseRequest extends Model
                 'completed'
             );
             $this->save();
+
             return true;
         }
+
         return false;
     }
 
@@ -369,18 +437,18 @@ class DefenseRequest extends Model
         return $this->user?->name ?? 'Student';
     }
 
-    public function generatedDocuments(){
-      return $this->hasMany(GeneratedDocument::class);
+    public function generatedDocuments()
+    {
+        return $this->hasMany(GeneratedDocument::class);
     }
 
     /**
      * Assign a coordinator to this defense request based on the student's program.
-     * 
-     * @param string $program The student's program to match coordinator
-     * @param int|null $assignedBy The user ID who triggered the assignment (system or user)
-     * @param bool $isManual Whether this is a manual assignment (true) or auto-assignment (false)
-     * @param string|null $notes Optional notes for the assignment audit trail
-     * @return self
+     *
+     * @param  string  $program  The student's program to match coordinator
+     * @param  int|null  $assignedBy  The user ID who triggered the assignment (system or user)
+     * @param  bool  $isManual  Whether this is a manual assignment (true) or auto-assignment (false)
+     * @param  string|null  $notes  Optional notes for the assignment audit trail
      */
     public function assignCoordinator(
         string $program,
@@ -390,29 +458,31 @@ class DefenseRequest extends Model
     ): self {
         // PRIORITY 1: Check database for coordinator assignment
         $coordinator = \App\Models\CoordinatorProgramAssignment::getCoordinatorForProgram($program);
-        
+
         // FALLBACK: Use CoordinatorProgramService if no database assignment found
-        if (!$coordinator) {
+        if (! $coordinator) {
             $coordinatorEmail = \App\Services\CoordinatorProgramService::getCoordinatorByProgram($program);
-            
-            if (!$coordinatorEmail) {
+
+            if (! $coordinatorEmail) {
                 Log::warning('No coordinator found for program in database or service', [
                     'defense_request_id' => $this->id,
                     'program' => $program,
                     'student_id' => $this->submitted_by,
                 ]);
+
                 return $this;
             }
 
             // Find the coordinator user by email
             $coordinator = User::where('email', $coordinatorEmail)->first();
         }
-        
-        if (!$coordinator) {
+
+        if (! $coordinator) {
             Log::warning('Coordinator not found or does not exist', [
                 'defense_request_id' => $this->id,
                 'program' => $program,
             ]);
+
             return $this;
         }
 
@@ -436,39 +506,42 @@ class DefenseRequest extends Model
             'defense_request_id' => $this->id,
             'program' => $program,
             'coordinator_id' => $coordinator->id,
-            'coordinator_name' => trim($coordinator->first_name . ' ' . $coordinator->last_name),
+            'coordinator_name' => trim($coordinator->first_name.' '.$coordinator->last_name),
             'coordinator_email' => $coordinator->email,
             'assigned_by' => $this->coordinator_assigned_by,
             'is_manual' => $isManual,
         ]);
 
         $this->save();
+
         return $this;
     }
 
     /**
      * Get the assigned coordinator's display name for UI.
-     * 
-     * @return string|null
      */
     public function getAssignedCoordinatorNameAttribute(): ?string
     {
-        if (!$this->coordinatorUser) {
+        if (! $this->coordinatorUser) {
             return null;
         }
-        
-        return trim($this->coordinatorUser->first_name . ' ' . $this->coordinatorUser->last_name);
+
+        return trim($this->coordinatorUser->first_name.' '.$this->coordinatorUser->last_name);
     }
 
     public function getCoordinatorStatusDisplayAttribute()
     {
         // Final states
-        if ($this->coordinator_status === 'Approved') return 'Approved';
-        if ($this->coordinator_status === 'Rejected') return 'Rejected';
+        if ($this->coordinator_status === 'Approved') {
+            return 'Approved';
+        }
+        if ($this->coordinator_status === 'Rejected') {
+            return 'Rejected';
+        }
 
         // Not in coordinator workflow yet
-        if (!in_array($this->workflow_state, [
-            'coordinator-review', 'coordinator-approved', 'panels-assigned', 'scheduled', 'completed'
+        if (! in_array($this->workflow_state, [
+            'coordinator-review', 'coordinator-approved', 'panels-assigned', 'scheduled', 'completed',
         ])) {
             return 'Pending';
         }
@@ -479,13 +552,13 @@ class DefenseRequest extends Model
         // Check schedule
         $hasSchedule = $this->scheduled_date && $this->scheduled_time && $this->scheduled_end_time && $this->defense_venue && $this->defense_mode;
 
-        if (!$hasPanels && !$hasSchedule) {
+        if (! $hasPanels && ! $hasSchedule) {
             return 'Pending';
         }
-        if (!$hasPanels && $hasSchedule) {
+        if (! $hasPanels && $hasSchedule) {
             return 'No Assigned Panelists';
         }
-        if ($hasPanels && !$hasSchedule) {
+        if ($hasPanels && ! $hasSchedule) {
             return 'Not Scheduled';
         }
         if ($hasPanels && $hasSchedule && $this->workflow_state !== 'coordinator-approved') {
@@ -494,6 +567,7 @@ class DefenseRequest extends Model
         if ($this->workflow_state === 'coordinator-approved') {
             return 'Approved';
         }
+
         return 'Pending';
     }
 }

@@ -15,7 +15,7 @@ class CoordinatorProgramService
             'Master in Business Administration (with Thesis and Non-Thesis)',
             'Master in Business Administration for Health Professionals',
         ],
-        
+
         'gscoordinator_maed@uic.edu.ph' => [
             'Doctor of Philosophy in Counseling',
             'Doctor of Philosophy in Physical Education',
@@ -24,13 +24,13 @@ class CoordinatorProgramService
             'Master in Counseling',
             'Master of Arts in Counseling',
         ],
-        
+
         'gscoordinator_pharmacy@uic.edu.ph' => [
             'Doctor of Philosophy in Pharmacy',
             'Master of Science in Pharmacy',
             'Master of Science in Medical Technology',
         ],
-        
+
         'gscoordinator_phd@uic.edu.ph' => [
             'Doctor of Philosophy in Education major in Applied Linguistics',
             'Doctor of Philosophy in Education major in Educational Leadership',
@@ -38,22 +38,22 @@ class CoordinatorProgramService
             'Master of Arts in Education major in English',
             'Master of Arts in Education major in Filipino',
         ],
-        
+
         'aalontaga@uic.edu.ph' => [
             'Master of Arts in Education major in Music Education',
         ],
-        
+
         'vbadong@uic.edu.ph' => [
             'Master of Arts in Teaching College Chemistry',
             'Master of Arts in Teaching College Physics',
             'Master of Arts in Engineering Education major in Civil Engineering',
             'Master of Arts in Engineering Education major in Electronics and Communications Engineering',
         ],
-        
+
         'gbuelis@uic.edu.ph' => [
             'Master of Science in Medical Technology',
         ],
-        
+
         'hbeltran@uic.edu.ph' => [
             'Doctor in Business Management major in Information Systems',
             'Doctor of Philosophy in Information Technology Integration',
@@ -61,7 +61,7 @@ class CoordinatorProgramService
             'Master in Information Systems',
             'Master in Information Technology',
         ],
-        
+
         'talderite@uic.edu.ph' => [
             'Master of Arts in Education major in Mathematics',
             'Master of Arts in Education major in Sociology',
@@ -114,6 +114,7 @@ class CoordinatorProgramService
                 return $email;
             }
         }
+
         return null;
     }
 
@@ -124,7 +125,7 @@ class CoordinatorProgramService
     {
         $results = [];
         $searchTerm = strtolower($searchTerm);
-        
+
         foreach (self::$coordinatorPrograms as $email => $programs) {
             foreach ($programs as $program) {
                 if (str_contains(strtolower($program), $searchTerm)) {
@@ -135,7 +136,7 @@ class CoordinatorProgramService
                 }
             }
         }
-        
+
         return $results;
     }
 
@@ -152,10 +153,10 @@ class CoordinatorProgramService
                 'programs' => $programs,
             ];
         }
-        
+
         // Sort by program count (most busy first)
-        usort($stats, fn($a, $b) => $b['program_count'] <=> $a['program_count']);
-        
+        usort($stats, fn ($a, $b) => $b['program_count'] <=> $a['program_count']);
+
         return $stats;
     }
 
@@ -189,11 +190,11 @@ class CoordinatorProgramService
         $words = explode(' ', $programName);
         $acronym = '';
         foreach ($words as $word) {
-            if (strlen($word) > 2 && !in_array(strtolower($word), ['in', 'of', 'and', 'for', 'with', 'major'])) {
+            if (strlen($word) > 2 && ! in_array(strtolower($word), ['in', 'of', 'and', 'for', 'with', 'major'])) {
                 $acronym .= strtoupper(substr($word, 0, 1));
             }
         }
-        
+
         return substr($acronym, 0, 6) ?: 'PROG';
     }
 
@@ -203,28 +204,28 @@ class CoordinatorProgramService
     public static function printAllCoordinators(): string
     {
         $output = "=== UIC GRADUATE PROGRAM COORDINATORS ===\n\n";
-        
+
         foreach (self::$coordinatorPrograms as $email => $programs) {
-            $output .= "📧 " . strtoupper($email) . "\n";
+            $output .= '📧 '.strtoupper($email)."\n";
             $output .= "👥 Program Coordinator\n";
-            $output .= "📚 Programs Assigned (" . count($programs) . "):\n";
-            
+            $output .= '📚 Programs Assigned ('.count($programs)."):\n";
+
             foreach ($programs as $index => $program) {
                 $code = self::generateProgramCode($program);
-                $output .= "   " . ($index + 1) . ". [{$code}] {$program}\n";
+                $output .= '   '.($index + 1).". [{$code}] {$program}\n";
             }
-            
-            $output .= "\n" . str_repeat("-", 80) . "\n\n";
+
+            $output .= "\n".str_repeat('-', 80)."\n\n";
         }
-        
+
         $totalCoordinators = count(self::$coordinatorPrograms);
         $totalPrograms = array_sum(array_map('count', self::$coordinatorPrograms));
-        
+
         $output .= "📊 SUMMARY:\n";
         $output .= "   • Total Coordinators: {$totalCoordinators}\n";
         $output .= "   • Total Program Assignments: {$totalPrograms}\n";
-        $output .= "   • Average Programs per Coordinator: " . round($totalPrograms / $totalCoordinators, 1) . "\n";
-        
+        $output .= '   • Average Programs per Coordinator: '.round($totalPrograms / $totalCoordinators, 1)."\n";
+
         return $output;
     }
 
@@ -234,7 +235,7 @@ class CoordinatorProgramService
     public static function exportForSeeder(): array
     {
         $exportData = [];
-        
+
         foreach (self::$coordinatorPrograms as $email => $programs) {
             $exportData[] = [
                 'email' => $email,
@@ -243,7 +244,7 @@ class CoordinatorProgramService
                 'program_count' => count($programs),
             ];
         }
-        
+
         return $exportData;
     }
 
@@ -257,7 +258,7 @@ class CoordinatorProgramService
             'Masters' => [],
             'Other' => [],
         ];
-        
+
         foreach (self::$coordinatorPrograms as $email => $programs) {
             foreach ($programs as $program) {
                 if (str_contains($program, 'Doctor')) {
@@ -278,7 +279,7 @@ class CoordinatorProgramService
                 }
             }
         }
-        
+
         return $grouped;
     }
 }

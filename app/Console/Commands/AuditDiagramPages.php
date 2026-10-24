@@ -12,12 +12,14 @@ use Illuminate\Support\Facades\Schema;
 class AuditDiagramPages extends Command
 {
     protected $signature = 'demo:audit-diagram';
+
     protected $description = 'Read-only local checks of diagram-role dashboards and primary pages';
 
     public function handle(): int
     {
         if (! app()->environment(['local', 'testing'])) {
             $this->error('This audit is only available locally.');
+
             return self::FAILURE;
         }
 
@@ -56,7 +58,9 @@ class AuditDiagramPages extends Command
         $brokenRoutes = [];
         foreach (app('router')->getRoutes() as $route) {
             $action = $route->getActionName();
-            if (! str_contains($action, '@')) continue;
+            if (! str_contains($action, '@')) {
+                continue;
+            }
             [$controller, $method] = explode('@', $action, 2);
             if (! class_exists($controller) || ! method_exists($controller, $method)) {
                 $brokenRoutes[] = ['methods' => $route->methods(), 'uri' => $route->uri(), 'action' => $action];
@@ -72,6 +76,7 @@ class AuditDiagramPages extends Command
         ])->all());
         $this->info('Saved docs/diagram-audit-results.json. These GET checks do not verify workflow transitions or browser rendering.');
         $this->warn(count($brokenRoutes).' routes refer to missing controllers or methods; see the JSON report.');
+
         return self::SUCCESS;
     }
 }

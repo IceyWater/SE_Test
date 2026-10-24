@@ -21,7 +21,18 @@ class FinanceDocumentSubmission extends Model
         ];
     }
 
-    public function defenseRequest() { return $this->belongsTo(DefenseRequest::class); }
-    public function submitter() { return $this->belongsTo(User::class, 'submitted_by'); }
-    public function reviewer() { return $this->belongsTo(User::class, 'reviewed_by'); }
+    public function defenseRequest()
+    {
+        return $this->belongsTo(DefenseRequest::class);
+    }
+
+    public function submitter()
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
 }

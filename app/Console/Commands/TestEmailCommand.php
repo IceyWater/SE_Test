@@ -2,14 +2,14 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Mail;
-use App\Models\User;
-use App\Models\DefenseRequest;
-use App\Mail\DefenseRequestSubmitted;
 use App\Mail\DefenseRequestApproved;
 use App\Mail\DefenseRequestRejected;
+use App\Mail\DefenseRequestSubmitted;
 use App\Mail\DefenseScheduled;
+use App\Models\DefenseRequest;
+use App\Models\User;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Mail;
 
 class TestEmailCommand extends Command
 {
@@ -44,7 +44,7 @@ class TestEmailCommand extends Command
                 case 'simple':
                     Mail::raw('Test email from Graduate School System - Email is working! 🎉', function ($message) use ($email) {
                         $message->to($email)
-                                ->subject('Test Email - Graduate School System');
+                            ->subject('Test Email - Graduate School System');
                     });
                     $this->info('✅ Simple test email sent!');
                     break;
@@ -54,8 +54,9 @@ class TestEmailCommand extends Command
                     $adviser = User::where('role', 'Adviser')->first();
                     $defenseRequest = DefenseRequest::first();
 
-                    if (!$student || !$adviser || !$defenseRequest) {
+                    if (! $student || ! $adviser || ! $defenseRequest) {
                         $this->error('Missing required data (student, adviser, or defense request)');
+
                         return 1;
                     }
 
@@ -67,8 +68,9 @@ class TestEmailCommand extends Command
                     $student = User::where('role', 'Student')->first();
                     $defenseRequest = DefenseRequest::first();
 
-                    if (!$student || !$defenseRequest) {
+                    if (! $student || ! $defenseRequest) {
                         $this->error('Missing required data (student or defense request)');
+
                         return 1;
                     }
 
@@ -85,8 +87,9 @@ class TestEmailCommand extends Command
                     $student = User::where('role', 'Student')->first();
                     $defenseRequest = DefenseRequest::first();
 
-                    if (!$student || !$defenseRequest) {
+                    if (! $student || ! $defenseRequest) {
                         $this->error('Missing required data (student or defense request)');
+
                         return 1;
                     }
 
@@ -103,8 +106,9 @@ class TestEmailCommand extends Command
                     $student = User::where('role', 'Student')->first();
                     $defenseRequest = DefenseRequest::first();
 
-                    if (!$student || !$defenseRequest) {
+                    if (! $student || ! $defenseRequest) {
                         $this->error('Missing required data (student or defense request)');
+
                         return 1;
                     }
 
@@ -115,16 +119,18 @@ class TestEmailCommand extends Command
                 default:
                     $this->error("Unknown email type: {$type}");
                     $this->info('Available types: simple, submitted, approved, rejected, scheduled');
+
                     return 1;
             }
 
             $this->newLine();
             $this->info("Check your inbox at: {$email}");
-            $this->info("If using queue, run: php artisan queue:work");
-            
+            $this->info('If using queue, run: php artisan queue:work');
+
             return 0;
         } catch (\Exception $e) {
             $this->error("Error sending email: {$e->getMessage()}");
+
             return 1;
         }
     }

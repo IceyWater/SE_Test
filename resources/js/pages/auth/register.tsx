@@ -22,56 +22,50 @@ type RegisterForm = {
     school_id: string;
 };
 
-
 export const UIC_PROGRAMS: string[] = [
     // Doctorate Programs
-    "Doctor of Philosophy in Education major in Educational Leadership",
-    "Doctor of Philosophy in Education major in Applied Linguistics",
-    "Doctor of Philosophy in Education major in Physical Education",
-    "Doctor of Philosophy in Pharmacy",
-    "Doctor of Philosophy in Education major in Mathematics",
-    "Doctor in Business Management with specialization in Information Systems",
-    "Doctor in Business Management",
-    "Doctor of Philosophy in Education major in Filipino",
-    "Doctor of Philosophy in Education major in Counseling",
-    "Doctor of Philosophy in Education major in Information Technology Integration",
-    "Doctor of Philosphy in Pharmacy",
+    'Doctor of Philosophy in Education major in Educational Leadership',
+    'Doctor of Philosophy in Education major in Applied Linguistics',
+    'Doctor of Philosophy in Education major in Physical Education',
+    'Doctor of Philosophy in Pharmacy',
+    'Doctor of Philosophy in Education major in Mathematics',
+    'Doctor in Business Management with specialization in Information Systems',
+    'Doctor in Business Management',
+    'Doctor of Philosophy in Education major in Filipino',
+    'Doctor of Philosophy in Education major in Counseling',
+    'Doctor of Philosophy in Education major in Information Technology Integration',
+    'Doctor of Philosphy in Pharmacy',
 
     // Master’s Programs
-    "Master of Arts in Religious Education",
-    "Master in Counseling",
-    "Master in Business Administration (with Thesis)",
-    "Master in Business Administration for Health Professionals (Non-Thesis)",
-    "Master of Arts in Values Education",
-    "Master of Arts in Educational Management",
-    "Master of Arts in Education major in Sociology",
-    "Master in Business Administration (Non-Thesis)",
-    "Master of Arts in Teaching Chemistry",
-    "Master of Arts in Engineering Education major in Electronics and Communications Engineering",
-    "Master of Arts in Education major in Physical Education",
-    "Master of Arts in Teaching Physics",
-    "Master of Arts in Elementary Education",
-    "Master of Arts in Engineering Education major in Civil Engineering",
-    "Master of Arts in Education major in Mathematics",
-    "Master of Arts in Education major in Information Technology Integration",
-    "Master of Arts in Education major in Filipino",
-    "Master of Arts in Education major in English",
-    "Master of Arts in Education major in Music Education",
-    "Master of Arts in Counseling",
-    "Master in Information Systems",
-    "Master in Information Technology",
-    "Master of Science in Pharmacy",
-    "Master of Science in Medical Technology",
-  ];
+    'Master of Arts in Religious Education',
+    'Master in Counseling',
+    'Master in Business Administration (with Thesis)',
+    'Master in Business Administration for Health Professionals (Non-Thesis)',
+    'Master of Arts in Values Education',
+    'Master of Arts in Educational Management',
+    'Master of Arts in Education major in Sociology',
+    'Master in Business Administration (Non-Thesis)',
+    'Master of Arts in Teaching Chemistry',
+    'Master of Arts in Engineering Education major in Electronics and Communications Engineering',
+    'Master of Arts in Education major in Physical Education',
+    'Master of Arts in Teaching Physics',
+    'Master of Arts in Elementary Education',
+    'Master of Arts in Engineering Education major in Civil Engineering',
+    'Master of Arts in Education major in Mathematics',
+    'Master of Arts in Education major in Information Technology Integration',
+    'Master of Arts in Education major in Filipino',
+    'Master of Arts in Education major in English',
+    'Master of Arts in Education major in Music Education',
+    'Master of Arts in Counseling',
+    'Master in Information Systems',
+    'Master in Information Technology',
+    'Master of Science in Pharmacy',
+    'Master of Science in Medical Technology',
+];
 
-  // simple split logic
-  const DOCTORATE_PROGRAMS = UIC_PROGRAMS.filter((p) =>
-    p.startsWith("Doctor")
-  );
-  const MASTER_PROGRAMS = UIC_PROGRAMS.filter((p) =>
-    p.startsWith("Master")
-  );
-
+// simple split logic
+const DOCTORATE_PROGRAMS = UIC_PROGRAMS.filter((p) => p.startsWith('Doctor'));
+const MASTER_PROGRAMS = UIC_PROGRAMS.filter((p) => p.startsWith('Master'));
 
 export default function Register() {
     const { data, setData, post, processing, errors, reset } = useForm<Required<RegisterForm>>({
@@ -215,48 +209,40 @@ export default function Register() {
                         >
                             <option value="Student">Student</option>
                         </select>
-                        <p className="text-xs text-muted-foreground">Staff roles are assigned by the Super Admin after registration.</p>
+                        <p className="text-muted-foreground text-xs">Staff roles are assigned by the Super Admin after registration.</p>
                         <InputError message={errors.role} />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="program">Program (if applicable)</Label>
 
-                        <Select
-                            value={data.program}
-                            onValueChange={(value) => setData("program", value)}
-                            disabled={processing}
-                        >
+                        <Select value={data.program} onValueChange={(value) => setData('program', value)} disabled={processing}>
                             <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select your program" />
+                                <SelectValue placeholder="Select your program" />
                             </SelectTrigger>
 
                             <SelectContent className="max-h-[300px] overflow-auto">
-                            <SelectGroup>
-                                <span className="px-2 py-1 text-xs font-semibold text-gray-500">
-                                Doctorate Programs
-                                </span>
-                                {DOCTORATE_PROGRAMS.map((name) => (
-                                <SelectItem key={name} value={name}>
-                                    {name}
-                                </SelectItem>
-                                ))}
-                            </SelectGroup>
+                                <SelectGroup>
+                                    <span className="px-2 py-1 text-xs font-semibold text-gray-500">Doctorate Programs</span>
+                                    {DOCTORATE_PROGRAMS.map((name) => (
+                                        <SelectItem key={name} value={name}>
+                                            {name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectGroup>
 
-                            <SelectGroup>
-                                <span className="px-2 py-1 text-xs font-semibold text-gray-500">
-                                Master’s Programs
-                                </span>
-                                {MASTER_PROGRAMS.map((name) => (
-                                <SelectItem key={name} value={name}>
-                                    {name}
-                                </SelectItem>
-                                ))}
-                            </SelectGroup>
+                                <SelectGroup>
+                                    <span className="px-2 py-1 text-xs font-semibold text-gray-500">Master’s Programs</span>
+                                    {MASTER_PROGRAMS.map((name) => (
+                                        <SelectItem key={name} value={name}>
+                                            {name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
 
                         <InputError message={errors.program} />
-                        </div>
+                    </div>
 
                     <Button type="submit" className="mt-4 w-full" tabIndex={6} disabled={processing}>
                         {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}

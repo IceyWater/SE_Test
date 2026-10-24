@@ -13,9 +13,9 @@ class StudentRecordController extends Controller
         $records = StudentRecord::with('payments') // eager load payments
             ->when($request->input('search'), function ($query, $search) {
                 $query->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('middle_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhere('student_id', 'like', "%{$search}%");
+                    ->orWhere('middle_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('student_id', 'like', "%{$search}%");
             })
             ->when($request->input('year'), function ($query, $year) {
                 $query->where('school_year', $year);
@@ -29,7 +29,7 @@ class StudentRecordController extends Controller
 
         return Inertia::render('student-records/Index', [
             'records' => $records,
-            'filters' => $request->only(['search', 'year', 'program'])
+            'filters' => $request->only(['search', 'year', 'program']),
         ]);
     }
 
@@ -39,7 +39,7 @@ class StudentRecordController extends Controller
         $studentRecord->load('payments');
 
         return Inertia::render('student-records/individual-records', [
-            'record' => $studentRecord
+            'record' => $studentRecord,
         ]);
     }
 

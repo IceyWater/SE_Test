@@ -33,6 +33,7 @@ class DefenseRequestRejected extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         $rejectorTitle = ucfirst($this->rejectedBy);
+
         return new Envelope(
             subject: "Defense Request Requires Revision - {$this->defenseRequest->thesis_title}",
         );

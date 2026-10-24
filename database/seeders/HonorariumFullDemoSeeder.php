@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\ProgramRecord;
 use App\Models\DefenseRequest;
-use App\Models\Panelist;
 use App\Models\HonorariumPayment;
+use App\Models\Panelist;
+use App\Models\ProgramRecord;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 class HonorariumFullDemoSeeder extends Seeder
@@ -63,7 +63,7 @@ class HonorariumFullDemoSeeder extends Seeder
             'submitted_at' => now(),
             'defense_duration_minutes' => 60,
             'formatted_time_range' => '8:00 AM - 9:00 AM',
-            'defense_mode' => 'Face-to-Face',   
+            'defense_mode' => 'Face-to-Face',
             'defense_venue' => 'Room 101',
             'scheduling_status' => 'pending-panels',
             'defense_type' => 'Final',

@@ -16,9 +16,9 @@ export default function AssistantAllDefenseListPage() {
     useEffect(() => {
         setLoading(true);
         fetch('/defense-requests', { headers: { Accept: 'application/json' } })
-            .then(res => res.json())
-            .then(data => {
-                setDefenseRequests(Array.isArray(data) ? data : (data.defenseRequests || []));
+            .then((res) => res.json())
+            .then((data) => {
+                setDefenseRequests(Array.isArray(data) ? data : data.defenseRequests || []);
                 setLoading(false);
             });
     }, []);
@@ -26,18 +26,18 @@ export default function AssistantAllDefenseListPage() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Defense Requests" />
-            <div className="flex-1 flex flex-col gap-4 w-full min-h-[90vh]">
-                <div className="flex flex-col w-full min-h-0 overflow-x-hidden">
+            <div className="flex min-h-[90vh] w-full flex-1 flex-col gap-4">
+                <div className="flex min-h-0 w-full flex-col overflow-x-hidden">
                     {/* Skeleton loader copied from coordinator-dashboard */}
                     {loading ? (
-                        <div className="w-full min-h-[70vh] bg-zinc-100 dark:bg-zinc-900 flex flex-col gap-4 p-0 m-0">
+                        <div className="m-0 flex min-h-[70vh] w-full flex-col gap-4 bg-zinc-100 p-0 dark:bg-zinc-900">
                             {/* Top short row */}
-                            <div className="h-6 w-1/6 rounded bg-zinc-300 dark:bg-zinc-800 mt-8 mx-8 animate-pulse" />
+                            <div className="mx-8 mt-8 h-6 w-1/6 animate-pulse rounded bg-zinc-300 dark:bg-zinc-800" />
                             {/* Main rows */}
-                            <div className="h-12 w-3/4 rounded bg-zinc-300 dark:bg-zinc-800 mx-8 animate-pulse" />
-                            <div className="h-12 w-2/3 rounded bg-zinc-300 dark:bg-zinc-800 mx-8 animate-pulse" />
+                            <div className="mx-8 h-12 w-3/4 animate-pulse rounded bg-zinc-300 dark:bg-zinc-800" />
+                            <div className="mx-8 h-12 w-2/3 animate-pulse rounded bg-zinc-300 dark:bg-zinc-800" />
                             {/* Big rectangle for dashboard body */}
-                            <div className="h-[500px] w-full rounded bg-zinc-300 dark:bg-zinc-800 mt-4 animate-pulse" />
+                            <div className="mt-4 h-[500px] w-full animate-pulse rounded bg-zinc-300 dark:bg-zinc-800" />
                         </div>
                     ) : (
                         <ShowAllRequests defenseRequests={defenseRequests} withLayout={false} />

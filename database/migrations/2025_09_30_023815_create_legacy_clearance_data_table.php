@@ -29,7 +29,7 @@ return new class extends Migration
             $table->boolean('all_cleared')->default(false);
             $table->timestamp('scraped_at');
             $table->timestamps();
-            
+
             // Indexes
             $table->index(['user_id', 'semester_id']);
             $table->index(['clearance_id', 'clearance_area_id']);

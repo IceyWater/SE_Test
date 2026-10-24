@@ -1,29 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Head, usePage } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import UserSearch from '@/components/user-search';
-import { 
-    Send, 
-    Plus, 
-    Search,
-    MessageSquare,
-    Users,
-    MoreVertical,
-    Phone,
-    Video,
-    Paperclip,
-    Smile
-} from 'lucide-react';
+import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { BreadcrumbItem } from '@/types';
+import { Head, usePage } from '@inertiajs/react';
+import { MessageSquare, MoreVertical, Paperclip, Phone, Plus, Search, Send, Smile, Users, Video } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -87,7 +74,7 @@ interface Props extends Record<string, unknown> {
 }
 
 export default function MessagingIndex() {
-    const { conversations: initialConversations, users } = usePage<Props>().props;
+    const { conversations: initialConversations } = usePage<Props>().props;
     const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -115,15 +102,9 @@ export default function MessagingIndex() {
             const response = await fetch(`/messages/conversations/${conversationId}/messages`);
             const data = await response.json();
             setMessages(data.messages);
-            
+
             // Update conversation as read
-            setConversations(prev => 
-                prev.map(conv => 
-                    conv.id === conversationId 
-                        ? { ...conv, unread_count: 0 }
-                        : conv
-                )
-            );
+            setConversations((prev) => prev.map((conv) => (conv.id === conversationId ? { ...conv, unread_count: 0 } : conv)));
         } catch (error) {
             console.error('Failed to load messages:', error);
         } finally {
@@ -149,25 +130,27 @@ export default function MessagingIndex() {
             });
 
             const data = await response.json();
-            setMessages(prev => [...prev, data.message]);
+            setMessages((prev) => [...prev, data.message]);
             setNewMessage('');
-            
+
             // Update conversation list
-            setConversations(prev => 
-                prev.map(conv => 
-                    conv.id === selectedConversation.id 
-                        ? { 
-                            ...conv, 
-                            latest_message: {
-                                content: data.message.content,
-                                user_name: data.message.user.name,
-                                created_at: data.message.created_at,
-                                formatted_time: data.message.formatted_time,
-                            },
-                            last_message_at: data.message.created_at
-                        }
-                        : conv
-                ).sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime())
+            setConversations((prev) =>
+                prev
+                    .map((conv) =>
+                        conv.id === selectedConversation.id
+                            ? {
+                                  ...conv,
+                                  latest_message: {
+                                      content: data.message.content,
+                                      user_name: data.message.user.name,
+                                      created_at: data.message.created_at,
+                                      formatted_time: data.message.formatted_time,
+                                  },
+                                  last_message_at: data.message.created_at,
+                              }
+                            : conv,
+                    )
+                    .sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()),
             );
         } catch (error) {
             console.error('Failed to send message:', error);
@@ -193,10 +176,10 @@ export default function MessagingIndex() {
             });
 
             const data = await response.json();
-            
+
             if (data.exists) {
                 // Conversation already exists, just select it
-                const existingConv = conversations.find(c => c.id === data.conversation_id);
+                const existingConv = conversations.find((c) => c.id === data.conversation_id);
                 if (existingConv) {
                     setSelectedConversation(existingConv);
                     loadMessages(existingConv.id);
@@ -219,33 +202,26 @@ export default function MessagingIndex() {
         if (conversationType === 'private') {
             setSelectedUsers([user.id]);
         } else {
-            setSelectedUsers(prev => 
-                prev.includes(user.id)
-                    ? prev.filter(id => id !== user.id)
-                    : [...prev, user.id]
-            );
+            setSelectedUsers((prev) => (prev.includes(user.id) ? prev.filter((id) => id !== user.id) : [...prev, user.id]));
         }
     };
 
     const handleRemoveUser = (userId: number) => {
-        setSelectedUsers(prev => prev.filter(id => id !== userId));
+        setSelectedUsers((prev) => prev.filter((id) => id !== userId));
     };
 
-    const filteredConversations = conversations.filter(conversation =>
-        conversation.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        conversation.participants.some(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    const filteredConversations = conversations.filter(
+        (conversation) =>
+            conversation.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            conversation.participants.some((p) => p.name.toLowerCase().includes(searchTerm.toLowerCase())),
     );
 
     const getInitials = (name: string) => {
-        return name.split(' ').map(n => n[0]).join('').toUpperCase();
-    };
-
-    const formatMessageTime = (date: string) => {
-        return new Date(date).toLocaleTimeString('en-US', { 
-            hour: 'numeric', 
-            minute: '2-digit',
-            hour12: true 
-        });
+        return name
+            .split(' ')
+            .map((n) => n[0])
+            .join('')
+            .toUpperCase();
     };
 
     const isNewDate = (currentMessage: Message, previousMessage: Message | null) => {
@@ -256,14 +232,14 @@ export default function MessagingIndex() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Messages" />
-            
+
             <div className="h-full flex-1 flex-col gap-4 overflow-hidden rounded-xl">
-                <div className="flex h-[calc(100vh-8rem)] bg-white rounded-lg shadow-sm border overflow-hidden">
+                <div className="flex h-[calc(100vh-8rem)] overflow-hidden rounded-lg border bg-white shadow-sm">
                     {/* Sidebar */}
-                    <div className="w-80 border-r flex flex-col">
+                    <div className="flex w-80 flex-col border-r">
                         {/* Header */}
-                        <div className="p-4 border-b">
-                            <div className="flex items-center justify-between mb-4">
+                        <div className="border-b p-4">
+                            <div className="mb-4 flex items-center justify-between">
                                 <h2 className="text-lg font-semibold">Messages</h2>
                                 <Dialog open={newConversationOpen} onOpenChange={setNewConversationOpen}>
                                     <DialogTrigger asChild>
@@ -271,14 +247,17 @@ export default function MessagingIndex() {
                                             <Plus className="h-4 w-4" />
                                         </Button>
                                     </DialogTrigger>
-                                    <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+                                    <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
                                         <DialogHeader>
                                             <DialogTitle>Start New Conversation</DialogTitle>
                                         </DialogHeader>
                                         <div className="space-y-4">
                                             <div>
                                                 <label className="text-sm font-medium">Type</label>
-                                                <Select value={conversationType} onValueChange={(value: 'private' | 'group') => setConversationType(value)}>
+                                                <Select
+                                                    value={conversationType}
+                                                    onValueChange={(value: 'private' | 'group') => setConversationType(value)}
+                                                >
                                                     <SelectTrigger>
                                                         <SelectValue />
                                                     </SelectTrigger>
@@ -301,7 +280,7 @@ export default function MessagingIndex() {
                                             )}
 
                                             <div>
-                                                <label className="text-sm font-medium mb-2 block">
+                                                <label className="mb-2 block text-sm font-medium">
                                                     {conversationType === 'private' ? 'Select User' : 'Select Users'}
                                                 </label>
                                                 <UserSearch
@@ -322,18 +301,18 @@ export default function MessagingIndex() {
                                             </div>
 
                                             <div className="flex justify-end space-x-2">
-                                                <Button variant="outline" onClick={() => {
-                                                    setNewConversationOpen(false);
-                                                    setSelectedUsers([]);
-                                                    setInitialMessage('');
-                                                    setGroupTitle('');
-                                                }}>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        setNewConversationOpen(false);
+                                                        setSelectedUsers([]);
+                                                        setInitialMessage('');
+                                                        setGroupTitle('');
+                                                    }}
+                                                >
                                                     Cancel
                                                 </Button>
-                                                <Button 
-                                                    onClick={createConversation}
-                                                    disabled={selectedUsers.length === 0 || !initialMessage.trim()}
-                                                >
+                                                <Button onClick={createConversation} disabled={selectedUsers.length === 0 || !initialMessage.trim()}>
                                                     Start Conversation
                                                 </Button>
                                             </div>
@@ -341,10 +320,10 @@ export default function MessagingIndex() {
                                     </DialogContent>
                                 </Dialog>
                             </div>
-                            
+
                             {/* Search */}
                             <div className="relative">
-                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                <Search className="absolute top-2.5 left-3 h-4 w-4 text-gray-400" />
                                 <Input
                                     placeholder="Search conversations..."
                                     value={searchTerm}
@@ -357,11 +336,9 @@ export default function MessagingIndex() {
                         {/* Conversations List */}
                         <div className="flex-1 overflow-y-auto">
                             {filteredConversations.length === 0 ? (
-                                <div className="p-4 text-center text-gray-500">
-                                    {searchTerm ? 'No conversations found' : 'No conversations yet'}
-                                </div>
+                                <div className="p-4 text-center text-gray-500">{searchTerm ? 'No conversations found' : 'No conversations yet'}</div>
                             ) : (
-                                filteredConversations.map(conversation => (
+                                filteredConversations.map((conversation) => (
                                     <div
                                         key={conversation.id}
                                         onClick={() => {
@@ -369,8 +346,8 @@ export default function MessagingIndex() {
                                             loadMessages(conversation.id);
                                         }}
                                         className={cn(
-                                            "p-3 border-b cursor-pointer hover:bg-gray-50 transition-colors",
-                                            selectedConversation?.id === conversation.id && "bg-blue-50 border-blue-200"
+                                            'cursor-pointer border-b p-3 transition-colors hover:bg-gray-50',
+                                            selectedConversation?.id === conversation.id && 'border-blue-200 bg-blue-50',
                                         )}
                                     >
                                         <div className="flex items-start space-x-3">
@@ -390,19 +367,15 @@ export default function MessagingIndex() {
                                                     </Badge>
                                                 )}
                                             </div>
-                                            <div className="flex-1 min-w-0">
+                                            <div className="min-w-0 flex-1">
                                                 <div className="flex items-center justify-between">
-                                                    <h3 className="text-sm font-medium text-gray-900 truncate">
-                                                        {conversation.title}
-                                                    </h3>
+                                                    <h3 className="truncate text-sm font-medium text-gray-900">{conversation.title}</h3>
                                                     {conversation.latest_message && (
-                                                        <span className="text-xs text-gray-500">
-                                                            {conversation.latest_message.formatted_time}
-                                                        </span>
+                                                        <span className="text-xs text-gray-500">{conversation.latest_message.formatted_time}</span>
                                                     )}
                                                 </div>
                                                 {conversation.latest_message && (
-                                                    <p className="text-sm text-gray-600 truncate">
+                                                    <p className="truncate text-sm text-gray-600">
                                                         {conversation.latest_message.user_name}: {conversation.latest_message.content}
                                                     </p>
                                                 )}
@@ -415,11 +388,11 @@ export default function MessagingIndex() {
                     </div>
 
                     {/* Main Chat Area */}
-                    <div className="flex-1 flex flex-col">
+                    <div className="flex flex-1 flex-col">
                         {selectedConversation ? (
                             <>
                                 {/* Chat Header */}
-                                <div className="p-4 border-b bg-white">
+                                <div className="border-b bg-white p-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-3">
                                             <Avatar className="h-10 w-10">
@@ -434,10 +407,9 @@ export default function MessagingIndex() {
                                             <div>
                                                 <h3 className="font-semibold">{selectedConversation.title}</h3>
                                                 <p className="text-sm text-gray-500">
-                                                    {selectedConversation.type === 'group' 
+                                                    {selectedConversation.type === 'group'
                                                         ? `${selectedConversation.participants.length} members`
-                                                        : selectedConversation.participants[0]?.role
-                                                    }
+                                                        : selectedConversation.participants[0]?.role}
                                                 </p>
                                             </div>
                                         </div>
@@ -456,51 +428,37 @@ export default function MessagingIndex() {
                                 </div>
 
                                 {/* Messages */}
-                                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                <div className="flex-1 space-y-4 overflow-y-auto p-4">
                                     {isLoading ? (
                                         <div className="flex justify-center">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
                                         </div>
                                     ) : (
                                         messages.map((message, index) => {
                                             const previousMessage = index > 0 ? messages[index - 1] : null;
                                             const showDate = isNewDate(message, previousMessage);
-                                            
+
                                             return (
                                                 <div key={message.id}>
                                                     {showDate && (
-                                                        <div className="flex justify-center my-4">
-                                                            <span className="px-3 py-1 bg-gray-100 rounded-full text-xs text-gray-600">
+                                                        <div className="my-4 flex justify-center">
+                                                            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600">
                                                                 {message.formatted_date}
                                                             </span>
                                                         </div>
                                                     )}
-                                                    <div
-                                                        className={cn(
-                                                            "flex",
-                                                            message.is_own ? "justify-end" : "justify-start"
-                                                        )}
-                                                    >
+                                                    <div className={cn('flex', message.is_own ? 'justify-end' : 'justify-start')}>
                                                         <div
                                                             className={cn(
-                                                                "max-w-xs lg:max-w-md px-4 py-2 rounded-2xl",
-                                                                message.is_own
-                                                                    ? "bg-blue-600 text-white"
-                                                                    : "bg-gray-100 text-gray-900"
+                                                                'max-w-xs rounded-2xl px-4 py-2 lg:max-w-md',
+                                                                message.is_own ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900',
                                                             )}
                                                         >
                                                             {!message.is_own && selectedConversation.type === 'group' && (
-                                                                <p className="text-xs font-medium mb-1 opacity-70">
-                                                                    {message.user.name}
-                                                                </p>
+                                                                <p className="mb-1 text-xs font-medium opacity-70">{message.user.name}</p>
                                                             )}
                                                             <p className="text-sm">{message.content}</p>
-                                                            <p
-                                                                className={cn(
-                                                                    "text-xs mt-1",
-                                                                    message.is_own ? "text-blue-100" : "text-gray-500"
-                                                                )}
-                                                            >
+                                                            <p className={cn('mt-1 text-xs', message.is_own ? 'text-blue-100' : 'text-gray-500')}>
                                                                 {message.formatted_time}
                                                             </p>
                                                         </div>
@@ -513,12 +471,12 @@ export default function MessagingIndex() {
                                 </div>
 
                                 {/* Message Input */}
-                                <div className="p-4 border-t bg-white">
+                                <div className="border-t bg-white p-4">
                                     <div className="flex items-center space-x-2">
                                         <Button variant="ghost" size="sm">
                                             <Paperclip className="h-4 w-4" />
                                         </Button>
-                                        <div className="flex-1 relative">
+                                        <div className="relative flex-1">
                                             <Input
                                                 value={newMessage}
                                                 onChange={(e) => setNewMessage(e.target.value)}
@@ -531,19 +489,11 @@ export default function MessagingIndex() {
                                                 }}
                                                 className="pr-10"
                                             />
-                                            <Button 
-                                                variant="ghost" 
-                                                size="sm" 
-                                                className="absolute right-1 top-1 h-8 w-8 p-0"
-                                            >
+                                            <Button variant="ghost" size="sm" className="absolute top-1 right-1 h-8 w-8 p-0">
                                                 <Smile className="h-4 w-4" />
                                             </Button>
                                         </div>
-                                        <Button 
-                                            onClick={sendMessage}
-                                            disabled={!newMessage.trim()}
-                                            size="sm"
-                                        >
+                                        <Button onClick={sendMessage} disabled={!newMessage.trim()} size="sm">
                                             <Send className="h-4 w-4" />
                                         </Button>
                                     </div>
@@ -551,15 +501,11 @@ export default function MessagingIndex() {
                             </>
                         ) : (
                             /* No conversation selected */
-                            <div className="flex-1 flex items-center justify-center bg-gray-50">
+                            <div className="flex flex-1 items-center justify-center bg-gray-50">
                                 <div className="text-center">
-                                    <MessageSquare className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                        Select a conversation
-                                    </h3>
-                                    <p className="text-gray-500">
-                                        Choose a conversation from the sidebar to start messaging
-                                    </p>
+                                    <MessageSquare className="mx-auto mb-4 h-16 w-16 text-gray-400" />
+                                    <h3 className="mb-2 text-lg font-medium text-gray-900">Select a conversation</h3>
+                                    <p className="text-gray-500">Choose a conversation from the sidebar to start messaging</p>
                                 </div>
                             </div>
                         )}

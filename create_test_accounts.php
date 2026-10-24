@@ -2,7 +2,7 @@
 
 /**
  * Quick Test Account Creator
- * 
+ *
  * Run this in Tinker to create test accounts:
  * php artisan tinker
  * include('create_test_accounts.php');
@@ -33,7 +33,7 @@ if ($coordinator) {
         'program' => 'Graduate School',
         'school_id' => 'COORD-2025-001',
     ]);
-    
+
     echo "✅ Coordinator Account Created!\n";
     echo "   Name: {$coordinator->first_name} {$coordinator->last_name}\n";
     echo "   Email: japzdiapana@gmail.com\n";
@@ -61,10 +61,10 @@ if ($adviser) {
         'program' => 'Graduate School',
         'school_id' => 'FAC-2025-001',
     ]);
-    
+
     // Generate adviser code
     $adviser->generateAdviserCode();
-    
+
     echo "✅ Adviser Account Created!\n";
     echo "   Name: {$adviser->first_name} {$adviser->last_name}\n";
     echo "   Email: japzdiapana@gmail.com\n";
@@ -93,7 +93,7 @@ if ($student) {
         'program' => 'Master of Arts in Education',
         'school_id' => '2025-12345',
     ]);
-    
+
     echo "✅ Student Account Created (Bonus)!\n";
     echo "   Name: {$student->first_name} {$student->last_name}\n";
     echo "   Email: student@test.com\n";

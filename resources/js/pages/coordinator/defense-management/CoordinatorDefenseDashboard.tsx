@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
-import { Head, useForm } from '@inertiajs/react';
-import { Button } from '@/components/ui/button';
-import { Toaster, toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Clock, Users, MapPin, Bell, Edit, Eye, CheckCircle, AlertCircle, PlusCircle, Check } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
+import { Head, router, useForm } from '@inertiajs/react';
+import { AlertCircle, Bell, Calendar, Check, CheckCircle, Edit, Eye, MapPin, Users } from 'lucide-react';
+import { useState } from 'react';
+import { Toaster, toast } from 'sonner';
 
 interface DefenseRequest {
     id: number;
@@ -25,7 +24,7 @@ interface DefenseRequest {
     workflow_state_display: string;
     scheduling_status: string;
     formatted_schedule: string;
-    panels_list: Array<{role: string; name: string}>;
+    panels_list: Array<{ role: string; name: string }>;
     defense_chairperson?: string;
     defense_panelist1?: string;
     defense_panelist2?: string;
@@ -82,10 +81,10 @@ interface Props {
     panelists: Panelist[];
     availablePanelMembers: PanelMember[];
     stats: Stats;
-    user: any;
+    user: unknown;
 }
 
-export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMembers, panelists, availablePanelMembers, stats, user }: Props) {
+export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMembers, panelists, availablePanelMembers, stats }: Props) {
     // Sonner toast is imported directly
     const [selectedRequest, setSelectedRequest] = useState<DefenseRequest | null>(null);
     const [activeDialog, setActiveDialog] = useState<'panels' | 'schedule' | 'edit' | 'view' | null>(null);
@@ -125,7 +124,7 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
 
     const handleAssignPanels = () => {
         if (!selectedRequest) return;
-        
+
         // Convert "none" values to empty strings before submitting
         const formData = {
             defense_chairperson: panelsForm.data.defense_chairperson === 'none' ? '' : panelsForm.data.defense_chairperson,
@@ -134,18 +133,17 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
             defense_panelist3: panelsForm.data.defense_panelist3 === 'none' ? '' : panelsForm.data.defense_panelist3,
             defense_panelist4: panelsForm.data.defense_panelist4 === 'none' ? '' : panelsForm.data.defense_panelist4,
         };
-        
-        panelsForm.setData(formData);
-        
+
+        panelsForm.transform(() => formData);
         panelsForm.post(route('coordinator.defense.assign-panels', selectedRequest.id), {
             preserveScroll: true,
-            onSuccess: (page) => {
+            onSuccess: () => {
                 // Always move to scheduling after successful panel assignment
                 toast.success('Defense panel assigned successfully! Now set the schedule.');
-                
+
                 // Automatically transition to scheduling dialog
                 setActiveDialog('schedule');
-                
+
                 // Reset schedule form for fresh input
                 scheduleForm.setData({
                     scheduled_date: '',
@@ -155,7 +153,7 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                     defense_venue: '',
                     scheduling_notes: '',
                 });
-                
+
                 panelsForm.reset();
             },
             onError: (errors) => {
@@ -165,12 +163,12 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                     const fieldName = field.replace('defense_', '').replace('_', ' ').toLowerCase();
                     return `${fieldName}: ${message}`;
                 });
-                
+
                 // Show the first error as a toast
                 if (errorMessages.length > 0) {
                     toast.error(errorMessages[0]);
                 }
-                
+
                 // Keep dialog open for corrections
             },
         });
@@ -178,7 +176,7 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
 
     const handleScheduleDefense = () => {
         if (!selectedRequest) return;
-        
+
         scheduleForm.post(route('coordinator.defense.schedule', selectedRequest.id), {
             preserveScroll: true,
             onSuccess: (page) => {
@@ -197,63 +195,38 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                 const errorEntries = Object.entries(errors);
                 if (errorEntries.length > 0) {
                     const [field, message] = errorEntries[0];
-                    
+
                     // Format field names for better readability
                     const fieldDisplayName = field
                         .replace('scheduled_', '')
                         .replace('defense_', '')
                         .replace('_', ' ')
                         .toLowerCase()
-                        .replace(/\b\w/g, l => l.toUpperCase());
-                    
+                        .replace(/\b\w/g, (l) => l.toUpperCase());
+
                     toast.error(`${fieldDisplayName}: ${message}`);
                 }
-                
+
                 // Keep the dialog open for user to correct the errors
             },
         });
     };
 
-    const handleUpdateDefense = () => {
-        if (!selectedRequest) return;
-        
-        // Convert "none" values to empty strings before submitting
-        const formData = {
-            ...updateForm.data,
-            defense_chairperson: updateForm.data.defense_chairperson === 'none' ? '' : updateForm.data.defense_chairperson,
-            defense_panelist1: updateForm.data.defense_panelist1 === 'none' ? '' : updateForm.data.defense_panelist1,
-            defense_panelist2: updateForm.data.defense_panelist2 === 'none' ? '' : updateForm.data.defense_panelist2,
-            defense_panelist3: updateForm.data.defense_panelist3 === 'none' ? '' : updateForm.data.defense_panelist3,
-            defense_panelist4: updateForm.data.defense_panelist4 === 'none' ? '' : updateForm.data.defense_panelist4,
-        };
-        
-        updateForm.setData(formData);
-        
-        updateForm.put(route('coordinator.defense.update', selectedRequest.id), {
-            onSuccess: () => {
-                setActiveDialog(null);
-                updateForm.reset();
+    const handleSendNotifications = (requestId: number, parties: string[]) => {
+        router.post(
+            route('coordinator.defense.notify', requestId),
+            { notify_parties: parties },
+            {
+                onSuccess: () => {
+                    // Handle success
+                },
             },
-        });
-    };
-
-    const handleSendNotifications = (parties: string[]) => {
-        if (!selectedRequest) return;
-        
-        const form = useForm({
-            notify_parties: parties,
-        });
-
-        form.post(route('coordinator.defense.notify', selectedRequest.id), {
-            onSuccess: () => {
-                // Handle success
-            },
-        });
+        );
     };
 
     const openDialog = (type: 'panels' | 'schedule' | 'edit' | 'view', request: DefenseRequest) => {
         setSelectedRequest(request);
-        
+
         if (type === 'panels') {
             panelsForm.setData({
                 defense_chairperson: request.defense_chairperson || 'none',
@@ -285,17 +258,22 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                 scheduling_notes: request.scheduling_notes || '',
             });
         }
-        
+
         setActiveDialog(type);
     };
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'pending-panels': return 'bg-yellow-100 text-yellow-800';
-            case 'panels-assigned': return 'bg-blue-100 text-blue-800';
-            case 'scheduled': return 'bg-green-100 text-green-800';
-            case 'completed': return 'bg-gray-100 text-gray-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'pending-panels':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'panels-assigned':
+                return 'bg-blue-100 text-blue-800';
+            case 'scheduled':
+                return 'bg-green-100 text-green-800';
+            case 'completed':
+                return 'bg-gray-100 text-gray-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
         }
     };
 
@@ -305,9 +283,9 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
             <Toaster richColors position="bottom-right" />
 
             <div className="py-6">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     {/* Statistics Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-4">
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Pending Panels</CardTitle>
@@ -357,53 +335,65 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                     <Card>
                         <CardHeader>
                             <CardTitle>Approved Defense Requests</CardTitle>
-                            <CardDescription>
-                                Manage panel assignments, scheduling, and notifications for approved defense requests
-                            </CardDescription>
+                            <CardDescription>Manage panel assignments, scheduling, and notifications for approved defense requests</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
                                 {defenseRequests.length === 0 ? (
-                                    <div className="text-center py-8 text-gray-500">
+                                    <div className="py-8 text-center text-gray-500">
                                         No approved defense requests requiring scheduling at this time.
                                     </div>
                                 ) : (
                                     defenseRequests.map((request) => (
                                         <Card key={request.id} className="border-l-4 border-l-blue-500">
                                             <CardContent className="p-6">
-                                                <div className="flex justify-between items-start">
+                                                <div className="flex items-start justify-between">
                                                     <div className="flex-1">
-                                                        <div className="flex items-center gap-2 mb-2">
+                                                        <div className="mb-2 flex items-center gap-2">
                                                             <h3 className="text-lg font-semibold">{request.student_name}</h3>
                                                             <Badge className={getStatusColor(request.scheduling_status ?? 'pending-panels')}>
                                                                 {(request.scheduling_status ?? 'pending-panels').replace('-', ' ').toUpperCase()}
                                                             </Badge>
                                                         </div>
-                                                        
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+
+                                                        <div className="grid grid-cols-1 gap-4 text-sm text-gray-600 md:grid-cols-2">
                                                             <div>
-                                                                <p><strong>ID:</strong> {request.school_id}</p>
-                                                                <p><strong>Program:</strong> {request.program}</p>
-                                                                <p><strong>Defense Type:</strong> {request.defense_type}</p>
-                                                                <p><strong>Adviser:</strong> {request.adviser}</p>
+                                                                <p>
+                                                                    <strong>ID:</strong> {request.school_id}
+                                                                </p>
+                                                                <p>
+                                                                    <strong>Program:</strong> {request.program}
+                                                                </p>
+                                                                <p>
+                                                                    <strong>Defense Type:</strong> {request.defense_type}
+                                                                </p>
+                                                                <p>
+                                                                    <strong>Adviser:</strong> {request.adviser}
+                                                                </p>
                                                             </div>
                                                             <div>
-                                                                <p><strong>Submitted:</strong> {request.submitted_at}</p>
-                                                                <p><strong>Approved:</strong> {request.adviser_reviewed_at}</p>
+                                                                <p>
+                                                                    <strong>Submitted:</strong> {request.submitted_at}
+                                                                </p>
+                                                                <p>
+                                                                    <strong>Approved:</strong> {request.adviser_reviewed_at}
+                                                                </p>
                                                                 {request.formatted_schedule !== 'Not scheduled' && (
-                                                                    <p><strong>Schedule:</strong> {request.formatted_schedule}</p>
+                                                                    <p>
+                                                                        <strong>Schedule:</strong> {request.formatted_schedule}
+                                                                    </p>
                                                                 )}
                                                             </div>
                                                         </div>
 
                                                         <div className="mt-3">
-                                                            <p className="font-medium text-sm mb-1">Thesis Title:</p>
+                                                            <p className="mb-1 text-sm font-medium">Thesis Title:</p>
                                                             <p className="text-sm text-gray-700">{request.thesis_title}</p>
                                                         </div>
 
                                                         {(request.panels_list ?? []).length > 0 && (
                                                             <div className="mt-3">
-                                                                <p className="font-medium text-sm mb-1">Panel Members:</p>
+                                                                <p className="mb-1 text-sm font-medium">Panel Members:</p>
                                                                 <div className="flex flex-wrap gap-2">
                                                                     {(request.panels_list ?? []).map((panel, index) => (
                                                                         <Badge key={index} variant="outline">
@@ -415,14 +405,9 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                                         )}
                                                     </div>
 
-                                                    <div className="flex flex-col gap-2 ml-4">
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => openDialog('view', request)}
-                                                        >
-                                                            <Eye className="h-4 w-4 mr-1" />
+                                                    <div className="ml-4 flex flex-col gap-2">
+                                                        <Button type="button" variant="outline" size="sm" onClick={() => openDialog('view', request)}>
+                                                            <Eye className="mr-1 h-4 w-4" />
                                                             View
                                                         </Button>
 
@@ -432,28 +417,26 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                                             size="sm"
                                                             onClick={() => openDialog('panels', request)}
                                                         >
-                                                            <Users className="h-4 w-4 mr-1" />
-                                                            {request.defense_chairperson && request.scheduled_date ? 'Edit Assignment' : 
-                                                             request.defense_chairperson ? 'Complete Scheduling' : 'Assign Panels & Schedule'}
+                                                            <Users className="mr-1 h-4 w-4" />
+                                                            {request.defense_chairperson && request.scheduled_date
+                                                                ? 'Edit Assignment'
+                                                                : request.defense_chairperson
+                                                                  ? 'Complete Scheduling'
+                                                                  : 'Assign Panels & Schedule'}
                                                         </Button>
 
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => openDialog('edit', request)}
-                                                        >
-                                                            <Edit className="h-4 w-4 mr-1" />
+                                                        <Button type="button" variant="outline" size="sm" onClick={() => openDialog('edit', request)}>
+                                                            <Edit className="mr-1 h-4 w-4" />
                                                             Edit
                                                         </Button>
 
-                                                        {(request.defense_chairperson && request.scheduled_date) && (
+                                                        {request.defense_chairperson && request.scheduled_date && (
                                                             <Button
                                                                 type="button"
                                                                 size="sm"
-                                                                onClick={() => handleSendNotifications(['adviser', 'student', 'panels'])}
+                                                                onClick={() => handleSendNotifications(request.id, ['adviser', 'student', 'panels'])}
                                                             >
-                                                                <Bell className="h-4 w-4 mr-1" />
+                                                                <Bell className="mr-1 h-4 w-4" />
                                                                 Notify All
                                                             </Button>
                                                         )}
@@ -470,24 +453,30 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
             </div>
 
             {/* Assign Panels Dialog */}
-            <Dialog open={activeDialog === 'panels'} onOpenChange={(open) => { if (!open) setActiveDialog(null); }}>
+            <Dialog
+                open={activeDialog === 'panels'}
+                onOpenChange={(open) => {
+                    if (!open) setActiveDialog(null);
+                }}
+            >
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Assign Defense Panels</DialogTitle>
-                        <DialogDescription>
-                            Assign chairperson and panelists for {selectedRequest?.student_name}'s defense
-                        </DialogDescription>
+                        <DialogDescription>Assign chairperson and panelists for {selectedRequest?.student_name}'s defense</DialogDescription>
                     </DialogHeader>
 
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                        <div className="flex items-center gap-2 text-blue-700 text-sm">
+                    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                        <div className="flex items-center gap-2 text-sm text-blue-700">
                             <Users className="h-4 w-4" />
                             <span className="font-medium">Panel Selection</span>
                         </div>
-                        <p className="text-blue-600 text-xs mt-1">
+                        <p className="mt-1 text-xs text-blue-600">
                             Select from advisers and panelists in the database.
                             {availablePanelMembers.length > 0 && (
-                                <span> {panelists.length} panelists and {adviserMembers.length} advisers available.</span>
+                                <span>
+                                    {' '}
+                                    {panelists.length} panelists and {adviserMembers.length} advisers available.
+                                </span>
                             )}
                             <br />
                             <span className="font-medium">Note:</span> Advisers can serve as panel members.
@@ -497,12 +486,12 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                     <div className="space-y-4">
                         {/* Form validation summary */}
                         {Object.keys(panelsForm.errors).length > 0 && (
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                                <div className="flex items-center gap-2 text-red-700 text-sm">
+                            <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                                <div className="flex items-center gap-2 text-sm text-red-700">
                                     <AlertCircle className="h-4 w-4" />
                                     <span className="font-medium">Please fix the following:</span>
                                 </div>
-                                <ul className="text-red-600 text-xs mt-1 ml-6 list-disc">
+                                <ul className="mt-1 ml-6 list-disc text-xs text-red-600">
                                     {Object.entries(panelsForm.errors).map(([field, error]) => (
                                         <li key={field}>{error}</li>
                                     ))}
@@ -528,7 +517,7 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                 </SelectContent>
                             </Select>
                             {panelsForm.errors.defense_chairperson && (
-                                <p className="text-red-500 text-xs mt-1">{panelsForm.errors.defense_chairperson}</p>
+                                <p className="mt-1 text-xs text-red-500">{panelsForm.errors.defense_chairperson}</p>
                             )}
                         </div>
 
@@ -550,7 +539,7 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                 </SelectContent>
                             </Select>
                             {panelsForm.errors.defense_panelist1 && (
-                                <p className="text-red-500 text-xs mt-1">{panelsForm.errors.defense_panelist1}</p>
+                                <p className="mt-1 text-xs text-red-500">{panelsForm.errors.defense_panelist1}</p>
                             )}
                         </div>
 
@@ -631,7 +620,12 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
             </Dialog>
 
             {/* Schedule Defense Dialog */}
-            <Dialog open={activeDialog === 'schedule'} onOpenChange={(open) => { if (!open) setActiveDialog(null); }}>
+            <Dialog
+                open={activeDialog === 'schedule'}
+                onOpenChange={(open) => {
+                    if (!open) setActiveDialog(null);
+                }}
+            >
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Step 2: Schedule Defense</DialogTitle>
@@ -640,12 +634,12 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                        <div className="flex items-center gap-2 text-green-700 text-sm">
+                    <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3">
+                        <div className="flex items-center gap-2 text-sm text-green-700">
                             <Check className="h-4 w-4" />
                             <span className="font-medium">Panels Assigned Successfully</span>
                         </div>
-                        <p className="text-green-600 text-xs mt-1">
+                        <p className="mt-1 text-xs text-green-600">
                             Now complete the process by setting the defense schedule. Conflicts will be checked automatically.
                         </p>
                     </div>
@@ -655,14 +649,14 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                         {Object.keys(scheduleForm.errors).length > 0 && (
                             <div className="space-y-3">
                                 {scheduleForm.errors.scheduled_time && scheduleForm.errors.scheduled_time.includes('Conflict Detected') && (
-                                    <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+                                    <div className="rounded-lg border-2 border-red-200 bg-red-50 p-4">
                                         <div className="flex items-start gap-3">
-                                            <div className="bg-red-100 rounded-full p-2">
+                                            <div className="rounded-full bg-red-100 p-2">
                                                 <AlertCircle className="h-5 w-5 text-red-600" />
                                             </div>
                                             <div className="flex-1">
-                                                <h4 className="font-semibold text-red-800 mb-2">Scheduling Conflict Detected</h4>
-                                                <div className="text-red-700 text-sm space-y-2">
+                                                <h4 className="mb-2 font-semibold text-red-800">Scheduling Conflict Detected</h4>
+                                                <div className="space-y-2 text-sm text-red-700">
                                                     {scheduleForm.errors.scheduled_time.split('\n').map((line, index) => {
                                                         if (line.trim() === '') return null;
                                                         if (line.includes('**')) {
@@ -670,10 +664,14 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                                             const parts = line.split('**');
                                                             return (
                                                                 <div key={index} className={line.startsWith('•') ? 'ml-3' : ''}>
-                                                                    {parts.map((part, partIndex) => 
-                                                                        partIndex % 2 === 1 ? 
-                                                                            <strong key={partIndex} className="font-semibold">{part}</strong> : 
+                                                                    {parts.map((part, partIndex) =>
+                                                                        partIndex % 2 === 1 ? (
+                                                                            <strong key={partIndex} className="font-semibold">
+                                                                                {part}
+                                                                            </strong>
+                                                                        ) : (
                                                                             <span key={partIndex}>{part}</span>
+                                                                        ),
                                                                     )}
                                                                 </div>
                                                             );
@@ -685,8 +683,8 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                                         );
                                                     })}
                                                 </div>
-                                                <div className="mt-3 pt-3 border-t border-red-200">
-                                                    <p className="text-red-600 text-xs font-medium">
+                                                <div className="mt-3 border-t border-red-200 pt-3">
+                                                    <p className="text-xs font-medium text-red-600">
                                                         💡 Tip: Adjust the time slot or reassign panel members to resolve this conflict.
                                                     </p>
                                                 </div>
@@ -694,16 +692,16 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {scheduleForm.errors.defense_venue && scheduleForm.errors.defense_venue.includes('Venue Conflict') && (
-                                    <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4">
+                                    <div className="rounded-lg border-2 border-orange-200 bg-orange-50 p-4">
                                         <div className="flex items-start gap-3">
-                                            <div className="bg-orange-100 rounded-full p-2">
+                                            <div className="rounded-full bg-orange-100 p-2">
                                                 <MapPin className="h-5 w-5 text-orange-600" />
                                             </div>
                                             <div className="flex-1">
-                                                <h4 className="font-semibold text-orange-800 mb-2">Venue Conflict Detected</h4>
-                                                <div className="text-orange-700 text-sm space-y-2">
+                                                <h4 className="mb-2 font-semibold text-orange-800">Venue Conflict Detected</h4>
+                                                <div className="space-y-2 text-sm text-orange-700">
                                                     {scheduleForm.errors.defense_venue.split('\n').map((line, index) => {
                                                         if (line.trim() === '') return null;
                                                         if (line.includes('**')) {
@@ -711,10 +709,14 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                                             const parts = line.split('**');
                                                             return (
                                                                 <div key={index}>
-                                                                    {parts.map((part, partIndex) => 
-                                                                        partIndex % 2 === 1 ? 
-                                                                            <strong key={partIndex} className="font-semibold">{part}</strong> : 
+                                                                    {parts.map((part, partIndex) =>
+                                                                        partIndex % 2 === 1 ? (
+                                                                            <strong key={partIndex} className="font-semibold">
+                                                                                {part}
+                                                                            </strong>
+                                                                        ) : (
                                                                             <span key={partIndex}>{part}</span>
+                                                                        ),
                                                                     )}
                                                                 </div>
                                                             );
@@ -722,8 +724,8 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                                         return <div key={index}>{line}</div>;
                                                     })}
                                                 </div>
-                                                <div className="mt-3 pt-3 border-t border-orange-200">
-                                                    <p className="text-orange-600 text-xs font-medium">
+                                                <div className="mt-3 border-t border-orange-200 pt-3">
+                                                    <p className="text-xs font-medium text-orange-600">
                                                         💡 Tip: Select a different venue or adjust the time slot.
                                                     </p>
                                                 </div>
@@ -733,15 +735,15 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                 )}
 
                                 {/* Other non-conflict errors */}
-                                {Object.entries(scheduleForm.errors).some(([field, error]) => 
-                                    !error.includes('Conflict Detected') && !error.includes('Venue Conflict')
+                                {Object.entries(scheduleForm.errors).some(
+                                    ([, error]) => !error.includes('Conflict Detected') && !error.includes('Venue Conflict'),
                                 ) && (
-                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                                        <div className="flex items-center gap-2 text-red-700 text-sm">
+                                    <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                                        <div className="flex items-center gap-2 text-sm text-red-700">
                                             <AlertCircle className="h-4 w-4" />
                                             <span className="font-medium">Please fix the following:</span>
                                         </div>
-                                        <ul className="text-red-600 text-xs mt-1 ml-6 list-disc">
+                                        <ul className="mt-1 ml-6 list-disc text-xs text-red-600">
                                             {Object.entries(scheduleForm.errors).map(([field, error]) => {
                                                 if (error.includes('Conflict Detected') || error.includes('Venue Conflict')) return null;
                                                 return <li key={field}>{error}</li>;
@@ -761,9 +763,7 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                 min={new Date().toISOString().split('T')[0]}
                                 className={scheduleForm.errors.scheduled_date ? 'border-red-300' : ''}
                             />
-                            {scheduleForm.errors.scheduled_date && (
-                                <p className="text-red-500 text-xs mt-1">{scheduleForm.errors.scheduled_date}</p>
-                            )}
+                            {scheduleForm.errors.scheduled_date && <p className="mt-1 text-xs text-red-500">{scheduleForm.errors.scheduled_date}</p>}
                         </div>
 
                         <div>
@@ -775,10 +775,10 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                 className={scheduleForm.errors.scheduled_time ? 'border-red-300' : ''}
                             />
                             {scheduleForm.errors.scheduled_time && !scheduleForm.errors.scheduled_time.includes('Conflict Detected') && (
-                                <p className="text-red-500 text-xs mt-1">{scheduleForm.errors.scheduled_time}</p>
+                                <p className="mt-1 text-xs text-red-500">{scheduleForm.errors.scheduled_time}</p>
                             )}
                             {scheduleForm.errors.scheduled_time && scheduleForm.errors.scheduled_time.includes('Conflict Detected') && (
-                                <p className="text-red-500 text-xs mt-1">⚠️ Time conflict detected - see details above</p>
+                                <p className="mt-1 text-xs text-red-500">⚠️ Time conflict detected - see details above</p>
                             )}
                         </div>
 
@@ -791,10 +791,10 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                 className={scheduleForm.errors.scheduled_end_time ? 'border-red-300' : ''}
                             />
                             {scheduleForm.errors.scheduled_end_time && (
-                                <p className="text-red-500 text-xs mt-1">{scheduleForm.errors.scheduled_end_time}</p>
+                                <p className="mt-1 text-xs text-red-500">{scheduleForm.errors.scheduled_end_time}</p>
                             )}
                             {scheduleForm.data.scheduled_time && scheduleForm.data.scheduled_end_time && (
-                                <p className="text-sm text-gray-600 mt-1">
+                                <p className="mt-1 text-sm text-gray-600">
                                     Defense Schedule: {scheduleForm.data.scheduled_time} - {scheduleForm.data.scheduled_end_time}
                                 </p>
                             )}
@@ -802,10 +802,7 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
 
                         <div>
                             <Label htmlFor="mode">Defense Mode *</Label>
-                            <Select
-                                value={scheduleForm.data.defense_mode}
-                                onValueChange={(value) => scheduleForm.setData('defense_mode', value)}
-                            >
+                            <Select value={scheduleForm.data.defense_mode} onValueChange={(value) => scheduleForm.setData('defense_mode', value)}>
                                 <SelectTrigger className={scheduleForm.errors.defense_mode ? 'border-red-300' : ''}>
                                     <SelectValue placeholder="Select defense mode" />
                                 </SelectTrigger>
@@ -814,9 +811,7 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                     <SelectItem value="online">Online</SelectItem>
                                 </SelectContent>
                             </Select>
-                            {scheduleForm.errors.defense_mode && (
-                                <p className="text-red-500 text-xs mt-1">{scheduleForm.errors.defense_mode}</p>
-                            )}
+                            {scheduleForm.errors.defense_mode && <p className="mt-1 text-xs text-red-500">{scheduleForm.errors.defense_mode}</p>}
                         </div>
 
                         <div>
@@ -828,10 +823,10 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                                 className={scheduleForm.errors.defense_venue ? 'border-red-300' : ''}
                             />
                             {scheduleForm.errors.defense_venue && !scheduleForm.errors.defense_venue.includes('Venue Conflict') && (
-                                <p className="text-red-500 text-xs mt-1">{scheduleForm.errors.defense_venue}</p>
+                                <p className="mt-1 text-xs text-red-500">{scheduleForm.errors.defense_venue}</p>
                             )}
                             {scheduleForm.errors.defense_venue && scheduleForm.errors.defense_venue.includes('Venue Conflict') && (
-                                <p className="text-red-500 text-xs mt-1">🏛️ Venue conflict detected - see details above</p>
+                                <p className="mt-1 text-xs text-red-500">🏛️ Venue conflict detected - see details above</p>
                             )}
                         </div>
 
@@ -853,7 +848,14 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                         <Button
                             type="button"
                             onClick={handleScheduleDefense}
-                            disabled={scheduleForm.processing || !scheduleForm.data.scheduled_date || !scheduleForm.data.scheduled_time || !scheduleForm.data.scheduled_end_time || !scheduleForm.data.defense_mode || !scheduleForm.data.defense_venue}
+                            disabled={
+                                scheduleForm.processing ||
+                                !scheduleForm.data.scheduled_date ||
+                                !scheduleForm.data.scheduled_time ||
+                                !scheduleForm.data.scheduled_end_time ||
+                                !scheduleForm.data.defense_mode ||
+                                !scheduleForm.data.defense_venue
+                            }
                         >
                             {scheduleForm.processing ? 'Scheduling...' : 'Schedule Defense'}
                         </Button>
@@ -862,13 +864,16 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
             </Dialog>
 
             {/* View Details Dialog - Simplified version */}
-            <Dialog open={activeDialog === 'view'} onOpenChange={(open) => { if (!open) setActiveDialog(null); }}>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <Dialog
+                open={activeDialog === 'view'}
+                onOpenChange={(open) => {
+                    if (!open) setActiveDialog(null);
+                }}
+            >
+                <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Defense Request Details</DialogTitle>
-                        <DialogDescription>
-                            Complete information for {selectedRequest?.student_name}'s defense request
-                        </DialogDescription>
+                        <DialogDescription>Complete information for {selectedRequest?.student_name}'s defense request</DialogDescription>
                     </DialogHeader>
 
                     {selectedRequest && (
@@ -892,16 +897,16 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                             </div>
 
                             <div>
-                                <p className="font-medium mb-2">Thesis Title</p>
-                                <p className="text-sm bg-gray-50 p-3 rounded">{selectedRequest.thesis_title}</p>
+                                <p className="mb-2 font-medium">Thesis Title</p>
+                                <p className="rounded bg-gray-50 p-3 text-sm">{selectedRequest.thesis_title}</p>
                             </div>
 
                             {selectedRequest.panels_list.length > 0 && (
                                 <div>
-                                    <p className="font-medium mb-2">Panel Members</p>
+                                    <p className="mb-2 font-medium">Panel Members</p>
                                     <div className="space-y-1">
                                         {selectedRequest.panels_list.map((panel, index) => (
-                                            <div key={index} className="flex justify-between text-sm bg-gray-50 p-2 rounded">
+                                            <div key={index} className="flex justify-between rounded bg-gray-50 p-2 text-sm">
                                                 <span className="font-medium">{panel.role}:</span>
                                                 <span>{panel.name}</span>
                                             </div>

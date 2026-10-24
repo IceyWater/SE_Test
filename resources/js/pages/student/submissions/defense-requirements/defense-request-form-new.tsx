@@ -36,6 +36,7 @@ type FormValues = {
     proofOfPayment: File | null;
     referenceNo: string;
     defenseAdviser: string;
+    general: string;
 };
 
 export default function DefenseRequestForm() {
@@ -66,6 +67,7 @@ export default function DefenseRequestForm() {
         proofOfPayment: null,
         referenceNo: '',
         defenseAdviser: '',
+        general: '',
     });
 
     React.useEffect(() => {
@@ -78,8 +80,8 @@ export default function DefenseRequestForm() {
     function fetchAdviserSuggestion() {
         setAdviserLoading(true);
         fetch('/defense-requests/adviser-suggestion')
-            .then(r => r.json())
-            .then(data => {
+            .then((r) => r.json())
+            .then((data) => {
                 if (data?.suggestion) {
                     setAdviserSuggestion(data.suggestion);
                     setAdviserSource(data.source || null);
@@ -94,8 +96,8 @@ export default function DefenseRequestForm() {
 
     function fetchAdviserCandidates() {
         fetch('/defense-requests/adviser-candidates')
-            .then(r => r.json())
-            .then(data => {
+            .then((r) => r.json())
+            .then((data) => {
                 if (Array.isArray(data?.instructors)) {
                     setAdviserCandidates(data.instructors);
                 }
@@ -151,14 +153,14 @@ export default function DefenseRequestForm() {
                 method: 'POST',
                 body: fd,
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 credentials: 'same-origin',
             });
             if (res.status === 419) {
-                (form as any).setError('general', 'Session expired. Please refresh the page and try again.');
+                form.setError('general', 'Session expired. Please refresh the page and try again.');
                 return;
             }
             if (res.status === 201) {
@@ -168,16 +170,18 @@ export default function DefenseRequestForm() {
             if (res.status === 422) {
                 const payload = await res.json().catch(() => ({}));
                 if (payload?.errors) {
-                    const errorsObj: Record<string,string> = {};
+                    const errorsObj: Record<string, string> = {};
                     Object.entries(payload.errors).forEach(([field, messages]) => {
                         if (Array.isArray(messages) && messages.length) errorsObj[field] = messages[0] as string;
                     });
                     if (Object.keys(errorsObj).length) {
-                        (form as any).setErrors(errorsObj);
+                        Object.entries(errorsObj).forEach(([field, message]) => {
+                            if (field in form.data) form.setError(field as keyof FormValues, message);
+                        });
                         const errorKeys = Object.keys(errorsObj);
-                        if (errorKeys.some(k => ['thesisTitle','defenseType','defenseAdviser'].includes(k))) {
+                        if (errorKeys.some((k) => ['thesisTitle', 'defenseType', 'defenseAdviser'].includes(k))) {
                             setStep(1);
-                        } else if (errorKeys.some(k => ['advisersEndorsement','recEndorsement','proofOfPayment','referenceNo'].includes(k))) {
+                        } else if (errorKeys.some((k) => ['advisersEndorsement', 'recEndorsement', 'proofOfPayment', 'referenceNo'].includes(k))) {
                             setStep(2);
                         }
                     }
@@ -185,7 +189,7 @@ export default function DefenseRequestForm() {
                 return;
             }
             if (res.status >= 500) {
-                (form as any).setError('general', 'Server error while saving. Please try again.');
+                form.setError('general', 'Server error while saving. Please try again.');
                 return;
             }
             try {
@@ -193,13 +197,13 @@ export default function DefenseRequestForm() {
                 if (json?.success) {
                     setShowSuccessPanel(true);
                 } else {
-                    (form as any).setError('general', 'Unexpected response. Please verify your data and retry.');
+                    form.setError('general', 'Unexpected response. Please verify your data and retry.');
                 }
             } catch {
-                (form as any).setError('general', 'Unexpected non-JSON response from server.');
+                form.setError('general', 'Unexpected non-JSON response from server.');
             }
-        } catch (e) {
-            (form as any).setError('general', 'Network error. Please check your connection and retry.');
+        } catch {
+            form.setError('general', 'Network error. Please check your connection and retry.');
         } finally {
             setSubmitting(false);
         }
@@ -282,7 +286,7 @@ export default function DefenseRequestForm() {
                                     setShowAdviserDropdown(true);
                                 }}
                                 onBlur={() => setTimeout(() => setShowAdviserDropdown(false), 150)}
-                                placeholder={adviserLoading ? 'Loading…' : 'Enter your adviser\'s full name'}
+                                placeholder={adviserLoading ? 'Loading…' : "Enter your adviser's full name"}
                             />
                             <Button type="button" variant="outline" disabled={adviserLoading} onClick={fetchAdviserSuggestion} className="shrink-0">
                                 <RefreshCcw className="h-4 w-4" />
@@ -290,11 +294,15 @@ export default function DefenseRequestForm() {
                         </div>
                         {showAdviserDropdown && adviserCandidates.length > 0 && (
                             <div className="mt-1 max-h-40 w-full overflow-auto rounded border bg-white p-1 text-sm shadow">
-                                {adviserCandidates.map(name => (
+                                {adviserCandidates.map((name) => (
                                     <button
                                         type="button"
                                         key={name}
-                                        onMouseDown={(e) => { e.preventDefault(); form.setData('defenseAdviser', name); setShowAdviserDropdown(false); }}
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            form.setData('defenseAdviser', name);
+                                            setShowAdviserDropdown(false);
+                                        }}
                                         className={`block w-full rounded px-2 py-1 text-left hover:bg-rose-100 ${name === form.data.defenseAdviser ? 'bg-rose-50 font-medium' : ''}`}
                                     >
                                         {name}
@@ -303,7 +311,9 @@ export default function DefenseRequestForm() {
                             </div>
                         )}
                         {adviserSuggestion && (
-                            <p className="mt-1 text-xs text-gray-500">Suggested: {adviserSuggestion} {adviserSource ? `(from ${adviserSource.replace('-', ' ')})` : ''}</p>
+                            <p className="mt-1 text-xs text-gray-500">
+                                Suggested: {adviserSuggestion} {adviserSource ? `(from ${adviserSource.replace('-', ' ')})` : ''}
+                            </p>
                         )}
                         <p className="mt-1 text-xs text-gray-600">
                             <strong>Important:</strong> Only your named adviser will be able to review and approve this request.
@@ -317,15 +327,17 @@ export default function DefenseRequestForm() {
             content: (
                 <>
                     <HeadingSmall title="Step 3: Required Attachments" />
-                    {([
-                        ['advisersEndorsement', "Adviser's Endorsement", advisersRef],
-                        ['recEndorsement', 'REC Endorsement', recRef],
-                        ['proofOfPayment', 'Proof of Payment', paymentRef],
-                    ] as const).map(([field, label, inputRef]) => (
+                    {(
+                        [
+                            ['advisersEndorsement', "Adviser's Endorsement", advisersRef],
+                            ['recEndorsement', 'REC Endorsement', recRef],
+                            ['proofOfPayment', 'Proof of Payment', paymentRef],
+                        ] as const
+                    ).map(([field, label, inputRef]) => (
                         <div key={field}>
                             <Label>{label}</Label>
                             <div className="mb-3 flex items-center gap-2">
-                                <Input readOnly value={(form.data as any)[field]?.name || ''} placeholder="No file chosen" className="flex-1" />
+                                <Input readOnly value={form.data[field]?.name || ''} placeholder="No file chosen" className="flex-1" />
                                 <Button type="button" variant="outline" onClick={() => inputRef.current?.click()}>
                                     <Paperclip className="mr-1 h-4 w-4" />
                                     Choose File
@@ -383,9 +395,9 @@ export default function DefenseRequestForm() {
                         </div>
                         <div className="rounded border border-blue-200 bg-blue-50 p-4">
                             <p className="text-sm text-blue-800">
-                                <strong>Next Step:</strong> Upon submission, this request will be sent directly to your research adviser 
-                                ({form.data.defenseAdviser || 'TBD'}) for initial review and approval. Once approved by your adviser, 
-                                it will be forwarded to the Coordinator for final approval and scheduling.
+                                <strong>Next Step:</strong> Upon submission, this request will be sent directly to your research adviser (
+                                {form.data.defenseAdviser || 'TBD'}) for initial review and approval. Once approved by your adviser, it will be
+                                forwarded to the Coordinator for final approval and scheduling.
                             </p>
                         </div>
                     </div>
@@ -414,7 +426,7 @@ export default function DefenseRequestForm() {
                     <Plus className="mr-2" /> Submit a Defense Request
                 </Button>
             </DialogTrigger>
-            <DialogContent className="flex h-[95vh] w-full max-w-4xl flex-col relative">
+            <DialogContent className="relative flex h-[95vh] w-full max-w-4xl flex-col">
                 <DialogHeader>
                     <DialogTitle>Submit Defense Request</DialogTitle>
                     <DialogDescription>Fill up all necessary information</DialogDescription>
@@ -424,18 +436,30 @@ export default function DefenseRequestForm() {
                     <div className="flex flex-1 flex-col items-center justify-center space-y-6 px-4">
                         <Check size={48} className="text-rose-500" />
                         <h2 className="text-2xl font-semibold">Request Submitted!</h2>
-                        <p className="text-center text-gray-600 max-w-md">Your defense request has been saved successfully and sent for Adviser review. You will receive a notification once it progresses.</p>
+                        <p className="max-w-md text-center text-gray-600">
+                            Your defense request has been saved successfully and sent for Adviser review. You will receive a notification once it
+                            progresses.
+                        </p>
                         <div className="flex gap-3">
                             <Button onClick={() => setOpen(false)}>Close</Button>
-                            <Button variant="outline" onClick={() => { setShowSuccessPanel(false); setStep(0); form.reset(); }}>Submit Another</Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setShowSuccessPanel(false);
+                                    setStep(0);
+                                    form.reset();
+                                }}
+                            >
+                                Submit Another
+                            </Button>
                         </div>
                     </div>
                 ) : (
                     <div className="flex-1 overflow-auto px-4">
                         {submissionAttempted && hasErrors && (
                             <div className="mb-4 rounded border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">
-                                <p className="font-semibold mb-1">Please fix the following:</p>
-                                <ul className="list-disc ml-4 space-y-0.5">
+                                <p className="mb-1 font-semibold">Please fix the following:</p>
+                                <ul className="ml-4 list-disc space-y-0.5">
                                     {Object.entries(form.errors).map(([field, msg]) => (
                                         <li key={field}>{msg as string}</li>
                                     ))}
@@ -447,8 +471,8 @@ export default function DefenseRequestForm() {
                 )}
 
                 {submitting && (
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center pointer-events-none">
-                        <div className="animate-spin h-8 w-8 rounded-full border-2 border-rose-500 border-t-transparent" />
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm">
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-rose-500 border-t-transparent" />
                     </div>
                 )}
             </DialogContent>

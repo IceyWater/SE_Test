@@ -13,6 +13,7 @@ class AdviserInvitation extends Mailable
     use Queueable, SerializesModels;
 
     public $adviserName;
+
     public $coordinatorName;
 
     /**

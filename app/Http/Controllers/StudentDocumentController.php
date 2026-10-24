@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DefenseRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use App\Models\DefenseRequest;
 
 class StudentDocumentController extends Controller
 {

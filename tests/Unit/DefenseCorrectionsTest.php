@@ -1,9 +1,14 @@
 <?php
 
-use App\Models\{DefenseRequest, Notification, User};
+use App\Models\DefenseRequest;
+use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\{DB, Mail, Schema, Storage};
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 uses(Tests\TestCase::class);
 

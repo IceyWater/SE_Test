@@ -23,7 +23,6 @@ class CreateDefenseRequestCancellationsTable extends Migration
         });
     }
 
-    
     /**
      * Reverse the migrations.
      */
@@ -31,4 +30,4 @@ class CreateDefenseRequestCancellationsTable extends Migration
     {
         Schema::dropIfExists('defense_request_cancellations');
     }
-};
+}

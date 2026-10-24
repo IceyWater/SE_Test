@@ -2,17 +2,17 @@
 
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
 use App\Models\DocumentTemplate;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 /*
 | Central settings & profile routes.
 | Provides both /settings/profile and legacy /profile path (same name: profile.edit).
 */
-Route::middleware(['auth','verified'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
 
     // /settings -> /settings/profile
     Route::redirect('/settings', '/settings/profile')->name('settings');
@@ -34,15 +34,17 @@ Route::middleware(['auth','verified'])->group(function () {
 
     // Document Templates (Dean / Coordinator)
     Route::get('/settings/documents', function () {
-        abort_unless(in_array(Auth::user()->role,['Dean','Super Admin']),403);
+        abort_unless(in_array(Auth::user()->role, ['Dean', 'Super Admin']), 403);
+
         return Inertia::render('settings/documents/Index');
     })->name('settings.documents');
 
     Route::get('/settings/documents/{template}/edit', function (DocumentTemplate $template) {
-        abort_unless(in_array(Auth::user()->role,['Dean','Super Admin']),403);
+        abort_unless(in_array(Auth::user()->role, ['Dean', 'Super Admin']), 403);
+
         return Inertia::render('settings/documents/TemplateEditor', [
             'templateId' => $template->id,
-            'template'   => $template
+            'template' => $template,
         ]);
     })->name('settings.documents.edit');
 
@@ -87,6 +89,7 @@ Route::middleware(['auth','verified'])->group(function () {
             ['key' => 'accept_defense'],
             ['value' => $accept]
         );
+
         return response()->json(['ok' => true, 'acceptDefense' => $accept]);
     });
 
@@ -97,6 +100,7 @@ Route::middleware(['auth','verified'])->group(function () {
         $user->adviser_code = null;
         $user->generateAdviserCode();
         $user->save();
+
         return response()->json(['adviser_code' => $user->adviser_code]);
     });
 
@@ -109,6 +113,7 @@ Route::middleware(['auth','verified'])->group(function () {
             ['adviser_id' => $user->id],
             ['auto_accept_students' => $autoAccept]
         );
+
         return response()->json(['autoAccept' => $autoAccept]);
     });
 

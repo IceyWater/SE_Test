@@ -36,6 +36,7 @@ class InstructorClassListController extends Controller
         } else {
             $error = 'Legacy session missing; please re-login.';
         }
+
         return response()->json(array_merge($payload, [
             'count' => count($payload['rows'] ?? []),
             'error' => $error,

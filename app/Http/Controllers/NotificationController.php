@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Notification;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class NotificationController extends Controller
@@ -15,7 +15,7 @@ class NotificationController extends Controller
             ->latest()->get();
 
         return Inertia::render('notification/Index', [
-            'notifications' => $notifications
+            'notifications' => $notifications,
         ]);
     }
 
@@ -26,6 +26,7 @@ class NotificationController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['success' => true]);
         }
+
         return back();
     }
 
@@ -34,7 +35,10 @@ class NotificationController extends Controller
         Notification::where('user_id', $request->user()->id)
             ->where('read', false)
             ->update(['read' => true]);
-        if ($request->expectsJson()) return response()->json(['success' => true]);
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true]);
+        }
+
         return redirect()->back()->with('success', 'All notifications marked as read!');
     }
 
@@ -42,6 +46,7 @@ class NotificationController extends Controller
     {
         app(\App\Services\DefenseReminderService::class)->send($request->user());
         $query = Notification::where('user_id', $request->user()->id);
+
         return response()->json([
             'notifications' => (clone $query)->latest('id')->limit(50)->get(),
             'unreadCount' => (clone $query)->where('read', false)->count(),

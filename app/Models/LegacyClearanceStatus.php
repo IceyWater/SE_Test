@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class LegacyClearanceStatus extends Model
 {
     protected $table = 'legacy_clearance_statuses';
+
     protected $fillable = [
         'user_id',
         'semester_id',
@@ -14,5 +15,9 @@ class LegacyClearanceStatus extends Model
         'status',
         'details',
     ];
-    public function user() { return $this->belongsTo(User::class); }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

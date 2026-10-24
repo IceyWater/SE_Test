@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\User;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 
 class CreateTestAccounts extends Command
@@ -36,7 +36,7 @@ class CreateTestAccounts extends Command
             User::whereIn('email', [
                 'coordinator@test.com',
                 'adviser@test.com',
-                'student@test.com'
+                'student@test.com',
             ])->delete();
             $this->info('✅ Test accounts deleted');
             $this->newLine();
@@ -44,10 +44,10 @@ class CreateTestAccounts extends Command
 
         // Create Coordinator
         $coordinator = $this->createCoordinator();
-        
+
         // Create Adviser
         $adviser = $this->createAdviser();
-        
+
         // Create Student
         $student = $this->createStudent();
 
@@ -70,10 +70,10 @@ class CreateTestAccounts extends Command
         $this->newLine();
         $this->info('✅ All test accounts created successfully!');
         $this->newLine();
-        
+
         $this->line('💡 Login URL: http://127.0.0.1:8000/login');
         $this->newLine();
-        
+
         $this->comment('📧 To test email workflow:');
         $this->line('   1. Login as STUDENT → Submit defense request');
         $this->line('   2. Login as ADVISER → Approve request');
@@ -90,6 +90,7 @@ class CreateTestAccounts extends Command
 
         if ($coordinator) {
             $this->warn('⚠️  Coordinator account already exists!');
+
             return $coordinator;
         }
 
@@ -119,6 +120,7 @@ class CreateTestAccounts extends Command
 
         if ($adviser) {
             $this->warn('⚠️  Adviser account already exists!');
+
             return $adviser;
         }
 
@@ -156,6 +158,7 @@ class CreateTestAccounts extends Command
 
         if ($student) {
             $this->warn('⚠️  Student account already exists!');
+
             return $student;
         }
 

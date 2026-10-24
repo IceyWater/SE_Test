@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import ShowAllDefenseRequests from './show-all-defense-requests'; 
+import ShowAllDefenseRequests from './show-all-defense-requests';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -17,16 +17,15 @@ function getStatus(workflow_state: string) {
 }
 
 export default function Index({
-    defenseRequirements,
     defenseRequests,
     coordinator, // <-- accept coordinator prop
 }: {
-    defenseRequirements: any[];
-    defenseRequests: any[];
+    defenseRequirements: React.ComponentProps<typeof ShowAllDefenseRequests>['defenseRequests'];
+    defenseRequests: React.ComponentProps<typeof ShowAllDefenseRequests>['defenseRequests'];
     coordinator?: { name: string; email: string } | null;
 }) {
     // Attach status for display
-    const allRequests = (defenseRequests || []).map((r: any) => ({
+    const allRequests = (defenseRequests || []).map((r) => ({
         ...r,
         status: getStatus(r.workflow_state),
     }));
@@ -34,8 +33,8 @@ export default function Index({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="All Defense Requests" />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-auto rounded-xl pt-5  pl-7">
-                <ShowAllDefenseRequests 
+            <div className="flex h-full flex-1 flex-col gap-4 overflow-auto rounded-xl pt-5 pl-7">
+                <ShowAllDefenseRequests
                     defenseRequests={allRequests}
                     coordinator={coordinator} // <-- pass coordinator prop
                     title="Defense Requests"

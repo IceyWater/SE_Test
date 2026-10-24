@@ -4,9 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AdviserStudentController extends Controller
 {
@@ -24,12 +23,13 @@ class AdviserStudentController extends Controller
                     $coordinator = User::find($s->pivot->requested_by);
                     if ($coordinator) {
                         $coordinatorName = trim(
-                            $coordinator->first_name . ' ' .
-                            ($coordinator->middle_name ? strtoupper($coordinator->middle_name[0]) . '. ' : '') .
+                            $coordinator->first_name.' '.
+                            ($coordinator->middle_name ? strtoupper($coordinator->middle_name[0]).'. ' : '').
                             $coordinator->last_name
                         );
                     }
                 }
+
                 return [
                     'id' => $s->id,
                     'student_number' => $s->student_number ?? null,
@@ -59,12 +59,13 @@ class AdviserStudentController extends Controller
                     $coordinator = User::find($s->pivot->requested_by);
                     if ($coordinator) {
                         $coordinatorName = trim(
-                            $coordinator->first_name . ' ' .
-                            ($coordinator->middle_name ? strtoupper($coordinator->middle_name[0]) . '. ' : '') .
+                            $coordinator->first_name.' '.
+                            ($coordinator->middle_name ? strtoupper($coordinator->middle_name[0]).'. ' : '').
                             $coordinator->last_name
                         );
                     }
                 }
+
                 return [
                     'id' => $s->id,
                     'student_number' => $s->student_number ?? null,
@@ -92,30 +93,30 @@ class AdviserStudentController extends Controller
         }
 
         $adviser->advisedStudents()->updateExistingPivot($studentId, ['status' => 'accepted']);
-        
+
         // Send welcome email to student
         try {
             $student = User::find($studentId);
             if ($student && $student->email) {
                 Mail::to($student->email)
                     ->send(new \App\Mail\StudentAcceptedByAdviser($student, $adviser));
-                
+
                 Log::info('Student Acceptance: Welcome email sent to student', [
                     'student_id' => $student->id,
                     'student_email' => $student->email,
                     'adviser_id' => $adviser->id,
-                    'adviser_name' => trim(($adviser->first_name ?? '') . ' ' . ($adviser->last_name ?? ''))
+                    'adviser_name' => trim(($adviser->first_name ?? '').' '.($adviser->last_name ?? '')),
                 ]);
             }
         } catch (\Exception $e) {
             Log::error('Student Acceptance: Failed to send welcome email to student', [
                 'student_id' => $studentId,
                 'adviser_id' => $adviser->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             // Don't fail the acceptance if email fails
         }
-        
+
         return response()->json(['success' => true]);
     }
 
@@ -130,7 +131,7 @@ class AdviserStudentController extends Controller
 
         // Mark as rejected (do NOT delete)
         $adviser->advisedStudents()->updateExistingPivot($studentId, ['status' => 'rejected']);
-        
+
         // Send rejection email to student
         try {
             $student = User::find($studentId);
@@ -138,19 +139,19 @@ class AdviserStudentController extends Controller
                 // Get the pivot data to find who assigned this student
                 $pivotStudent = $adviser->advisedStudents()->wherePivot('student_id', $studentId)->first();
                 $coordinatorId = $pivotStudent->pivot->requested_by ?? null;
-                
+
                 if ($coordinatorId) {
                     $coordinator = User::find($coordinatorId);
                     if ($coordinator) {
                         Mail::to($student->email)
                             ->send(new \App\Mail\StudentRejectedByAdviser($student, $adviser, $coordinator));
-                        
+
                         Log::info('Student Rejection: Email sent to student', [
                             'student_id' => $student->id,
                             'student_email' => $student->email,
                             'adviser_id' => $adviser->id,
-                            'adviser_name' => trim(($adviser->first_name ?? '') . ' ' . ($adviser->last_name ?? '')),
-                            'coordinator_id' => $coordinator->id
+                            'adviser_name' => trim(($adviser->first_name ?? '').' '.($adviser->last_name ?? '')),
+                            'coordinator_id' => $coordinator->id,
                         ]);
                     }
                 }
@@ -159,11 +160,11 @@ class AdviserStudentController extends Controller
             Log::error('Student Rejection: Failed to send email to student', [
                 'student_id' => $studentId,
                 'adviser_id' => $adviser->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             // Don't fail the rejection if email fails
         }
-        
+
         return response()->json(['success' => true]);
     }
 
@@ -171,7 +172,7 @@ class AdviserStudentController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'student_id' => 'required|integer|exists:users,id'
+            'student_id' => 'required|integer|exists:users,id',
         ]);
 
         $adviser = $request->user();
@@ -182,6 +183,7 @@ class AdviserStudentController extends Controller
         }
 
         $adviser->advisedStudents()->attach($studentId, ['status' => 'accepted']);
+
         return response()->json(['success' => true]);
     }
 
@@ -189,15 +191,17 @@ class AdviserStudentController extends Controller
     {
         $adviser = $request->user();
         $adviser->advisedStudents()->detach($studentId);
+
         return response()->json(['success' => true]);
     }
 
     public function getAdviserCode(Request $request)
     {
         $adviser = $request->user();
-        if (!$adviser->adviser_code) {
+        if (! $adviser->adviser_code) {
             $adviser->generateAdviserCode();
         }
+
         return response()->json(['adviser_code' => $adviser->adviser_code]);
     }
 
@@ -206,7 +210,7 @@ class AdviserStudentController extends Controller
         $student = $request->user();
         $code = $request->input('adviser_code');
         $adviser = User::where('adviser_code', $code)->first();
-        if (!$adviser) {
+        if (! $adviser) {
             return response()->json(['error' => 'Invalid code'], 404);
         }
         if ($adviser->advisedStudents()->where('student_id', $student->id)->exists()) {
@@ -215,8 +219,9 @@ class AdviserStudentController extends Controller
         try {
             $adviser->advisedStudents()->attach($student->id, ['status' => 'accepted']);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage() ?? "Registration failed."], 500);
+            return response()->json(['error' => $e->getMessage() ?? 'Registration failed.'], 500);
         }
+
         return response()->json(['success' => true]);
     }
 
@@ -225,6 +230,7 @@ class AdviserStudentController extends Controller
         $user = $request->user();
         // Count all students where this user is the adviser, regardless of role
         $count = $user->advisedStudents()->count();
+
         return response()->json(['hasStudents' => $count > 0]);
     }
 }

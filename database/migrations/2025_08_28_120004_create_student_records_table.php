@@ -8,8 +8,6 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     *
-     * @return void
      */
     public function up(): void
     {
@@ -27,14 +25,12 @@ return new class extends Migration
             $table->string('academic_status')->nullable();
             $table->string('or_number')->nullable(); // Added or_number column
             $table->date('payment_date')->nullable(); // Added payment_date column
-            $table->timestamps(); 
+            $table->timestamps();
         });
     }
 
     /**
      * Reverse the migrations.
-     *
-     * @return void
      */
     public function down(): void
     {

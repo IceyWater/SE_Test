@@ -2,25 +2,33 @@
 
 namespace App\Mail;
 
+use App\Models\DefenseRequest;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\Models\DefenseRequest;
 
 class DefenseScheduledAdviser extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $adviserName;
+
     public $studentName;
+
     public $defenseTitle;
+
     public $defenseDate;
+
     public $defenseTime;
+
     public $defenseEndTime;
+
     public $defenseMode;
+
     public $defenseVenue;
+
     public $panels;
 
     /**
@@ -31,8 +39,8 @@ class DefenseScheduledAdviser extends Mailable
         // Get adviser information
         $adviser = $defenseRequest->adviserUser;
         if ($adviser) {
-            $this->adviserName = trim(($adviser->first_name ?? '') . ' ' . 
-                                       ($adviser->middle_name ?? '') . ' ' . 
+            $this->adviserName = trim(($adviser->first_name ?? '').' '.
+                                       ($adviser->middle_name ?? '').' '.
                                        ($adviser->last_name ?? ''));
         } else {
             $this->adviserName = 'N/A';
@@ -40,8 +48,8 @@ class DefenseScheduledAdviser extends Mailable
 
         // Get student information
         $student = $defenseRequest->user;
-        $this->studentName = trim(($student->first_name ?? '') . ' ' . 
-                                   ($student->middle_name ?? '') . ' ' . 
+        $this->studentName = trim(($student->first_name ?? '').' '.
+                                   ($student->middle_name ?? '').' '.
                                    ($student->last_name ?? ''));
 
         // Get defense details
@@ -55,10 +63,10 @@ class DefenseScheduledAdviser extends Mailable
         // Get panel members
         $this->panels = $defenseRequest->panelists()->get()->map(function ($panelist) {
             return [
-                'name' => trim(($panelist->first_name ?? '') . ' ' . 
-                              ($panelist->middle_name ?? '') . ' ' . 
+                'name' => trim(($panelist->first_name ?? '').' '.
+                              ($panelist->middle_name ?? '').' '.
                               ($panelist->last_name ?? '')),
-                'role' => $panelist->pivot->role ?? 'Panel Member'
+                'role' => $panelist->pivot->role ?? 'Panel Member',
             ];
         });
     }

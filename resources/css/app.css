@@ -158,23 +158,22 @@
     }
 }
 
-
 ::-webkit-scrollbar {
-  width: 10px;
-  background: transparent;
+    width: 10px;
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #f6f3f6;
-  border-radius: 10px;
+    background: #f6f3f6;
+    border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #f6f3f6; 
+    background: #f6f3f6;
 }
 
 /* For Firefox */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: #f6f3f6 transparent;
+    scrollbar-width: thin;
+    scrollbar-color: #f6f3f6 transparent;
 }

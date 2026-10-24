@@ -10,7 +10,7 @@ class DataAccessAudit extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'action', 'target_system', 'purpose', 'status', 'meta', 'occurred_at'
+        'user_id', 'action', 'target_system', 'purpose', 'status', 'meta', 'occurred_at',
     ];
 
     protected $casts = [

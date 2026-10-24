@@ -1,4 +1,5 @@
 <?php
+
 return [
     'enabled' => env('LEGACY_ENABLED', true),
     'base_url' => rtrim(env('LEGACY_BASE_URL', 'https://my.uic.edu.ph'), '/'),

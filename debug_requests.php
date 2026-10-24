@@ -1,8 +1,8 @@
 <?php
 
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__.'/vendor/autoload.php';
 
-$app = require_once __DIR__ . '/bootstrap/app.php';
+$app = require_once __DIR__.'/bootstrap/app.php';
 $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 use App\Models\DefenseRequest;
@@ -17,7 +17,7 @@ if ($requests->count() == 0) {
     echo "   No defense requests found in database.\n";
 } else {
     foreach ($requests as $r) {
-        echo "   ID: {$r->id} | Student: {$r->first_name} {$r->last_name} | Adviser: {$r->defense_adviser} | Adviser_ID: " . ($r->adviser_user_id ?: 'NULL') . " | State: {$r->workflow_state}\n";
+        echo "   ID: {$r->id} | Student: {$r->first_name} {$r->last_name} | Adviser: {$r->defense_adviser} | Adviser_ID: ".($r->adviser_user_id ?: 'NULL')." | State: {$r->workflow_state}\n";
     }
 }
 
@@ -39,14 +39,14 @@ if (\Illuminate\Support\Facades\Auth::check()) {
 echo "\n4. WHAT ADVISER 'Muslimin Ontong' (ID: 17) WOULD SEE:\n";
 $muslimin = User::find(17);
 if ($muslimin) {
-    $assignedRequests = DefenseRequest::with(['adviserUser','assignedTo'])
-        ->where(function($q) use ($muslimin){
+    $assignedRequests = DefenseRequest::with(['adviserUser', 'assignedTo'])
+        ->where(function ($q) use ($muslimin) {
             $q->where('adviser_user_id', $muslimin->id)
-              ->orWhere('assigned_to_user_id', $muslimin->id);
+                ->orWhere('assigned_to_user_id', $muslimin->id);
         })
         ->orderByDesc('created_at')
         ->get();
-    
+
     if ($assignedRequests->count() == 0) {
         echo "   No defense requests assigned to this adviser.\n";
     } else {

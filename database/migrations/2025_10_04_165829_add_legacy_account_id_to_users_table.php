@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('balance')->nullable()->after('year_level')->comment('Current balance from clearance API (e.g., "Php 51968.54")');
             $table->unsignedInteger('clearance_statuscode')->nullable()->after('balance')->comment('Clearance statuscode from API (3300=has balance, etc.)');
             $table->timestamp('legacy_data_synced_at')->nullable()->comment('Last time legacy account data was synced');
-            
+
             // Add index for faster lookups
             $table->index('legacy_account_id');
             $table->index('student_number_legacy');
@@ -43,7 +43,7 @@ return new class extends Migration
                 'year_level',
                 'balance',
                 'clearance_statuscode',
-                'legacy_data_synced_at'
+                'legacy_data_synced_at',
             ]);
         });
     }

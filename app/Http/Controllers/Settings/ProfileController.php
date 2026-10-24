@@ -8,9 +8,9 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Str;
 
 class ProfileController extends Controller
 {
@@ -30,7 +30,7 @@ class ProfileController extends Controller
                 ->get()
                 ->map(function ($a) {
                     return [
-                        'name' => trim($a->first_name . ' ' . $a->last_name),
+                        'name' => trim($a->first_name.' '.$a->last_name),
                         'email' => $a->email,
                     ];
                 });
@@ -44,7 +44,7 @@ class ProfileController extends Controller
                 ->get()
                 ->map(function ($c) {
                     return [
-                        'name' => trim($c->first_name . ' ' . ($c->middle_name ? strtoupper($c->middle_name[0]) . '. ' : '') . $c->last_name),
+                        'name' => trim($c->first_name.' '.($c->middle_name ? strtoupper($c->middle_name[0]).'. ' : '').$c->last_name),
                         'email' => $c->email,
                     ];
                 });
@@ -53,7 +53,7 @@ class ProfileController extends Controller
         // For Adviser, ensure adviser_code is generated and returned
         $adviserCode = null;
         if (in_array($user->role, ['Adviser'])) {
-            if (!$user->adviser_code) {
+            if (! $user->adviser_code) {
                 $user->generateAdviserCode();
                 $user->refresh();
             }
@@ -79,39 +79,39 @@ class ProfileController extends Controller
     /**
      * Update the user's profile settings.
      */
- public function update(ProfileUpdateRequest $request): RedirectResponse
-{
-    // 1) Pull in the validated data
-    $data = $request->validated(); // ['name' => 'Test User', 'email' => 'test@example.com']
+    public function update(ProfileUpdateRequest $request): RedirectResponse
+    {
+        // 1) Pull in the validated data
+        $data = $request->validated(); // ['name' => 'Test User', 'email' => 'test@example.com']
 
-    // 2) Split the full “name” into parts
-    $parts = preg_split('/\s+/', trim($data['name']));
-    $last  = array_pop($parts);
-    $firstAndMiddle = implode(' ', $parts);
+        // 2) Split the full “name” into parts
+        $parts = preg_split('/\s+/', trim($data['name']));
+        $last = array_pop($parts);
+        $firstAndMiddle = implode(' ', $parts);
 
-    // 3) Build an array matching your columns
-    $attrs = [
-        'first_name'  => Str::before($firstAndMiddle, ' ') ?: $firstAndMiddle,
-        'middle_name' => Str::contains($firstAndMiddle, ' ')
-                            ? Str::after($firstAndMiddle, ' ')
-                            : null,
-        'last_name'   => $last,
-        'email'       => $data['email'],
-    ];
+        // 3) Build an array matching your columns
+        $attrs = [
+            'first_name' => Str::before($firstAndMiddle, ' ') ?: $firstAndMiddle,
+            'middle_name' => Str::contains($firstAndMiddle, ' ')
+                                ? Str::after($firstAndMiddle, ' ')
+                                : null,
+            'last_name' => $last,
+            'email' => $data['email'],
+        ];
 
-    // 4) Fill & save the user
-    $user = $request->user();
-    $user->fill($attrs);
+        // 4) Fill & save the user
+        $user = $request->user();
+        $user->fill($attrs);
 
-    // 5) If their email changed, clear verification
-    if ($user->isDirty('email')) {
-        $user->email_verified_at = null;
+        // 5) If their email changed, clear verification
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
+
+        return to_route('profile.edit');
     }
-
-    $user->save();
-
-    return to_route('profile.edit');
-}
 
     /**
      * Delete the user's account.

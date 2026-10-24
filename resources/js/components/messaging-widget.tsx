@@ -1,15 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { 
-    MessageSquare,
-    Send,
-    Users,
-    Plus
-} from 'lucide-react';
 import { Link } from '@inertiajs/react';
+import { MessageSquare, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface UnreadMessage {
     id: number;
@@ -22,7 +16,7 @@ interface UnreadMessage {
 
 export default function MessagingWidget() {
     const [unreadCount, setUnreadCount] = useState(0);
-    const [recentMessages, setRecentMessages] = useState<UnreadMessage[]>([]);
+    const [,] = useState<UnreadMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -44,13 +38,9 @@ export default function MessagingWidget() {
         }
     };
 
-    const getInitials = (name: string) => {
-        return name.split(' ').map(n => n[0]).join('').toUpperCase();
-    };
-
     return (
-        <Card className="p-4 h-full">
-            <div className="flex items-center justify-between mb-4">
+        <Card className="h-full p-4">
+            <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                     <MessageSquare className="h-5 w-5 text-blue-600" />
                     <h3 className="font-semibold">Messages</h3>
@@ -70,16 +60,16 @@ export default function MessagingWidget() {
             <div className="space-y-3">
                 {isLoading ? (
                     <div className="flex justify-center py-4">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-600"></div>
                     </div>
                 ) : unreadCount === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                        <MessageSquare className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                    <div className="py-8 text-center text-gray-500">
+                        <MessageSquare className="mx-auto mb-2 h-8 w-8 text-gray-300" />
                         <p className="text-sm">No new messages</p>
                     </div>
                 ) : (
                     <>
-                        <div className="text-center py-4">
+                        <div className="py-4 text-center">
                             <p className="text-sm text-gray-600">
                                 You have {unreadCount} unread message{unreadCount !== 1 ? 's' : ''}
                             </p>
@@ -90,7 +80,7 @@ export default function MessagingWidget() {
                 <div className="flex justify-center">
                     <Link href="/messages">
                         <Button className="w-full">
-                            <MessageSquare className="h-4 w-4 mr-2" />
+                            <MessageSquare className="mr-2 h-4 w-4" />
                             Open Messages
                         </Button>
                     </Link>

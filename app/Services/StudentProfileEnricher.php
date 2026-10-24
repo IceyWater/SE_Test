@@ -20,9 +20,9 @@ class StudentProfileEnricher
 
     /**
      * Enrich a user given a legacy session array from LegacyPortalClient::login().
-     * @param User $user
-     * @param array $legacySession ['cookies'=>...,'cookie_header'=>..., 'raw'=>...]
-     * @param bool $isStaff Provided from login phase (non-numeric identifier path)
+     *
+     * @param  array  $legacySession  ['cookies'=>...,'cookie_header'=>..., 'raw'=>...]
+     * @param  bool  $isStaff  Provided from login phase (non-numeric identifier path)
      */
     public function enrich(User $user, array $legacySession, bool $isStaff = false): void
     {
@@ -43,13 +43,15 @@ class StudentProfileEnricher
                 $changes = [];
                 if ($roleInfo) {
                     $canonical = $roleInfo['role'];
-                    if ($canonical === 'Coordinator') $isCoordinator = true;
+                    if ($canonical === 'Coordinator') {
+                        $isCoordinator = true;
+                    }
                     if (! $user->role_manually_assigned && $user->role !== $canonical) {
                         $changes['role'] = $canonical;
                     }
                     // Multi-role pivot addition
                     $user->addRole($canonical);
-                    if ($roleInfo['title'] && (!$user->extra_role_title || $user->extra_role_title !== $roleInfo['title'])) {
+                    if ($roleInfo['title'] && (! $user->extra_role_title || $user->extra_role_title !== $roleInfo['title'])) {
                         if (Schema::hasColumn('users', 'extra_role_title')) {
                             $changes['extra_role_title'] = $roleInfo['title'];
                         } else {
@@ -57,18 +59,20 @@ class StudentProfileEnricher
                         }
                     }
                 }
-                if ($employeeId && Schema::hasColumn('users', 'employee_id') && (!$user->employee_id || $user->employee_id !== $employeeId)) {
+                if ($employeeId && Schema::hasColumn('users', 'employee_id') && (! $user->employee_id || $user->employee_id !== $employeeId)) {
                     $changes['employee_id'] = $employeeId;
                 }
                 if ($nameParts) {
-                    foreach (['first_name','middle_name','last_name'] as $key) {
-                        if (($nameParts[$key] ?? null) && $user->$key !== $nameParts[$key]) {
+                    foreach (['first_name', 'middle_name', 'last_name'] as $key) {
+                        if (($nameParts[$key] ?? null) && $nameParts[$key] !== $user->$key) {
                             // Apply proper case formatting to staff names from legacy system
                             $changes[$key] = $this->formatProperCase($nameParts[$key]);
                         }
                     }
                 }
-                if ($changes) { $user->forceFill($changes)->save(); }
+                if ($changes) {
+                    $user->forceFill($changes)->save();
+                }
 
                 // Attempt to fetch employee profile metadata (department, photo)
                 if ($employeeId) {
@@ -78,7 +82,7 @@ class StudentProfileEnricher
                         if ($meta) {
                             $metaChanges = [];
                             foreach ($meta as $k => $v) {
-                                if (Schema::hasColumn('users', $k) && (!$user->$k || $user->$k !== $v)) {
+                                if (Schema::hasColumn('users', $k) && (! $user->$k || $v !== $user->$k)) {
                                     $metaChanges[$k] = $v;
                                 }
                             }
@@ -104,16 +108,16 @@ class StudentProfileEnricher
                 $studentName = $this->legacy->extractStudentName($homeHtml);
                 $changes = [];
                 if ($studentName) {
-                    foreach (['first_name','middle_name','last_name'] as $k) {
+                    foreach (['first_name', 'middle_name', 'last_name'] as $k) {
                         // Only overwrite if empty or different & we trust source
-                        if (($studentName[$k] ?? null) && (!$user->$k || $user->$k !== $studentName[$k])) {
+                        if (($studentName[$k] ?? null) && (! $user->$k || $studentName[$k] !== $user->$k)) {
                             // Apply proper case formatting to names from legacy system
                             $changes[$k] = $this->formatProperCase($studentName[$k]);
                         }
                     }
                 }
                 // Program via academic records (only if program empty or stale)
-                if (!$user->program) {
+                if (! $user->program) {
                     try {
                         $acadHtml = $this->legacy->fetchAcademicRecordsHtml($legacySession);
                         $parsed = $this->legacy->parseAcademicRecords($acadHtml);
@@ -125,7 +129,9 @@ class StudentProfileEnricher
                         Log::debug('Enrichment: academic program fetch failed: '.$inner->getMessage());
                     }
                 }
-                if ($changes) { $user->forceFill($changes)->save(); }
+                if ($changes) {
+                    $user->forceFill($changes)->save();
+                }
             } catch (\Throwable $e) {
                 Log::debug('Enrichment: student name/program parsing failed: '.$e->getMessage());
             }

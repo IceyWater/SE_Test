@@ -1,9 +1,8 @@
-import React from "react";
-import { usePage, Head } from "@inertiajs/react";
-import AppLayout from "@/layouts/app-layout";
-import type { BreadcrumbItem } from "@/types";
-import ShowAllDocuments from "./show-all-documents";
-import { GraduationCap } from "lucide-react";
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
+import { Head, usePage } from '@inertiajs/react';
+import { GraduationCap } from 'lucide-react';
+import ShowAllDocuments from './show-all-documents';
 
 type FileAttachment = {
     id: number;
@@ -23,8 +22,8 @@ type PageProps = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: "Dashboard", href: "/dashboard" },
-    { title: "My Documents", href: "/student/documents" },
+    { title: 'Dashboard', href: '/dashboard' },
+    { title: 'My Documents', href: '/student/documents' },
 ];
 
 export default function StudentDocumentsIndex() {
@@ -34,19 +33,17 @@ export default function StudentDocumentsIndex() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="My Document Attachments" />
-            <div className="flex flex-col px-7 pt-5 pb-5 w-full">
+            <div className="flex w-full flex-col px-7 pt-5 pb-5">
                 {/* Header */}
-                <div className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden mb-6">
-                    <div className="flex flex-row items-center justify-between w-full p-6 border-b border-zinc-200 dark:border-zinc-800">
+                <div className="mb-6 w-full overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                    <div className="flex w-full flex-row items-center justify-between border-b border-zinc-200 p-6 dark:border-zinc-800">
                         <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 flex items-center justify-center rounded-full bg-rose-500/10 dark:bg-rose-500/20 border border-rose-500 dark:border-rose-700">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-rose-500 bg-rose-500/10 dark:border-rose-700 dark:bg-rose-500/20">
                                 <GraduationCap className="h-5 w-5 text-rose-400 dark:text-rose-300" />
                             </div>
                             <div>
-                                <span className="text-base font-semibold dark:text-white">
-                                    My Documents
-                                </span>
-                                <p className="block text-xs text-muted-foreground dark:text-zinc-400">
+                                <span className="text-base font-semibold dark:text-white">My Documents</span>
+                                <p className="text-muted-foreground block text-xs dark:text-zinc-400">
                                     This section shows all your submitted document attachments for defense requirements.
                                 </p>
                             </div>

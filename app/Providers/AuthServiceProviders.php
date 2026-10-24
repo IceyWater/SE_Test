@@ -21,9 +21,12 @@ class AuthServiceProvider extends ServiceProvider
             if ($user->isRole('Dean') || $user->isRole('Registrar') || $user->isRole('Administrative Assistant')) {
                 return true;
             }
-            if (! $user->isCoordinator()) return false;
+            if (! $user->isCoordinator()) {
+                return false;
+            }
 
             $allowed = $user->allowedProgramNames();
+
             return in_array($studentProgram, $allowed, true);
         });
     }

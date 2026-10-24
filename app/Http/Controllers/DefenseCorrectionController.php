@@ -36,8 +36,10 @@ class DefenseCorrectionController extends Controller
             $dr->last_status_updated_by = $user->id;
             $dr->ensureSubmittedHistory()->addWorkflowEntry('corrections-requested', $data['notes'], $user->id, $from, $dr->workflow_state);
             $dr->save();
+
             return $dr;
         });
+
         return response()->json(['message' => 'The student has been asked to make corrections.', 'request' => $updated]);
     }
 
@@ -61,15 +63,21 @@ class DefenseCorrectionController extends Controller
                 $stage = $from === 'adviser-corrections' ? 'adviser' : 'coordinator';
                 $changes = [];
                 foreach ($fields as $field) {
-                    if (! $request->hasFile($field)) continue;
+                    if (! $request->hasFile($field)) {
+                        continue;
+                    }
                     $path = $request->file($field)->store('defense-requirements', 'public');
-                    if (! $path) throw new \RuntimeException('Unable to store the replacement file.');
+                    if (! $path) {
+                        throw new \RuntimeException('Unable to store the replacement file.');
+                    }
                     $stored[] = $path;
                     $changes[$field] = ['previous' => $dr->{$field}, 'current' => $path];
                     $dr->{$field} = $path;
                 }
                 $oldTitle = $dr->thesis_title;
-                if (isset($data['thesis_title'])) $dr->thesis_title = $data['thesis_title'];
+                if (isset($data['thesis_title'])) {
+                    $dr->thesis_title = $data['thesis_title'];
+                }
                 $dr->workflow_state = $stage === 'adviser' ? 'adviser-review' : 'adviser-approved';
                 $dr->status = 'Pending';
                 $dr->{$stage.'_status'} = 'Pending';
@@ -79,16 +87,22 @@ class DefenseCorrectionController extends Controller
                 $history = $dr->workflow_history;
                 $last = count($history) - 1;
                 $history[$last]['attachments'] = $changes;
-                if ($oldTitle !== $dr->thesis_title) $history[$last]['thesis_title'] = ['previous' => $oldTitle, 'current' => $dr->thesis_title];
+                if ($oldTitle !== $dr->thesis_title) {
+                    $history[$last]['thesis_title'] = ['previous' => $oldTitle, 'current' => $dr->thesis_title];
+                }
                 $dr->workflow_history = $history;
                 $dr->save();
+
                 return $dr;
             });
         } catch (\Throwable $e) {
             // Keep prior versions; remove only files created by this failed attempt.
-            foreach ($stored as $path) Storage::disk('public')->delete($path);
+            foreach ($stored as $path) {
+                Storage::disk('public')->delete($path);
+            }
             throw $e;
         }
+
         return response()->json(['message' => 'Your corrections have been submitted for review.', 'request' => $updated]);
     }
 }

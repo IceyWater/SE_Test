@@ -10,7 +10,9 @@ class DefenseReminderService
 {
     public function send(?User $student = null): int
     {
-        if ($student && $student->role !== 'Student') return 0;
+        if ($student && $student->role !== 'Student') {
+            return 0;
+        }
         $timezone = config('defense-notifications.timezone');
         $today = CarbonImmutable::now($timezone)->startOfDay();
         $end = $today->addDays(config('defense-notifications.reminder_window_days'));
@@ -18,16 +20,24 @@ class DefenseReminderService
             ->whereDate('scheduled_date', '>=', $today->toDateString())
             ->whereDate('scheduled_date', '<=', $end->toDateString())
             ->whereIn('workflow_state', ['scheduled', 'coordinator-approved', 'panels-assigned'])
-            ->where(function ($query) { $query->whereNull('status')->orWhereNotIn('status', ['Cancelled', 'Completed', 'Rejected']); });
-        if ($student) $query->where('submitted_by', $student->id);
+            ->where(function ($query) {
+                $query->whereNull('status')->orWhereNotIn('status', ['Cancelled', 'Completed', 'Rejected']);
+            });
+        if ($student) {
+            $query->where('submitted_by', $student->id);
+        }
 
         $sent = 0;
         $query->with('user')->chunkById(100, function ($requests) use ($today, $timezone, &$sent) {
             foreach ($requests as $request) {
-                if ($request->user?->role !== 'Student') continue;
+                if ($request->user?->role !== 'Student') {
+                    continue;
+                }
                 $date = CarbonImmutable::parse($request->getRawOriginal('scheduled_date'), $timezone)->startOfDay();
                 $time = $request->scheduled_time ?: '23:59:59';
-                if (CarbonImmutable::parse($date->toDateString().' '.$time, $timezone)->lessThanOrEqualTo(CarbonImmutable::now($timezone))) continue;
+                if (CarbonImmutable::parse($date->toDateString().' '.$time, $timezone)->lessThanOrEqualTo(CarbonImmutable::now($timezone))) {
+                    continue;
+                }
                 $days = (int) $today->diffInDays($date);
                 $countdown = $days === 0 ? 'Your defense is today' : ($days === 1 ? '1 day remaining before your defense' : "{$days} days remaining before your defense");
                 $event = 'reminder|'.$date->toDateString().'|'.$time.'|'.$today->toDateString();
@@ -42,6 +52,7 @@ class DefenseReminderService
                 }
             }
         });
+
         return $sent;
     }
 }

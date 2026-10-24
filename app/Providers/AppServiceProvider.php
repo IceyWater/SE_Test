@@ -2,11 +2,10 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\View;
-use Inertia\Inertia;
 use App\Models\Notification;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\ServiceProvider;
+use Inertia\Inertia;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,9 +27,11 @@ class AppServiceProvider extends ServiceProvider
             'notifications' => function () {
                 if (Auth::check()) {
                     app(\App\Services\DefenseReminderService::class)->send(Auth::user());
+
                     return Notification::where('user_id', Auth::id())
                         ->latest()->take(20)->get();
                 }
+
                 return [];
             },
             'unreadCount' => function () {
@@ -38,10 +39,12 @@ class AppServiceProvider extends ServiceProvider
                     return Notification::where('user_id', Auth::id())
                         ->where('read', false)->count();
                 }
+
                 return 0;
             },
             'auth' => function () {
                 $user = Auth::user();
+
                 return [
                     'user' => $user,
                     'is_adviser' => $user ? $user->isActiveAdviser() : false,

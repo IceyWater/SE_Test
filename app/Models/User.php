@@ -4,10 +4,10 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -98,49 +98,49 @@ class User extends Authenticatable
     /**
      * Scope to find user by full name with flexible matching.
      * Handles names with or without middle names and normalizes whitespace.
-     * 
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string $fullName The full name to search for
-     * @param string|null $role Optional role to filter by (e.g., 'Adviser')
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  string  $fullName  The full name to search for
+     * @param  string|null  $role  Optional role to filter by (e.g., 'Adviser')
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeFindByFullName($query, $fullName, $role = null)
     {
         // Normalize the input: trim and collapse multiple spaces
         $normalizedName = preg_replace('/\s+/', ' ', trim(strtolower($fullName)));
-        
+
         Log::info('User::scopeFindByFullName called', [
             'original_name' => $fullName,
             'normalized_name' => $normalizedName,
-            'role' => $role
+            'role' => $role,
         ]);
-        
+
         if ($role) {
             $query->where('role', self::canonicalRoleName($role));
         }
-        
-        return $query->where(function($q) use ($normalizedName) {
+
+        return $query->where(function ($q) use ($normalizedName) {
             // Match 1: Full name with middle name (FirstName MiddleName LastName)
             $q->whereRaw(
                 'LOWER(TRIM(REGEXP_REPLACE(CONCAT(first_name, " ", COALESCE(middle_name, ""), " ", last_name), "[[:space:]]+", " "))) = ?',
                 [$normalizedName]
             )
             // Match 2: Name without middle name (FirstName LastName)
-            ->orWhereRaw(
-                'LOWER(TRIM(CONCAT(first_name, " ", last_name))) = ?',
-                [$normalizedName]
-            )
+                ->orWhereRaw(
+                    'LOWER(TRIM(CONCAT(first_name, " ", last_name))) = ?',
+                    [$normalizedName]
+                )
             // Match 3: Just first and last name concatenated with middle initial
-            ->orWhereRaw(
-                'LOWER(TRIM(CONCAT(first_name, " ", LEFT(COALESCE(middle_name, ""), 1), " ", last_name))) = ?',
-                [$normalizedName]
-            );
+                ->orWhereRaw(
+                    'LOWER(TRIM(CONCAT(first_name, " ", LEFT(COALESCE(middle_name, ""), 1), " ", last_name))) = ?',
+                    [$normalizedName]
+                );
         });
     }
-    
+
     /**
      * Get the user's full name including middle name if present.
-     * 
+     *
      * @return string
      */
     public function getFullNameAttribute()
@@ -148,15 +148,15 @@ class User extends Authenticatable
         $parts = array_filter([
             $this->first_name,
             $this->middle_name,
-            $this->last_name
+            $this->last_name,
         ]);
-        
+
         return implode(' ', $parts);
     }
 
     public function markGoogleVerified(): void
     {
-        if (!$this->google_verified_at) {
+        if (! $this->google_verified_at) {
             $this->google_verified_at = now();
             $this->save();
         }
@@ -192,7 +192,10 @@ class User extends Authenticatable
     public function hasRole(string $name): bool
     {
         $name = self::canonicalRoleName($name);
-        if (strcasecmp($this->role ?? '', $name) === 0) return true; // legacy
+        if (strcasecmp($this->role ?? '', $name) === 0) {
+            return true;
+        } // legacy
+
         return $this->roles()->whereIn('name', $name === 'Adviser' ? ['Adviser', 'Faculty'] : [$name])->exists();
     }
 
@@ -202,7 +205,10 @@ class User extends Authenticatable
     public function allRoleNames(): array
     {
         $names = $this->roles()->pluck('name')->map(fn ($name) => self::canonicalRoleName($name))->unique()->values()->all();
-        if ($this->role && !in_array($this->role, $names)) $names[] = $this->role;
+        if ($this->role && ! in_array($this->role, $names)) {
+            $names[] = $this->role;
+        }
+
         return $names;
     }
 
@@ -215,8 +221,8 @@ class User extends Authenticatable
     {
         $firstName = $this->formatProperCase($this->first_name);
         $lastName = $this->formatProperCase($this->last_name);
-        $middleInitial = $this->middle_name ? strtoupper(substr($this->middle_name, 0, 1)) . '. ' : '';
-        
+        $middleInitial = $this->middle_name ? strtoupper(substr($this->middle_name, 0, 1)).'. ' : '';
+
         return trim("{$firstName} {$middleInitial}{$lastName}");
     }
 
@@ -225,14 +231,14 @@ class User extends Authenticatable
      */
     public function generateUicEmail(): string
     {
-        if (!$this->first_name || !$this->last_name || !$this->school_id) {
+        if (! $this->first_name || ! $this->last_name || ! $this->school_id) {
             return $this->email; // Return current email if data is incomplete
         }
-        
+
         $firstLetter = strtolower(substr($this->first_name, 0, 1));
         $lastName = strtolower(str_replace(' ', '', $this->last_name)); // Remove spaces
         $studentId = $this->school_id;
-        
+
         return "{$firstLetter}{$lastName}_{$studentId}@uic.edu.ph";
     }
 
@@ -253,13 +259,14 @@ class User extends Authenticatable
         if ($this->role !== 'Student') {
             return false;
         }
-        
+
         $newEmail = $this->generateUicEmail();
         if ($newEmail !== $this->email) {
             $this->update(['email' => $newEmail]);
+
             return true;
         }
-        
+
         return false;
     }
 
@@ -276,6 +283,7 @@ class User extends Authenticatable
     public function isRole(string $name): bool
     {
         $name = self::canonicalRoleName($name);
+
         return strcasecmp($this->role->name ?? '', $name) === 0
             || strcasecmp($this->role ?? '', $name) === 0;
     }
@@ -287,7 +295,10 @@ class User extends Authenticatable
 
     public function allowedProgramNames(): array
     {
-        if (! $this->isCoordinator()) return [];
+        if (! $this->isCoordinator()) {
+            return [];
+        }
+
         return $this->coordinatorPrograms()->pluck('program')->all();
     }
 
@@ -302,8 +313,8 @@ class User extends Authenticatable
             'adviser_id',
             'student_id'
         )
-        ->withPivot('status', 'requested_by')
-        ->withTimestamps();
+            ->withPivot('status', 'requested_by')
+            ->withTimestamps();
     }
 
     /**
@@ -317,13 +328,15 @@ class User extends Authenticatable
             'student_id',
             'adviser_id'
         )
-        ->withPivot('status', 'requested_by')
-        ->withTimestamps();
+            ->withPivot('status', 'requested_by')
+            ->withTimestamps();
     }
 
     public function generateAdviserCode(): void
     {
-        if ($this->adviser_code) return;
+        if ($this->adviser_code) {
+            return;
+        }
         do {
             $code = strtoupper(bin2hex(random_bytes(4)));
         } while (User::where('adviser_code', $code)->exists());
@@ -352,7 +365,7 @@ class User extends Authenticatable
     protected static function booted()
     {
         static::creating(function ($user) {
-            if ($user->isCoordinator() && !$user->coordinator_code) {
+            if ($user->isCoordinator() && ! $user->coordinator_code) {
                 // Just set the code, do NOT call save()
                 $user->coordinator_code = strtoupper(bin2hex(random_bytes(4)));
             }
@@ -367,7 +380,7 @@ class User extends Authenticatable
                     $adviserRows = \App\Models\Adviser::where('email', $user->email)->get();
                     foreach ($adviserRows as $row) {
                         // Attach coordinator pivot for the newly created user so the adviser "sees" their coordinators
-                        if (!empty($row->coordinator_id) && method_exists($user, 'coordinators')) {
+                        if (! empty($row->coordinator_id) && method_exists($user, 'coordinators')) {
                             $user->coordinators()->syncWithoutDetaching([$row->coordinator_id]);
                         }
 

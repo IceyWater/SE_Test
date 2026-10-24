@@ -18,7 +18,7 @@ return new class extends Migration
             $table->json('participants'); // Array of user IDs
             $table->timestamp('last_message_at')->nullable();
             $table->timestamps();
-            
+
             $table->index('last_message_at');
         });
     }

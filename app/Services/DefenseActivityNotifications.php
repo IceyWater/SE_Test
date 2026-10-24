@@ -30,37 +30,52 @@ class DefenseActivityNotifications
     {
         if ($request->coordinator_user_id) {
             $assigned = User::whereKey($request->coordinator_user_id)->where('role', 'Coordinator')->first();
-            if ($assigned) return $assigned;
+            if ($assigned) {
+                return $assigned;
+            }
         }
         if ($request->adviser_user_id && $request->submitted_by && Schema::hasTable('adviser_student')) {
             $id = DB::table('adviser_student')->where('adviser_id', $request->adviser_user_id)
                 ->where('student_id', $request->submitted_by)->value('requested_by');
-            if ($id && ($assigned = User::whereKey($id)->where('role', 'Coordinator')->first())) return $assigned;
+            if ($id && ($assigned = User::whereKey($id)->where('role', 'Coordinator')->first())) {
+                return $assigned;
+            }
         }
         if ($request->adviser_user_id && Schema::hasTable('adviser_coordinator')) {
             $ids = DB::table('adviser_coordinator')->where('adviser_id', $request->adviser_user_id)->pluck('coordinator_id');
             $matches = User::whereIn('id', $ids)->where('role', 'Coordinator')->get();
-            if ($matches->count() === 1) return $matches->first();
+            if ($matches->count() === 1) {
+                return $matches->first();
+            }
         }
         if ($request->program && Schema::hasTable('coordinator_program_assignments')) {
             $ids = DB::table('coordinator_program_assignments')->where('program_name', $request->program)
                 ->where('is_active', true)->pluck('coordinator_user_id');
             $matches = User::whereIn('id', $ids)->where('role', 'Coordinator')->get();
-            if ($matches->count() === 1) return $matches->first();
+            if ($matches->count() === 1) {
+                return $matches->first();
+            }
         }
         if ($request->program && Schema::hasTable('coordinator_programs')) {
             $ids = DB::table('coordinator_programs')->where('program', $request->program)->pluck('coordinator_id');
             $matches = User::whereIn('id', $ids)->where('role', 'Coordinator')->get();
-            if ($matches->count() === 1) return $matches->first();
+            if ($matches->count() === 1) {
+                return $matches->first();
+            }
         }
         if ($request->program) {
             $matches = User::where('role', 'Coordinator')->where('program', $request->program)->get();
-            if ($matches->count() === 1) return $matches->first();
+            if ($matches->count() === 1) {
+                return $matches->first();
+            }
         }
         if ($request->program) {
             $matches = User::where('role', 'Coordinator')->get()->filter(fn ($user) => in_array($request->program, CoordinatorProgramService::getProgramsByEmail(strtolower($user->email ?? '')), true));
-            if ($matches->count() === 1) return $matches->first();
+            if ($matches->count() === 1) {
+                return $matches->first();
+            }
         }
+
         return null;
     }
 
@@ -68,9 +83,11 @@ class DefenseActivityNotifications
     {
         if ($request->adviser_user_id) {
             $adviser = User::whereKey($request->adviser_user_id)->where('role', 'Adviser')->first();
-            if ($adviser) $this->sendOnce($request, $adviser, 'submitted', 'New Defense Request',
-                "A student submitted “{$request->thesis_title}” for your endorsement.",
-                "/adviser/defense-requirements/{$request->id}/details");
+            if ($adviser) {
+                $this->sendOnce($request, $adviser, 'submitted', 'New Defense Request',
+                    "A student submitted “{$request->thesis_title}” for your endorsement.",
+                    "/adviser/defense-requirements/{$request->id}/details");
+            }
         }
         $coordinator = $this->coordinatorFor($request);
         if ($coordinator) {
@@ -89,9 +106,12 @@ class DefenseActivityNotifications
         $student = $request->user;
         if (in_array($state, ['adviser-corrections', 'coordinator-corrections'], true)) {
             $stage = $state === 'adviser-corrections' ? 'adviser' : 'academic coordinator';
-            if ($student) $this->sendOnce($request, $student, $event, 'Corrections Requested',
-                "Your {$stage} returned “{$request->thesis_title}” for corrections. Open the request to read the feedback and resubmit.", '/defense-requirements');
+            if ($student) {
+                $this->sendOnce($request, $student, $event, 'Corrections Requested',
+                    "Your {$stage} returned “{$request->thesis_title}” for corrections. Open the request to read the feedback and resubmit.", '/defense-requirements');
+            }
             $this->clearUnreadReminders($request);
+
             return;
         }
         if (in_array($previous, ['adviser-corrections', 'coordinator-corrections'], true)
@@ -99,8 +119,11 @@ class DefenseActivityNotifications
             $reviewer = $previous === 'adviser-corrections' ? $request->adviserUser : $this->coordinatorFor($request);
             $link = $previous === 'adviser-corrections'
                 ? "/adviser/defense-requirements/{$request->id}/details" : "/coordinator/defense-requests/{$request->id}/details";
-            if ($reviewer) $this->sendOnce($request, $reviewer, $event, 'Defense Corrections Resubmitted',
-                "The student resubmitted “{$request->thesis_title}”. Review their response and updated documents.", $link);
+            if ($reviewer) {
+                $this->sendOnce($request, $reviewer, $event, 'Defense Corrections Resubmitted',
+                    "The student resubmitted “{$request->thesis_title}”. Review their response and updated documents.", $link);
+            }
+
             return;
         }
         $titles = [
@@ -133,7 +156,9 @@ class DefenseActivityNotifications
     {
         if (! $request->scheduled_date || ! $request->user
             || in_array($request->workflow_state, ['cancelled', 'completed', 'coordinator-rejected', 'adviser-rejected'])
-            || in_array($request->status, ['Cancelled', 'Completed', 'Rejected'])) return;
+            || in_array($request->status, ['Cancelled', 'Completed', 'Rejected'])) {
+            return;
+        }
         $date = $request->scheduled_date->format('Y-m-d');
         $schedule = $date.'|'.$request->scheduled_time.'|'.$request->scheduled_end_time.'|'.$request->defense_venue;
         $this->sendOnce($request, $request->user, 'schedule|'.$schedule, 'Defense Schedule Updated',

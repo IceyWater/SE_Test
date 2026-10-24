@@ -2,21 +2,25 @@
 
 namespace App\Mail;
 
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\Models\User;
 
 class StudentAssignedToAdviser extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $adviserName;
+
     public $studentName;
+
     public $coordinatorName;
+
     public $studentEmail;
+
     public $studentProgram;
 
     /**
@@ -25,18 +29,18 @@ class StudentAssignedToAdviser extends Mailable
     public function __construct(User $adviser, User $student, User $coordinator)
     {
         // Get adviser full name
-        $this->adviserName = trim(($adviser->first_name ?? '') . ' ' . 
-                                   ($adviser->middle_name ?? '') . ' ' . 
+        $this->adviserName = trim(($adviser->first_name ?? '').' '.
+                                   ($adviser->middle_name ?? '').' '.
                                    ($adviser->last_name ?? ''));
 
         // Get student full name
-        $this->studentName = trim(($student->first_name ?? '') . ' ' . 
-                                   ($student->middle_name ?? '') . ' ' . 
+        $this->studentName = trim(($student->first_name ?? '').' '.
+                                   ($student->middle_name ?? '').' '.
                                    ($student->last_name ?? ''));
 
         // Get coordinator full name
-        $this->coordinatorName = trim(($coordinator->first_name ?? '') . ' ' . 
-                                       ($coordinator->middle_name ?? '') . ' ' . 
+        $this->coordinatorName = trim(($coordinator->first_name ?? '').' '.
+                                       ($coordinator->middle_name ?? '').' '.
                                        ($coordinator->last_name ?? ''));
 
         // Additional student info
@@ -50,7 +54,7 @@ class StudentAssignedToAdviser extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'New Student Assignment - ' . $this->studentName,
+            subject: 'New Student Assignment - '.$this->studentName,
         );
     }
 

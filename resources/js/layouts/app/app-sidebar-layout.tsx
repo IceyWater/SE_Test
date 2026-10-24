@@ -2,10 +2,10 @@ import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
-import { type BreadcrumbItem } from '@/types';
-import { type PropsWithChildren, useEffect } from 'react';
 import { useSidebar } from '@/components/ui/sidebar';
-import { usePage, router } from '@inertiajs/react';
+import { type BreadcrumbItem } from '@/types';
+import { router, usePage } from '@inertiajs/react';
+import { type PropsWithChildren, useEffect } from 'react';
 
 export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWithChildren<{ breadcrumbs?: BreadcrumbItem[] }>) {
     const sidebar = useSidebar();
@@ -34,12 +34,8 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWi
     return (
         <AppShell variant="sidebar">
             <AppSidebar />
-            <AppContent
-                className="transition-all duration-300 overflow-x-auto"
-                variant="sidebar"
-                style={mainContentStyle}
-            >
-                <div className="sticky top-0 z-30 bg-white border-b rounded-tl-lg rounded-tr-lg border-gray-200">
+            <AppContent className="overflow-x-auto transition-all duration-300" variant="sidebar" style={mainContentStyle}>
+                <div className="sticky top-0 z-30 rounded-tl-lg rounded-tr-lg border-b border-gray-200 bg-white">
                     <AppSidebarHeader breadcrumbs={breadcrumbs} />
                 </div>
                 {children}

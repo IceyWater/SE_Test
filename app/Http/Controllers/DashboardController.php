@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Inertia\Inertia;
 use App\Models\User;
 use App\Services\CoordinatorProgramService;
-use App\Services\LegacyPortalClient;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
@@ -21,90 +20,92 @@ class DashboardController extends Controller
             abort(401);
         }
 
-        if (in_array(strtolower(trim((string) $user->role)), ['finance', 'finance office', 'finance officer'], true)) return redirect()->route('honorarium-workspace.index');
+        if (in_array(strtolower(trim((string) $user->role)), ['finance', 'finance office', 'finance officer'], true)) {
+            return redirect()->route('honorarium-workspace.index');
+        }
 
         // DATA SCRAPING REMOVED FROM LOGIN FLOW
         // Data will be scraped on-demand when user visits comprehensive exam page
         // This prevents 2-minute login delays
         if (session('trigger_data_scraping')) {
             session()->forget('trigger_data_scraping'); // Clear flag
-            
-            Log::info("Dashboard: Data scraping will happen on-demand (not on login)", [
-                'user_id' => $user->id
+
+            Log::info('Dashboard: Data scraping will happen on-demand (not on login)', [
+                'user_id' => $user->id,
             ]);
         }
-        
+
         // TRIGGER BACKGROUND PROFILE ENRICHMENT IF FLAGGED
-        $enrichmentData = Cache::get('pending_enrichment_' . $user->id);
+        $enrichmentData = Cache::get('pending_enrichment_'.$user->id);
         if ($enrichmentData) {
-            Cache::forget('pending_enrichment_' . $user->id); // Clear flag
-            
+            Cache::forget('pending_enrichment_'.$user->id); // Clear flag
+
             try {
-                Log::info("Dashboard: Triggering background profile enrichment", [
+                Log::info('Dashboard: Triggering background profile enrichment', [
                     'user_id' => $user->id,
-                    'is_staff' => $enrichmentData['is_staff'] ?? false
+                    'is_staff' => $enrichmentData['is_staff'] ?? false,
                 ]);
-                
-                $legacySession = Cache::get('legacy_session_' . $user->id);
-                
+
+                $legacySession = Cache::get('legacy_session_'.$user->id);
+
                 if ($legacySession) {
                     // Dispatch enrichment to background
                     dispatch(function () use ($user, $legacySession, $enrichmentData) {
                         try {
                             $enricher = app(\App\Services\StudentProfileEnricher::class);
-                            
-                            Log::info("Background Job: Starting profile enrichment", [
-                                'user_id' => $user->id
+
+                            Log::info('Background Job: Starting profile enrichment', [
+                                'user_id' => $user->id,
                             ]);
-                            
+
                             $enricher->enrich($user, $legacySession, $enrichmentData['is_staff'] ?? false);
-                            
+
                             // After enrichment, update email to UIC format if it's a student
                             $user->refresh();
                             if ($user->role === 'Student' && $user->first_name && $user->last_name && $user->school_id) {
                                 $uicEmail = $user->generateUicEmail();
-                                
+
                                 if ($uicEmail !== $user->email) {
                                     $existingUser = \App\Models\User::where('email', $uicEmail)
                                         ->where('id', '!=', $user->id)
                                         ->first();
-                                    
-                                    if (!$existingUser) {
+
+                                    if (! $existingUser) {
                                         $user->update(['email' => $uicEmail]);
-                                        
-                                        Log::info("Background Job: Updated email to UIC format", [
+
+                                        Log::info('Background Job: Updated email to UIC format', [
                                             'user_id' => $user->id,
-                                            'uic_email' => $uicEmail
+                                            'uic_email' => $uicEmail,
                                         ]);
                                     }
                                 }
                             }
-                            
-                            Log::info("Background Job: Profile enrichment completed", [
+
+                            Log::info('Background Job: Profile enrichment completed', [
                                 'user_id' => $user->id,
-                                'name' => $user->fresh()->display_name
+                                'name' => $user->fresh()->display_name,
                             ]);
                         } catch (\Throwable $e) {
-                            Log::error("Background Job: Enrichment failed", [
+                            Log::error('Background Job: Enrichment failed', [
                                 'user_id' => $user->id,
-                                'error' => $e->getMessage()
+                                'error' => $e->getMessage(),
                             ]);
                         }
                     })->afterResponse();
                 }
             } catch (\Throwable $e) {
-                Log::error("Dashboard: Failed to trigger enrichment", [
+                Log::error('Dashboard: Failed to trigger enrichment', [
                     'user_id' => $user->id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
 
         $roleName = is_object($user->role) ? $user->role->name : $user->role;
-        if (in_array($roleName, ['Adviser']) && method_exists($user, 'generateAdviserCode') && !$user->adviser_code) {
+        if (in_array($roleName, ['Adviser']) && method_exists($user, 'generateAdviserCode') && ! $user->adviser_code) {
             $user->generateAdviserCode();
         }
-        if (in_array($roleName, ['Coordinator']) && !$user->coordinator_code) {
+        if (in_array($roleName, ['Coordinator']) && ! $user->coordinator_code) {
             $user->generateCoordinatorCode();
         }
 
@@ -121,7 +122,7 @@ class DashboardController extends Controller
             // if using a roles package / pivot, try to derive a priority-based effective role
             if (method_exists($user, 'allRoleNames')) {
                 $all = $user->allRoleNames();
-                $priority = ['Coordinator','Dean','Chair','Adviser','Student'];
+                $priority = ['Coordinator', 'Dean', 'Chair', 'Adviser', 'Student'];
                 foreach ($priority as $p) {
                     if (in_array($p, $all, true)) {
                         $effective = $p;
@@ -166,7 +167,7 @@ class DashboardController extends Controller
                     ->first();
             }
 
-            if (in_array($roleName, ['Coordinator','Administrative Assistant','Dean'])) {
+            if (in_array($roleName, ['Coordinator', 'Administrative Assistant', 'Dean'])) {
                 // Send ALL defense requests for coordinator
                 $defenseRequests = \App\Models\DefenseRequest::orderByDesc('created_at')->get();
             }
@@ -194,7 +195,7 @@ class DashboardController extends Controller
                         ? $user->advisers()
                             ->wherePivot('status', 'accepted')
                             ->select('users.id', 'users.first_name', 'users.middle_name', 'users.last_name', 'users.email', 'users.adviser_code')
-                             ->get()
+                            ->get()
                         : collect(),
                 ],
             ],
@@ -238,7 +239,7 @@ class DashboardController extends Controller
                 ->map(function ($user) {
                     return [
                         'id' => $user->id,
-                        'name' => trim($user->first_name . ' ' . $user->last_name),
+                        'name' => trim($user->first_name.' '.$user->last_name),
                         'email' => $user->email,
                         'role' => $user->role,
                         'school_id' => $user->school_id,
@@ -258,7 +259,7 @@ class DashboardController extends Controller
     {
         try {
             // Cache student counts to avoid N queries
-            $studentCounts = Cache::remember('dashboard_student_counts', 300, function() {
+            $studentCounts = Cache::remember('dashboard_student_counts', 300, function () {
                 return User::where('role', 'Student')
                     ->whereNotNull('program')
                     ->select('program', DB::raw('count(*) as total'))
@@ -266,28 +267,28 @@ class DashboardController extends Controller
                     ->pluck('total', 'program')
                     ->toArray();
             });
-            
+
             $programs = collect([]);
-            
+
             // Get coordinators from database
             $coordinators = User::where('role', 'Coordinator')
                 ->select('id', 'first_name', 'last_name', 'email', 'created_at')
                 ->get();
-                
+
             foreach ($coordinators as $coordinator) {
                 // Get programs from the service
                 $assignedPrograms = CoordinatorProgramService::getProgramsByEmail($coordinator->email);
-                
+
                 foreach ($assignedPrograms as $index => $programName) {
                     // Get count from cached data
                     $studentCount = $studentCounts[$programName] ?? 0;
-                    
+
                     $programs->push([
-                        'id' => 'prog_' . $coordinator->id . '_' . $index,
+                        'id' => 'prog_'.$coordinator->id.'_'.$index,
                         'name' => $programName,
                         'code' => CoordinatorProgramService::generateProgramCode($programName),
                         'coordinator_id' => $coordinator->id,
-                        'coordinator_name' => trim($coordinator->first_name . ' ' . $coordinator->last_name),
+                        'coordinator_name' => trim($coordinator->first_name.' '.$coordinator->last_name),
                         'coordinator_email' => $coordinator->email,
                         'status' => 'active',
                         'students_count' => $studentCount, // Use actual count only
@@ -295,7 +296,7 @@ class DashboardController extends Controller
                     ]);
                 }
             }
-            
+
             return $programs->sortBy('name')->values();
         } catch (\Exception $e) {
             return collect();
@@ -309,7 +310,7 @@ class DashboardController extends Controller
     {
         // Extract acronyms or create codes from program names
         $name = strtoupper(trim($programName));
-        
+
         // Handle specific program patterns with their standard codes
         $codes = [
             'DOCTOR IN BUSINESS MANAGEMENT' => 'DBM',
@@ -354,22 +355,38 @@ class DashboardController extends Controller
         }
 
         // Check for partial matches with common keywords
-        if (str_contains($name, 'DBM')) return 'DBM';
-        if (str_contains($name, 'MBA')) return 'MBA';
-        if (str_contains($name, 'PHD')) return 'PhD';
-        if (str_contains($name, 'MAED')) return 'MAED';
-        if (str_contains($name, 'MATC')) return 'MATC';
-        if (str_contains($name, 'MATP')) return 'MATP';
-        if (str_contains($name, 'MIT')) return 'MIT';
-        if (str_contains($name, 'MIS')) return 'MIS';
+        if (str_contains($name, 'DBM')) {
+            return 'DBM';
+        }
+        if (str_contains($name, 'MBA')) {
+            return 'MBA';
+        }
+        if (str_contains($name, 'PHD')) {
+            return 'PhD';
+        }
+        if (str_contains($name, 'MAED')) {
+            return 'MAED';
+        }
+        if (str_contains($name, 'MATC')) {
+            return 'MATC';
+        }
+        if (str_contains($name, 'MATP')) {
+            return 'MATP';
+        }
+        if (str_contains($name, 'MIT')) {
+            return 'MIT';
+        }
+        if (str_contains($name, 'MIS')) {
+            return 'MIS';
+        }
 
         // Fallback: create acronym from first letters of major words
         $words = explode(' ', $name);
-        $importantWords = array_filter($words, function($word) {
-            return !in_array($word, ['IN', 'OF', 'THE', 'AND', 'FOR', 'WITH', 'MAJOR']);
+        $importantWords = array_filter($words, function ($word) {
+            return ! in_array($word, ['IN', 'OF', 'THE', 'AND', 'FOR', 'WITH', 'MAJOR']);
         });
-        
-        return strtoupper(substr(implode('', array_map(fn($w) => substr($w, 0, 1), array_slice($importantWords, 0, 4))), 0, 6));
+
+        return strtoupper(substr(implode('', array_map(fn ($w) => substr($w, 0, 1), array_slice($importantWords, 0, 4))), 0, 6));
     }
 
     /**
@@ -384,7 +401,7 @@ class DashboardController extends Controller
                 ->map(function ($coordinator) {
                     return [
                         'id' => $coordinator->id,
-                        'name' => trim($coordinator->first_name . ' ' . $coordinator->last_name),
+                        'name' => trim($coordinator->first_name.' '.$coordinator->last_name),
                         'email' => $coordinator->email,
                     ];
                 });
@@ -402,7 +419,7 @@ class DashboardController extends Controller
             $totalUsers = User::count();
             $totalPrograms = User::where('role', 'Coordinator')->count();
             $pendingRequests = 0;
-            
+
             // Try to get pending defense requests if the model exists
             if (class_exists(\App\Models\DefenseRequest::class)) {
                 $pendingRequests = \App\Models\DefenseRequest::whereIn('workflow_state', ['submitted', 'pending', 'adviser-pending'])->count();
@@ -431,11 +448,11 @@ class DashboardController extends Controller
         try {
             // Get programs assigned to this coordinator
             $assignedPrograms = CoordinatorProgramService::getProgramsByEmail($coordinatorEmail);
-            
+
             if (empty($assignedPrograms)) {
                 return collect();
             }
-            
+
             // Get students enrolled in any of these programs
             $students = User::where('role', 'Student')
                 ->whereIn('program', $assignedPrograms)
@@ -444,14 +461,14 @@ class DashboardController extends Controller
                 ->map(function ($student) {
                     return [
                         'id' => $student->id,
-                        'name' => trim($student->first_name . ' ' . $student->last_name),
+                        'name' => trim($student->first_name.' '.$student->last_name),
                         'email' => $student->email,
                         'program' => $student->program,
                         'school_id' => $student->school_id,
                         'enrolled_date' => $student->created_at ? $student->created_at->format('M d, Y') : 'Unknown',
                     ];
                 });
-                
+
             return $students;
         } catch (\Exception $e) {
             return collect();
@@ -466,14 +483,14 @@ class DashboardController extends Controller
         try {
             // Get all coordinator-program mappings
             $mappings = CoordinatorProgramService::getAllMappings();
-            
+
             // Get defense requests with coordinator assignments
             $requests = \App\Models\DefenseRequest::with(['coordinatorUser', 'user'])
                 ->whereNotNull('coordinator_user_id')
                 ->select([
                     'id', 'coordinator_user_id', 'program', 'thesis_title',
                     'submitted_by', 'workflow_state', 'coordinator_assigned_at',
-                    'coordinator_manually_assigned', 'coordinator_assignment_notes'
+                    'coordinator_manually_assigned', 'coordinator_assignment_notes',
                 ])
                 ->orderBy('coordinator_assigned_at', 'desc')
                 ->limit(100)
@@ -481,10 +498,10 @@ class DashboardController extends Controller
                 ->map(function ($request) {
                     return [
                         'id' => $request->id,
-                        'student_name' => $request->user ? trim($request->user->first_name . ' ' . $request->user->last_name) : 'Unknown',
+                        'student_name' => $request->user ? trim($request->user->first_name.' '.$request->user->last_name) : 'Unknown',
                         'program' => $request->program,
                         'thesis_title' => $request->thesis_title,
-                        'coordinator_name' => $request->coordinatorUser ? trim($request->coordinatorUser->first_name . ' ' . $request->coordinatorUser->last_name) : 'Unassigned',
+                        'coordinator_name' => $request->coordinatorUser ? trim($request->coordinatorUser->first_name.' '.$request->coordinatorUser->last_name) : 'Unassigned',
                         'coordinator_email' => $request->coordinatorUser?->email,
                         'workflow_state' => $request->workflow_state,
                         'assigned_at' => $request->coordinator_assigned_at ? $request->coordinator_assigned_at->format('M d, Y H:i') : null,
@@ -508,7 +525,7 @@ class DashboardController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return [
                 'programMappings' => [],
                 'recentAssignments' => collect(),

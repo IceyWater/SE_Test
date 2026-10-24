@@ -1,14 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { usePage } from '@inertiajs/react';
-import { Sun, Moon, Users, CalendarDays, ClipboardList } from 'lucide-react';
-import RemindersWidget from '../widgets/reminders-widget';
-import UpcomingSchedulesWidget from '../widgets/upcomming-schedules-widget';
-import WeeklyDefenseSchedulesWidget from '../widgets/weekly-defense-schedule-widget';
-import QuickActionsWidget from '../widgets/quick-actions-widget';
-import ImmediateActionDefenseRequestsWidget from '../widgets/immediate-action-defense-requests-widget';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { DefenseRequest } from '@/types';
+import type { DefenseOverview } from '@/types/workflows';
+import { usePage } from '@inertiajs/react';
+import { CalendarDays, ClipboardList, Moon, Sun, Users } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import ImmediateActionDefenseRequestsWidget from '../widgets/immediate-action-defense-requests-widget';
+import QuickActionsWidget from '../widgets/quick-actions-widget';
+import WeeklyDefenseSchedulesWidget from '../widgets/weekly-defense-schedule-widget';
 
 type PageProps = {
     studentsCount?: number;
@@ -60,19 +59,19 @@ export default function AdviserDashboard() {
 
     useEffect(() => {
         fetch('/adviser/defense-requests', {
-            headers: { 'Accept': 'application/json' }
+            headers: { Accept: 'application/json' },
         })
-            .then(res => res.json())
+            .then((res) => res.json())
             .then((data) => {
-                const list = (data && data.items) ? data.items : [];
+                const list = data && data.items ? data.items : [];
                 setAllRequests(list);
-                const needs = list.filter((r: any) => {
+                const needs = list.filter((r: DefenseOverview) => {
                     const wf = (r.workflow_state || '').toLowerCase();
-                    return ['','submitted','pending','adviser-pending','adviser-review'].includes(wf);
+                    return ['', 'submitted', 'pending', 'adviser-pending', 'adviser-review'].includes(wf);
                 });
                 setImmediateRequests(needs);
-                const todayStr = new Date().toISOString().slice(0,10);
-                setTodayEvents(list.filter((r:any)=> (r.scheduled_date === todayStr)));
+                const todayStr = new Date().toISOString().slice(0, 10);
+                setTodayEvents(list.filter((r: DefenseOverview) => r.scheduled_date === todayStr));
             })
             .catch(() => {})
             .finally(() => setLoading(false));
@@ -81,65 +80,63 @@ export default function AdviserDashboard() {
     // Metric cards styled like coordinator dashboard
     const metrics = [
         {
-            title: "Pending Defense Submissions",
+            title: 'Pending Defense Submissions',
             value: immediateRequests.length,
-            description: "Submitted requirements needing your review",
+            description: 'Submitted requirements needing your review',
             icon: <ClipboardList className="size-5 text-rose-500" />,
-            iconTheme: "bg-rose-100 text-rose-600 dark:bg-rose-900 dark:text-rose-300",
+            iconTheme: 'bg-rose-100 text-rose-600 dark:bg-rose-900 dark:text-rose-300',
         },
         {
             title: "Today's Schedules",
             value: todayEvents.length,
-            description: "Events scheduled for today",
+            description: 'Events scheduled for today',
             icon: <CalendarDays className="size-5 text-blue-500" />,
-            iconTheme: "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300",
+            iconTheme: 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300',
         },
         {
-            title: "Students",
+            title: 'Students',
             value: studentsCount as number,
-            description: "Total students linked to you",
+            description: 'Total students linked to you',
             icon: <Users className="size-5 text-green-500" />,
-            iconTheme: "bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300",
+            iconTheme: 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300',
         },
     ];
 
     return (
-        <div className="flex h-full flex-1 flex-col gap-4 overflow-auto bg-white dark:bg-background">
+        <div className="dark:bg-background flex h-full flex-1 flex-col gap-4 overflow-auto bg-white">
             {/* Skeleton Loader */}
             {loading ? (
-                <div className="w-full min-h-[70vh] bg-zinc-100 dark:bg-zinc-900 flex flex-col gap-4 p-0 m-0">
+                <div className="m-0 flex min-h-[70vh] w-full flex-col gap-4 bg-zinc-100 p-0 dark:bg-zinc-900">
                     {/* Top short row */}
-                    <Skeleton className="h-6 w-1/6 rounded bg-zinc-300 dark:bg-zinc-800 mt-8 mx-8" />
+                    <Skeleton className="mx-8 mt-8 h-6 w-1/6 rounded bg-zinc-300 dark:bg-zinc-800" />
                     {/* Main rows */}
-                    <Skeleton className="h-12 w-3/4 rounded bg-zinc-300 dark:bg-zinc-800 mx-8" />
-                    <Skeleton className="h-12 w-2/3 rounded bg-zinc-300 dark:bg-zinc-800 mx-8" />
+                    <Skeleton className="mx-8 h-12 w-3/4 rounded bg-zinc-300 dark:bg-zinc-800" />
+                    <Skeleton className="mx-8 h-12 w-2/3 rounded bg-zinc-300 dark:bg-zinc-800" />
                     {/* Big rectangle for dashboard body */}
-                    <Skeleton className="h-[500px] w-full rounded bg-zinc-300 dark:bg-zinc-800 mt-4" />
+                    <Skeleton className="mt-4 h-[500px] w-full rounded bg-zinc-300 dark:bg-zinc-800" />
                 </div>
             ) : (
                 <>
                     {/* Header - Mobile Responsive */}
-                    <div className="mb-4 md:mb-7 mt-4 md:mt-5 px-4 md:px-7">
-                        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 md:gap-0 relative overflow-hidden">
+                    <div className="mt-4 mb-4 px-4 md:mt-5 md:mb-7 md:px-7">
+                        <div className="relative flex flex-col gap-4 overflow-hidden md:flex-row md:items-center md:justify-between md:gap-0">
                             <div className="flex flex-col">
-                                <span className="flex items-center text-xs font-semibold text-gray-700 dark:text-gray-200 mb-1 md:mb-2 relative z-10">
+                                <span className="relative z-10 mb-1 flex items-center text-xs font-semibold text-gray-700 md:mb-2 dark:text-gray-200">
                                     {isDaytime() ? (
-                                        <Sun className="mr-1 size-3 md:size-4 text-rose-500" />
+                                        <Sun className="mr-1 size-3 text-rose-500 md:size-4" />
                                     ) : (
-                                        <Moon className="mr-1 size-3 md:size-4 text-rose-500" />
+                                        <Moon className="mr-1 size-3 text-rose-500 md:size-4" />
                                     )}
                                     {getFormattedDate()}
                                 </span>
-                                <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white relative z-10">
+                                <h1 className="relative z-10 text-xl font-bold text-gray-900 md:text-2xl lg:text-3xl dark:text-white">
                                     Hi, {user?.name}!
                                 </h1>
-                                <span className="text-xs text-gray-400 dark:text-gray-500 mt-1 relative z-10">
-                                    {user?.role ?? 'Adviser'}
-                                </span>
+                                <span className="relative z-10 mt-1 text-xs text-gray-400 dark:text-gray-500">{user?.role ?? 'Adviser'}</span>
                             </div>
                             {/* Quick Actions - Hidden on mobile, shown on md+ */}
-                            <div className="hidden md:flex items-center">
-                                <div className="h-12 w-px mx-4 bg-gray-300 dark:bg-gray-700 opacity-60" />
+                            <div className="hidden items-center md:flex">
+                                <div className="mx-4 h-12 w-px bg-gray-300 opacity-60 dark:bg-gray-700" />
                                 <div className="mr-8">
                                     <QuickActionsWidget userRole={user?.role} />
                                 </div>
@@ -148,40 +145,37 @@ export default function AdviserDashboard() {
                     </div>
 
                     {/* Metric Cards - Mobile Optimized */}
-                    <div className="w-full max-w-screen-xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 px-4 md:px-7 mb-4 md:mb-6">
+                    <div className="mx-auto mb-4 grid w-full max-w-screen-xl grid-cols-1 gap-3 px-4 sm:grid-cols-2 md:mb-6 md:gap-4 md:px-7 lg:grid-cols-3">
                         {metrics.map((metric, idx) => (
                             <Card
                                 key={idx}
-                                className="col-span-1 rounded-lg md:rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm flex flex-col justify-between p-0 min-h-0 h-auto transition hover:shadow-md"
+                                className="col-span-1 flex h-auto min-h-0 flex-col justify-between rounded-lg border border-gray-200 bg-white p-0 shadow-sm transition hover:shadow-md md:rounded-xl dark:border-zinc-800 dark:bg-zinc-900"
                                 style={{ minWidth: 0 }}
                             >
-                                <div className="flex items-center justify-between px-4 md:px-5 pt-3 md:pt-4 pb-0">
-                                    <div className="text-xs md:text-sm font-extrabold text-gray-800 dark:text-zinc-100 leading-tight">
+                                <div className="flex items-center justify-between px-4 pt-3 pb-0 md:px-5 md:pt-4">
+                                    <div className="text-xs leading-tight font-extrabold text-gray-800 md:text-sm dark:text-zinc-100">
                                         {metric.title}
                                     </div>
-                                    <div className={`rounded-full p-1 md:p-1.5 flex items-center justify-center flex-shrink-0 ${metric.iconTheme}`}>
-                                        {React.cloneElement(metric.icon, { className: "size-3 md:size-4 font-extrabold " + (metric.iconTheme?.split(" ").find(c => c.startsWith("text-")) ?? "") })}
+                                    <div className={`flex flex-shrink-0 items-center justify-center rounded-full p-1 md:p-1.5 ${metric.iconTheme}`}>
+                                        {React.cloneElement(metric.icon, {
+                                            className:
+                                                'size-3 md:size-4 font-extrabold ' +
+                                                (metric.iconTheme?.split(' ').find((c) => c.startsWith('text-')) ?? ''),
+                                        })}
                                     </div>
                                 </div>
-                                <div className="flex flex-col px-4 md:px-5 pb-3 md:pb-4 pt-1 md:pt-2">
-                                    <span className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white leading-none">
-                                        {metric.value}
-                                    </span>
-                                    <span className="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">
-                                        {metric.description}
-                                    </span>
+                                <div className="flex flex-col px-4 pt-1 pb-3 md:px-5 md:pt-2 md:pb-4">
+                                    <span className="text-xl leading-none font-bold text-gray-900 md:text-2xl dark:text-white">{metric.value}</span>
+                                    <span className="mt-1 truncate text-xs text-gray-400 dark:text-gray-500">{metric.description}</span>
                                 </div>
                             </Card>
                         ))}
                     </div>
 
                     {/* Widgets Body - Mobile Responsive */}
-                    <div className="flex flex-col gap-4 md:gap-6 bg-gray-100 dark:bg-zinc-900 mx-2 md:mx-4 rounded-lg md:rounded-xl mt-2 mb-2 px-3 md:px-5 py-4 md:py-8">
-                        <div className="w-full mb-2 flex flex-col gap-4">
-                            <ImmediateActionDefenseRequestsWidget
-                                requests={immediateRequests}
-                                loading={loading}
-                            />
+                    <div className="mx-2 mt-2 mb-2 flex flex-col gap-4 rounded-lg bg-gray-100 px-3 py-4 md:mx-4 md:gap-6 md:rounded-xl md:px-5 md:py-8 dark:bg-zinc-900">
+                        <div className="mb-2 flex w-full flex-col gap-4">
+                            <ImmediateActionDefenseRequestsWidget requests={immediateRequests} loading={loading} />
                             <WeeklyDefenseSchedulesWidget
                                 weekDays={weekDays}
                                 selectedDay={selectedDay}
@@ -191,9 +185,7 @@ export default function AdviserDashboard() {
                                 loading={loading}
                             />
                         </div>
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {/* Add more widgets here if needed */}
-                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">{/* Add more widgets here if needed */}</div>
                     </div>
                 </>
             )}

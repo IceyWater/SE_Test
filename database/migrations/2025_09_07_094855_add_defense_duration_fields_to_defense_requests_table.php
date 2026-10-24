@@ -27,8 +27,8 @@ return new class extends Migration
         Schema::table('defense_requests', function (Blueprint $table) {
             $table->dropColumn([
                 'scheduled_end_time',
-                'defense_duration_minutes', 
-                'formatted_time_range'
+                'defense_duration_minutes',
+                'formatted_time_range',
             ]);
         });
     }

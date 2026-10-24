@@ -2,15 +2,15 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
-use App\Models\User;
 use App\Models\DefenseRequest;
 use App\Models\Panelist;
-use Illuminate\Support\Facades\DB;
-use Faker\Factory as Faker;
+use App\Models\User;
 use Carbon\Carbon;
+use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class DefenseRequestSeeder extends Seeder
 {
@@ -91,7 +91,7 @@ class DefenseRequestSeeder extends Seeder
             $aas[] = User::factory()->create([
                 'first_name' => $name[0],
                 'last_name' => $name[1],
-                'email' => "aa" . ($i+1) . "@school.edu",
+                'email' => 'aa'.($i + 1).'@school.edu',
                 'password' => Hash::make('password'),
                 'role' => 'Administrative Assistant',
             ]);
@@ -103,7 +103,7 @@ class DefenseRequestSeeder extends Seeder
             $coordinators[] = User::factory()->create([
                 'first_name' => $faker->firstName,
                 'last_name' => $faker->lastName,
-                'email' => "coordinator" . ($i+1) . "@school.edu",
+                'email' => 'coordinator'.($i + 1).'@school.edu',
                 'password' => Hash::make('password'),
                 'role' => 'Coordinator',
                 'program' => $programs[$i % count($programs)],
@@ -116,7 +116,7 @@ class DefenseRequestSeeder extends Seeder
             $advisers[] = User::factory()->create([
                 'first_name' => $faker->firstName,
                 'last_name' => $faker->lastName,
-                'email' => "adviser" . ($i+1) . "@school.edu",
+                'email' => 'adviser'.($i + 1).'@school.edu',
                 'password' => Hash::make('password'),
                 'role' => 'Adviser',
                 'program' => $programs[$i % count($programs)],
@@ -145,13 +145,13 @@ class DefenseRequestSeeder extends Seeder
             'Dr. Jose Rizal', 'Dr. Fe del Mundo', 'Dr. Diosdado Banatao', 'Dr. Angel Alcala', 'Dr. Lourdes Cruz',
             'Dr. Baldomero Olivera', 'Dr. Ernesto Domingo', 'Dr. William Padolina', 'Dr. Edgardo Gomez', 'Dr. Gavino Trono',
             'Dr. Amelia Guevara', 'Dr. Raul Destura', 'Dr. Caesar Saloma', 'Dr. Fabian Dayrit', 'Dr. Maria Corazon de Ungria',
-            'Dr. Rodolfo Aquino', 'Dr. Jaime Montoya', 'Dr. Maria Victoria Carpio-Bernido', 'Dr. Christopher Bernido', 'Dr. Ramon Barba'
+            'Dr. Rodolfo Aquino', 'Dr. Jaime Montoya', 'Dr. Maria Victoria Carpio-Bernido', 'Dr. Christopher Bernido', 'Dr. Ramon Barba',
         ];
         $panelistPool = [];
         foreach ($realPanelistNames as $idx => $name) {
             $panelistPool[] = Panelist::create([
                 'name' => $name,
-                'email' => "panelist" . ($idx+1) . "@school.edu",
+                'email' => 'panelist'.($idx + 1).'@school.edu',
                 'role' => $idx % 5 === 0 ? 'Chairperson' : 'Panel Member',
                 'status' => 'Assigned',
             ]);
@@ -172,7 +172,7 @@ class DefenseRequestSeeder extends Seeder
             'completed',
             'coordinator-rejected',
             'adviser-rejected',
-            'cancelled'
+            'cancelled',
         ];
 
         foreach (range(1, 50) as $i) {
@@ -188,7 +188,7 @@ class DefenseRequestSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role' => 'Student',
                 'program' => $program,
-                'school_id' => "2025" . str_pad($i, 4, '0', STR_PAD_LEFT),
+                'school_id' => '2025'.str_pad($i, 4, '0', STR_PAD_LEFT),
             ]);
 
             // Attach adviser to student (adviser_student pivot)
@@ -257,31 +257,31 @@ class DefenseRequestSeeder extends Seeder
             foreach ($workflowPath as $idx => $step) {
                 $action = $step;
                 $userId = $userIds['student'];
-                $userName = $student->first_name . ' ' . $student->last_name;
+                $userName = $student->first_name.' '.$student->last_name;
                 $comment = null;
                 if ($step === 'submitted') {
                     $action = 'submitted';
                 } elseif ($step === 'adviser-review' || $step === 'adviser-approved' || $step === 'adviser-rejected') {
                     $userId = $adviser->id;
-                    $userName = $adviser->first_name . ' ' . $adviser->last_name;
+                    $userName = $adviser->first_name.' '.$adviser->last_name;
                     $action = 'adviser-status-updated';
                     $comment = $step === 'adviser-rejected' ? 'Adviser rejected the request.' : null;
                 } elseif (str_starts_with($step, 'coordinator')) {
                     $userId = $coordinator->id;
-                    $userName = $coordinator->first_name . ' ' . $coordinator->last_name;
+                    $userName = $coordinator->first_name.' '.$coordinator->last_name;
                     $action = 'coordinator-status-updated';
                     $comment = $step === 'coordinator-rejected' ? 'Coordinator rejected the request.' : null;
                 } elseif ($step === 'panels-assigned') {
                     $userId = $coordinator->id;
-                    $userName = $coordinator->first_name . ' ' . $coordinator->last_name;
+                    $userName = $coordinator->first_name.' '.$coordinator->last_name;
                     $action = 'Panels Assigned';
                 } elseif ($step === 'scheduled') {
                     $userId = $coordinator->id;
-                    $userName = $coordinator->first_name . ' ' . $coordinator->last_name;
+                    $userName = $coordinator->first_name.' '.$coordinator->last_name;
                     $action = 'scheduled';
                 } elseif ($step === 'completed') {
                     $userId = $coordinator->id;
-                    $userName = $coordinator->first_name . ' ' . $coordinator->last_name;
+                    $userName = $coordinator->first_name.' '.$coordinator->last_name;
                     $action = 'completed';
                     $comment = 'Auto-completed after scheduled defense end time passed';
                 }
@@ -291,14 +291,14 @@ class DefenseRequestSeeder extends Seeder
                     'user_id' => $userId,
                     'user_name' => $userName,
                     'timestamp' => $timestamp->format('Y-m-d H:i:s'),
-                    'from_state' => $idx > 0 ? $workflowPath[$idx-1] : null,
+                    'from_state' => $idx > 0 ? $workflowPath[$idx - 1] : null,
                     'to_state' => $step,
                 ];
                 $timestamp->addHours(rand(2, 12));
             }
 
             // Assign panels if in panels-assigned or later
-            $panelistIds = array_map(fn($p) => $p->id, $faker->randomElements($panelistPool, 5));
+            $panelistIds = array_map(fn ($p) => $p->id, $faker->randomElements($panelistPool, 5));
             $defenseChairperson = $panelistIds[0] ?? null;
             $defensePanelist1 = $panelistIds[1] ?? null;
             $defensePanelist2 = $panelistIds[2] ?? null;
@@ -317,10 +317,10 @@ class DefenseRequestSeeder extends Seeder
                 if ($i <= count($phEvents)) {
                     $event = $phEvents[$i - 1];
                     $scheduledDate = Carbon::parse($event['date']);
-                    $defenseVenue = $event['title'] . ' Hall';
+                    $defenseVenue = $event['title'].' Hall';
                 } else {
                     $scheduledDate = Carbon::now()->addDays($i);
-                    $defenseVenue = 'Room ' . (($i % 10) + 1);
+                    $defenseVenue = 'Room '.(($i % 10) + 1);
                 }
                 $scheduledTime = sprintf('%02d:00', 8 + ($i % 5));
                 $scheduledEndTime = sprintf('%02d:00', 10 + ($i % 5));
@@ -345,7 +345,7 @@ class DefenseRequestSeeder extends Seeder
                 'scheduled_end_time' => $scheduledEndTime,
                 'defense_mode' => $defenseMode,
                 'defense_venue' => $defenseVenue,
-                'defense_adviser' => $adviser->first_name . ' ' . $adviser->last_name,
+                'defense_adviser' => $adviser->first_name.' '.$adviser->last_name,
                 'adviser_user_id' => $adviser->id,
                 'coordinator_user_id' => $coordinator->id,
                 'assigned_to_user_id' => $adviser->id,

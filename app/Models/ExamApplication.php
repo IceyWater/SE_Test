@@ -1,5 +1,7 @@
 <?php
+
 // filepath: c:\GSPS\Graduate_School_System\app\Models\ExamApplication.php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -8,7 +10,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ExamApplication extends Model
 {
     protected $table = 'exam_application';
+
     protected $primaryKey = 'application_id';
+
     public $timestamps = false;
 
     protected $fillable = [

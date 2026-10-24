@@ -2,10 +2,8 @@
 
 namespace App\Http\Middleware;
 
-use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
-use Tighten\Ziggy\Ziggy;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -54,14 +52,14 @@ class HandleInertiaRequests extends Middleware
         $u = $request->user();
 
         $sharedUser = $u ? [
-            'id'         => $u->id,
-            'name'       => $u->display_name ?? ($u->first_name . ' ' . $u->last_name),
+            'id' => $u->id,
+            'name' => $u->display_name ?? ($u->first_name.' '.$u->last_name),
             'first_name' => $u->first_name ?? '',
-            'last_name'  => $u->last_name ?? '',
-            'email'      => $u->email,
-            'role'       => $u->role,
-            'school_id'  => $u->school_id ?? '',
-            'program'    => $u->program ?? '',
+            'last_name' => $u->last_name ?? '',
+            'email' => $u->email,
+            'role' => $u->role,
+            'school_id' => $u->school_id ?? '',
+            'program' => $u->program ?? '',
         ] : null;
 
         return array_merge(parent::share($request), [

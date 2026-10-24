@@ -46,7 +46,7 @@ class CoordinatorCompreExamController extends Controller
             ->when($useRoleString, function ($q) {
                 $q->whereIn(DB::raw('LOWER(u.role)'), ['student']);
             }, function ($q) use ($studentRoleIds) {
-                if (!empty($studentRoleIds)) {
+                if (! empty($studentRoleIds)) {
                     $q->whereIn('u.role_id', $studentRoleIds);
                 } else {
                     // final fallback: no roles table, still require role string if present
@@ -121,7 +121,9 @@ class CoordinatorCompreExamController extends Controller
 
         if (Schema::hasTable('grades')) {
             $hasGrades = DB::table('grades')->where('student_id', $studentId)->exists();
-            if (! $hasGrades) $lacking[] = 'Grades';
+            if (! $hasGrades) {
+                $lacking[] = 'Grades';
+            }
         } else {
             $lacking[] = 'Grades';
         }
@@ -131,7 +133,9 @@ class CoordinatorCompreExamController extends Controller
                 ->where('student_id', $studentId)
                 ->where('is_complete', 1)
                 ->exists();
-            if (! $docsComplete) $lacking[] = 'Documents';
+            if (! $docsComplete) {
+                $lacking[] = 'Documents';
+            }
         } else {
             $lacking[] = 'Documents';
         }
@@ -139,7 +143,9 @@ class CoordinatorCompreExamController extends Controller
         if (Schema::hasTable('student_accounts')) {
             $acct = DB::table('student_accounts')->where('student_id', $studentId)->first();
             $ok = $acct && (float) ($acct->outstanding_balance ?? 0) <= 0;
-            if (! $ok) $lacking[] = 'Outstanding Balance';
+            if (! $ok) {
+                $lacking[] = 'Outstanding Balance';
+            }
         } else {
             $lacking[] = 'Outstanding Balance';
         }

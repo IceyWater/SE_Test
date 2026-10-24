@@ -46,7 +46,7 @@ class Message extends Model
     public function isReadBy($userId): bool
     {
         $participant = $this->conversation->users()->where('user_id', $userId)->first();
-        if (!$participant || !$participant->pivot->last_read_at) {
+        if (! $participant || ! $participant->pivot->last_read_at) {
             return false;
         }
 

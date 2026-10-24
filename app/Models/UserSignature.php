@@ -12,7 +12,7 @@ class UserSignature extends Model
         'image_path',
         'natural_width',
         'natural_height',
-        'active'
+        'active',
     ];
 
     public function user()

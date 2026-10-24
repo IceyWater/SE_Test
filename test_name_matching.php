@@ -1,7 +1,7 @@
 <?php
 
-require_once __DIR__ . '/vendor/autoload.php';
-$app = require_once __DIR__ . '/bootstrap/app.php';
+require_once __DIR__.'/vendor/autoload.php';
+$app = require_once __DIR__.'/bootstrap/app.php';
 $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 use App\Models\User;
@@ -21,7 +21,7 @@ $tests = [
 foreach ($tests as $testName) {
     echo "Testing: '{$testName}'\n";
     $user = User::findByFullName($testName, 'Adviser')->first();
-    
+
     if ($user) {
         echo "  ✅ FOUND: {$user->full_name} ({$user->email})\n";
     } else {

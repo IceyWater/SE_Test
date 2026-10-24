@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
-import { CircleCheck, Info, Paperclip, BadgeCheck, XCircle, Clock, Info as InfoIcon } from 'lucide-react';
+import { BadgeCheck, CircleCheck, Clock, Info, Info as InfoIcon, Paperclip, XCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export type DefenseRequestFull = {
     first_name: string;
@@ -39,32 +39,32 @@ function statusBadge(status?: string) {
     switch (status) {
         case 'Approved':
             return (
-                <Badge className="bg-green-100 text-green-700 border border-green-200 flex items-center gap-1">
+                <Badge className="flex items-center gap-1 border border-green-200 bg-green-100 text-green-700">
                     <BadgeCheck size={14} /> Approved
                 </Badge>
             );
         case 'Rejected':
             return (
-                <Badge className="bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1">
+                <Badge className="flex items-center gap-1 border border-rose-200 bg-rose-100 text-rose-700">
                     <XCircle size={14} /> Rejected
                 </Badge>
             );
         case 'Needs-info':
             return (
-                <Badge className="bg-blue-100 text-blue-700 border border-blue-200 flex items-center gap-1">
+                <Badge className="flex items-center gap-1 border border-blue-200 bg-blue-100 text-blue-700">
                     <InfoIcon size={14} /> Needs Info
                 </Badge>
             );
         case 'In progress':
             return (
-                <Badge className="bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-1">
+                <Badge className="flex items-center gap-1 border border-amber-200 bg-amber-100 text-amber-700">
                     <Clock size={14} /> In Progress
                 </Badge>
             );
         case 'Pending':
         default:
             return (
-                <Badge className="bg-gray-100 text-gray-700 border border-gray-200 flex items-center gap-1">
+                <Badge className="flex items-center gap-1 border border-gray-200 bg-gray-100 text-gray-700">
                     <Clock size={14} /> Pending
                 </Badge>
             );
@@ -75,11 +75,9 @@ export default function DisplayRequest({ request }: Props) {
     const [liveRequest, setLiveRequest] = useState<DefenseRequestFull>(request);
     const [showDetails, setShowDetails] = useState(false);
 
-
     useEffect(() => {
         const interval = setInterval(async () => {
             try {
-             
                 const res = await fetch(`/api/defense-request/${request.school_id}`);
                 if (res.ok) {
                     const data = await res.json();
@@ -108,7 +106,7 @@ export default function DisplayRequest({ request }: Props) {
                         Your Defense Request Was Sent
                         <CircleCheck className="text-rose-500" />
                     </CardTitle>
-                    <div className="pb-5 pl-2 flex items-center gap-2">
+                    <div className="flex items-center gap-2 pb-5 pl-2">
                         <h1 className="text-muted-foreground">The request will be reviewed shortly</h1>
                         {statusBadge(liveRequest.status)}
                     </div>

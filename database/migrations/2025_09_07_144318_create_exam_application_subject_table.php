@@ -22,8 +22,8 @@ return new class extends Migration
             $table->timestamp('updated_at')->nullable();
 
             $table->foreign('application_id')
-                  ->references('application_id')->on('exam_application')
-                  ->cascadeOnDelete();
+                ->references('application_id')->on('exam_application')
+                ->cascadeOnDelete();
 
             $table->index(['application_id', 'status']);
         });

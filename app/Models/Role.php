@@ -22,6 +22,7 @@ class Role extends Model
         if (Schema::hasColumn('users', 'role_id')) {
             return $this->hasMany(User::class, 'role_id', 'id');
         }
+
         return $this->hasMany(User::class, 'role', 'name');
     }
 

@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\CoordinatorProgramAssignment;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CoordinatorProgramAssignmentController extends Controller
 {
@@ -17,7 +17,7 @@ class CoordinatorProgramAssignmentController extends Controller
     public function index()
     {
         $user = Auth::user();
-        if (!$user || $user->role !== 'Super Admin') {
+        if (! $user || $user->role !== 'Super Admin') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -30,13 +30,13 @@ class CoordinatorProgramAssignmentController extends Controller
                 return [
                     'id' => $assignment->id,
                     'coordinator_id' => $assignment->coordinator_user_id,
-                    'coordinator_name' => $assignment->coordinator 
-                        ? trim($assignment->coordinator->first_name . ' ' . $assignment->coordinator->last_name)
+                    'coordinator_name' => $assignment->coordinator
+                        ? trim($assignment->coordinator->first_name.' '.$assignment->coordinator->last_name)
                         : 'Unknown',
                     'coordinator_email' => $assignment->coordinator?->email,
                     'program_name' => $assignment->program_name,
                     'assigned_by_name' => $assignment->assignedBy
-                        ? trim($assignment->assignedBy->first_name . ' ' . $assignment->assignedBy->last_name)
+                        ? trim($assignment->assignedBy->first_name.' '.$assignment->assignedBy->last_name)
                         : 'System',
                     'notes' => $assignment->notes,
                     'created_at' => $assignment->created_at->format('M d, Y H:i'),
@@ -52,7 +52,7 @@ class CoordinatorProgramAssignmentController extends Controller
     public function getAvailablePrograms()
     {
         $user = Auth::user();
-        if (!$user || $user->role !== 'Super Admin') {
+        if (! $user || $user->role !== 'Super Admin') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -85,7 +85,7 @@ class CoordinatorProgramAssignmentController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
-        if (!$user || $user->role !== 'Super Admin') {
+        if (! $user || $user->role !== 'Super Admin') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -98,9 +98,9 @@ class CoordinatorProgramAssignmentController extends Controller
         try {
             // Check if coordinator has the right role
             $coordinator = User::find($validated['coordinator_user_id']);
-            if (!in_array($coordinator->role, ['Coordinator', 'Administrative Assistant', 'Dean'])) {
+            if (! in_array($coordinator->role, ['Coordinator', 'Administrative Assistant', 'Dean'])) {
                 return response()->json([
-                    'error' => 'Selected user is not a coordinator'
+                    'error' => 'Selected user is not a coordinator',
                 ], 422);
             }
 
@@ -112,7 +112,7 @@ class CoordinatorProgramAssignmentController extends Controller
             if ($existing) {
                 if ($existing->is_active) {
                     return response()->json([
-                        'error' => 'This coordinator is already assigned to this program'
+                        'error' => 'This coordinator is already assigned to this program',
                     ], 422);
                 } else {
                     // Reactivate existing assignment
@@ -131,7 +131,7 @@ class CoordinatorProgramAssignmentController extends Controller
                     return response()->json([
                         'success' => true,
                         'assignment' => $existing,
-                        'message' => 'Program assignment reactivated successfully'
+                        'message' => 'Program assignment reactivated successfully',
                     ]);
                 }
             }
@@ -148,7 +148,7 @@ class CoordinatorProgramAssignmentController extends Controller
             Log::info('Coordinator program assignment created', [
                 'assignment_id' => $assignment->id,
                 'coordinator_id' => $validated['coordinator_user_id'],
-                'coordinator_name' => trim($coordinator->first_name . ' ' . $coordinator->last_name),
+                'coordinator_name' => trim($coordinator->first_name.' '.$coordinator->last_name),
                 'program' => $validated['program_name'],
                 'assigned_by' => $user->id,
             ]);
@@ -156,7 +156,7 @@ class CoordinatorProgramAssignmentController extends Controller
             return response()->json([
                 'success' => true,
                 'assignment' => $assignment,
-                'message' => 'Program assigned successfully'
+                'message' => 'Program assigned successfully',
             ], 201);
 
         } catch (\Exception $e) {
@@ -167,7 +167,7 @@ class CoordinatorProgramAssignmentController extends Controller
             ]);
 
             return response()->json([
-                'error' => 'Failed to assign program. Please try again.'
+                'error' => 'Failed to assign program. Please try again.',
             ], 500);
         }
     }
@@ -178,13 +178,13 @@ class CoordinatorProgramAssignmentController extends Controller
     public function destroy($id)
     {
         $user = Auth::user();
-        if (!$user || $user->role !== 'Super Admin') {
+        if (! $user || $user->role !== 'Super Admin') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         try {
             $assignment = CoordinatorProgramAssignment::findOrFail($id);
-            
+
             // Soft delete by setting is_active to false
             $assignment->is_active = false;
             $assignment->save();
@@ -198,7 +198,7 @@ class CoordinatorProgramAssignmentController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Program assignment removed successfully'
+                'message' => 'Program assignment removed successfully',
             ]);
 
         } catch (\Exception $e) {
@@ -208,7 +208,7 @@ class CoordinatorProgramAssignmentController extends Controller
             ]);
 
             return response()->json([
-                'error' => 'Failed to remove assignment. Please try again.'
+                'error' => 'Failed to remove assignment. Please try again.',
             ], 500);
         }
     }
@@ -219,7 +219,7 @@ class CoordinatorProgramAssignmentController extends Controller
     public function getCoordinators()
     {
         $user = Auth::user();
-        if (!$user || $user->role !== 'Super Admin') {
+        if (! $user || $user->role !== 'Super Admin') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -230,7 +230,7 @@ class CoordinatorProgramAssignmentController extends Controller
             ->map(function ($coord) {
                 return [
                     'id' => $coord->id,
-                    'name' => trim($coord->first_name . ' ' . $coord->last_name),
+                    'name' => trim($coord->first_name.' '.$coord->last_name),
                     'email' => $coord->email,
                     'role' => $coord->role,
                 ];
@@ -239,4 +239,3 @@ class CoordinatorProgramAssignmentController extends Controller
         return response()->json(['coordinators' => $coordinators]);
     }
 }
-

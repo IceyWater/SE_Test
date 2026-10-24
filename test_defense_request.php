@@ -1,19 +1,18 @@
 <?php
 
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__.'/vendor/autoload.php';
 
-$app = require_once __DIR__ . '/bootstrap/app.php';
+$app = require_once __DIR__.'/bootstrap/app.php';
 $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 use App\Models\DefenseRequest;
 use App\Models\User;
-use Illuminate\Support\Facades\Log;
 
 echo "Testing Defense Request Creation...\n";
 
 // Check if adviser users exist
 $adviserUsers = User::where('role', 'Adviser')->get();
-echo "Adviser users found: " . $adviserUsers->count() . "\n";
+echo 'Adviser users found: '.$adviserUsers->count()."\n";
 foreach ($adviserUsers as $adviser) {
     echo "- ID: {$adviser->id}, Name: {$adviser->first_name} {$adviser->last_name}\n";
 }
@@ -35,38 +34,38 @@ try {
         'priority' => 'Medium',
         'workflow_state' => 'adviser-review',
     ]);
-    
+
     echo "\nDefense request created successfully!\n";
     echo "ID: {$defenseRequest->id}\n";
     echo "Student: {$defenseRequest->first_name} {$defenseRequest->last_name}\n";
     echo "Adviser: {$defenseRequest->defense_adviser}\n";
     echo "Workflow State: {$defenseRequest->workflow_state}\n";
-    
+
     // Try to find adviser
     $adviserName = 'Muslimin B. Ontong';
     echo "\nLooking for adviser: {$adviserName}\n";
-    
-    $adviserUser = User::where(function($query) use ($adviserName) {
+
+    $adviserUser = User::where(function ($query) use ($adviserName) {
         $query->whereRaw('CONCAT(first_name, " ", last_name) = ?', [$adviserName])
-              ->orWhereRaw('CONCAT(last_name, ", ", first_name) = ?', [$adviserName]);
-        
+            ->orWhereRaw('CONCAT(last_name, ", ", first_name) = ?', [$adviserName]);
+
         $nameParts = preg_split('/\s+/', $adviserName);
         if (count($nameParts) >= 2) {
             $firstName = $nameParts[0];
             $lastName = end($nameParts);
-            
-            $query->orWhere(function($q) use ($firstName, $lastName) {
-                $q->where('first_name', 'LIKE', '%' . $firstName . '%')
-                  ->where('last_name', 'LIKE', '%' . $lastName . '%');
+
+            $query->orWhere(function ($q) use ($firstName, $lastName) {
+                $q->where('first_name', 'LIKE', '%'.$firstName.'%')
+                    ->where('last_name', 'LIKE', '%'.$lastName.'%');
             });
         }
     })
-    ->where('role', 'Adviser')
-    ->first();
-    
+        ->where('role', 'Adviser')
+        ->first();
+
     if ($adviserUser) {
         echo "Found adviser user: ID {$adviserUser->id}, Name: {$adviserUser->first_name} {$adviserUser->last_name}\n";
-        
+
         $defenseRequest->adviser_user_id = $adviserUser->id;
         $defenseRequest->assigned_to_user_id = $adviserUser->id;
         $defenseRequest->save();
@@ -74,10 +73,10 @@ try {
     } else {
         echo "Adviser user not found\n";
     }
-    
+
 } catch (\Exception $e) {
-    echo "Error creating defense request: " . $e->getMessage() . "\n";
-    echo "Stack trace:\n" . $e->getTraceAsString() . "\n";
+    echo 'Error creating defense request: '.$e->getMessage()."\n";
+    echo "Stack trace:\n".$e->getTraceAsString()."\n";
 }
 
 // Check defense requests

@@ -160,7 +160,7 @@ class HonorariumLedgerService
                     $row->save();
                 }
             }
-            $this->notify($dr,'Finance Documents Need Re-verification','A receipt, panel assignment, or request status changed. Check the Finance documents and honorarium records.',['Administrative Assistant', 'Finance', 'Finance Office', 'Finance Officer']);
+            $this->notify($dr, 'Finance Documents Need Re-verification', 'A receipt, panel assignment, or request status changed. Check the Finance documents and honorarium records.', ['Administrative Assistant', 'Finance', 'Finance Office', 'Finance Officer']);
         });
     }
 }

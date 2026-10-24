@@ -15,8 +15,8 @@ class LinkLegacyRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'legacy_username' => ['required','string','max:50'],
-            'legacy_password' => ['required','string','max:100'],
+            'legacy_username' => ['required', 'string', 'max:50'],
+            'legacy_password' => ['required', 'string', 'max:100'],
         ];
     }
 }

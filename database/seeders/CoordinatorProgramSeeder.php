@@ -93,10 +93,12 @@ class CoordinatorProgramSeeder extends Seeder
 
         foreach ($data as $c) {
             $user = User::where('email', $c['email'])
-                ->when($coordinatorRoleId, fn($q) => $q->where('role_id', $coordinatorRoleId))
+                ->when($coordinatorRoleId, fn ($q) => $q->where('role_id', $coordinatorRoleId))
                 ->first();
 
-            if (! $user) continue;
+            if (! $user) {
+                continue;
+            }
 
             foreach ($c['programs'] as $program) {
                 CoordinatorProgram::firstOrCreate([

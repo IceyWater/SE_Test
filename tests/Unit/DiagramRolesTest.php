@@ -15,7 +15,8 @@ uses(Tests\TestCase::class);
 beforeEach(function () {
     config(['app.key' => 'base64:'.base64_encode(str_repeat('d', 32))]);
     Schema::create('roles', function (Blueprint $table) {
-        $table->id(); $table->string('name')->unique();
+        $table->id();
+        $table->string('name')->unique();
     });
     Schema::create('users', function (Blueprint $table) {
         $table->id();
@@ -26,7 +27,8 @@ beforeEach(function () {
         $table->boolean('role_manually_assigned')->default(false);
         $table->boolean('is_demo_account')->default(false);
         $table->timestamp('email_verified_at')->nullable();
-        $table->rememberToken(); $table->timestamps();
+        $table->rememberToken();
+        $table->timestamps();
     });
     Schema::create('role_user', function (Blueprint $table) {
         $table->foreignId('role_id')->constrained('roles');
@@ -35,13 +37,18 @@ beforeEach(function () {
     });
     Schema::create('payment_rates', function (Blueprint $table) {
         $table->id();
-        $table->string('program_level'); $table->string('type'); $table->string('defense_type');
-        $table->decimal('amount', 12, 2); $table->timestamps();
+        $table->string('program_level');
+        $table->string('type');
+        $table->string('defense_type');
+        $table->decimal('amount', 12, 2);
+        $table->timestamps();
     });
 });
 
 afterEach(function () {
-    foreach (['payment_rates', 'role_user', 'users', 'roles'] as $table) Schema::dropIfExists($table);
+    foreach (['payment_rates', 'role_user', 'users', 'roles'] as $table) {
+        Schema::dropIfExists($table);
+    }
 });
 
 it('creates exactly five requested role accounts and is safe to rerun', function () {
@@ -95,8 +102,11 @@ it('allows only the dean to change payment rates among the diagram roles', funct
     foreach (array_keys(config('demo.accounts')) as $email) {
         $user = User::where('email', $email)->firstOrFail();
         $response = $this->actingAs($user)->postJson('/dean/payment-rates', $payload);
-        if ($user->role === 'Dean') $response->assertOk();
-        else $response->assertForbidden();
+        if ($user->role === 'Dean') {
+            $response->assertOk();
+        } else {
+            $response->assertForbidden();
+        }
     }
     expect(DB::table('payment_rates')->count())->toBe(1);
 });
@@ -106,15 +116,20 @@ it('prevents non-deans from uploading document templates', function () {
     foreach (array_keys(config('demo.accounts')) as $email) {
         $user = User::where('email', $email)->firstOrFail();
         $response = $this->actingAs($user)->postJson('/api/document-templates', []);
-        if ($user->role === 'Dean') $response->assertUnprocessable();
-        else $response->assertForbidden();
+        if ($user->role === 'Dean') {
+            $response->assertUnprocessable();
+        } else {
+            $response->assertForbidden();
+        }
     }
 });
 it('authenticates the Finance demo locally without contacting school services', function () {
     $this->artisan('demo:finance-account')->assertSuccessful();
     $this->artisan('demo:finance-account')->assertSuccessful();
-    expect(User::where('email','finance@uic.edu.ph')->count())->toBe(1);
-    $this->mock(LegacyPortalClient::class)->shouldNotReceive('login','loginCoordinator');
-    $request=LoginRequest::create('/login','POST',['identifier'=>'finance@uic.edu.ph','password'=>'password']);
-    $request->setContainer(app());$request->authenticate();expect(Auth::user()->role)->toBe('Finance');
+    expect(User::where('email', 'finance@uic.edu.ph')->count())->toBe(1);
+    $this->mock(LegacyPortalClient::class)->shouldNotReceive('login', 'loginCoordinator');
+    $request = LoginRequest::create('/login', 'POST', ['identifier' => 'finance@uic.edu.ph', 'password' => 'password']);
+    $request->setContainer(app());
+    $request->authenticate();
+    expect(Auth::user()->role)->toBe('Finance');
 });

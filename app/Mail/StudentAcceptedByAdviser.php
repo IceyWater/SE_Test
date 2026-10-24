@@ -14,10 +14,15 @@ class StudentAcceptedByAdviser extends Mailable
     use Queueable, SerializesModels;
 
     public $student;
+
     public $adviser;
+
     public $adviserFullName;
+
     public $studentFullName;
+
     public $adviserEmail;
+
     public $adviserProgram;
 
     /**
@@ -27,16 +32,16 @@ class StudentAcceptedByAdviser extends Mailable
     {
         $this->student = $student;
         $this->adviser = $adviser;
-        
+
         // Extract full names for email display
-        $this->adviserFullName = trim(($adviser->first_name ?? '') . ' ' . 
-                                      ($adviser->middle_name ?? '') . ' ' . 
+        $this->adviserFullName = trim(($adviser->first_name ?? '').' '.
+                                      ($adviser->middle_name ?? '').' '.
                                       ($adviser->last_name ?? ''));
-        
-        $this->studentFullName = trim(($student->first_name ?? '') . ' ' . 
-                                     ($student->middle_name ?? '') . ' ' . 
+
+        $this->studentFullName = trim(($student->first_name ?? '').' '.
+                                     ($student->middle_name ?? '').' '.
                                      ($student->last_name ?? ''));
-        
+
         $this->adviserEmail = $adviser->email;
         $this->adviserProgram = $adviser->program ?? 'Graduate School';
     }
@@ -47,7 +52,7 @@ class StudentAcceptedByAdviser extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Welcome to the Advisery of ' . $this->adviserFullName,
+            subject: 'Welcome to the Advisery of '.$this->adviserFullName,
         );
     }
 

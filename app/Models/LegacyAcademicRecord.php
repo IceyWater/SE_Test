@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class LegacyAcademicRecord extends Model
 {
     protected $table = 'legacy_academic_records';
+
     protected $fillable = [
         'user_id',
         'semester_id',
@@ -22,5 +23,9 @@ class LegacyAcademicRecord extends Model
         'section',
         'is_complete',
     ];
-    public function user() { return $this->belongsTo(User::class); }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

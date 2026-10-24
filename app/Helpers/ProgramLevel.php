@@ -9,7 +9,9 @@ class ProgramLevel
      */
     public static function getLevel(?string $program): string
     {
-        if (!$program) return 'Masteral';
+        if (! $program) {
+            return 'Masteral';
+        }
 
         $p = strtolower(trim(preg_replace('/\s+/', ' ', $program)));
 
@@ -19,7 +21,9 @@ class ProgramLevel
         }
 
         // Fallback by leading letter D- vs M-
-        if (preg_match('/^(d[.\-\s]|doctor)/', $p)) return 'Doctorate';
+        if (preg_match('/^(d[.\-\s]|doctor)/', $p)) {
+            return 'Doctorate';
+        }
 
         return 'Masteral';
     }

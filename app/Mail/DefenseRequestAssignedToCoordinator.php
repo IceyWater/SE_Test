@@ -2,22 +2,25 @@
 
 namespace App\Mail;
 
+use App\Models\DefenseRequest;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\Models\DefenseRequest;
-use App\Models\User;
 
 class DefenseRequestAssignedToCoordinator extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
     public DefenseRequest $defenseRequest;
+
     public User $coordinator;
+
     public User $student;
+
     public ?User $adviser;
 
     /**
@@ -36,10 +39,10 @@ class DefenseRequestAssignedToCoordinator extends Mailable implements ShouldQueu
      */
     public function envelope(): Envelope
     {
-        $studentName = trim(($this->student->first_name ?? '') . ' ' . ($this->student->last_name ?? ''));
-        
+        $studentName = trim(($this->student->first_name ?? '').' '.($this->student->last_name ?? ''));
+
         return new Envelope(
-            subject: 'New Defense Request Assigned - ' . $studentName,
+            subject: 'New Defense Request Assigned - '.$studentName,
         );
     }
 
@@ -55,9 +58,9 @@ class DefenseRequestAssignedToCoordinator extends Mailable implements ShouldQueu
                 'coordinator' => $this->coordinator,
                 'student' => $this->student,
                 'adviser' => $this->adviser,
-                'studentName' => trim(($this->student->first_name ?? '') . ' ' . ($this->student->last_name ?? '')),
-                'adviserName' => $this->adviser ? trim(($this->adviser->first_name ?? '') . ' ' . ($this->adviser->last_name ?? '')) : 'N/A',
-                'coordinatorName' => trim(($this->coordinator->first_name ?? '') . ' ' . ($this->coordinator->last_name ?? '')),
+                'studentName' => trim(($this->student->first_name ?? '').' '.($this->student->last_name ?? '')),
+                'adviserName' => $this->adviser ? trim(($this->adviser->first_name ?? '').' '.($this->adviser->last_name ?? '')) : 'N/A',
+                'coordinatorName' => trim(($this->coordinator->first_name ?? '').' '.($this->coordinator->last_name ?? '')),
             ]
         );
     }

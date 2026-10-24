@@ -71,7 +71,7 @@ class DefenseConflictService
             $out[$this->userIdentity($dr->adviser_user_id)] = 'Adviser';
         }
 
-return $out;
+        return $out;
     }
 
     public function findPanelSchedulingConflicts(DefenseRequest $current, array $panels, ?string $date, ?string $startTime, ?string $endTime): array

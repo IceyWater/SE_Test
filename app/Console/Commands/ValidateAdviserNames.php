@@ -2,14 +2,15 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Console\Command;
 
 class ValidateAdviserNames extends Command
 {
     protected $signature = 'adviser:validate-names {--fix : Automatically fix common issues}';
+
     protected $aliases = ['faculty:validate-names'];
+
     protected $description = 'Validate and optionally fix adviser names for email matching';
 
     public function handle()
@@ -18,9 +19,10 @@ class ValidateAdviserNames extends Command
         $this->newLine();
 
         $adviser = User::where('role', 'Adviser')->get();
-        
+
         if ($adviser->isEmpty()) {
             $this->warn('⚠️  No advisers found in the database.');
+
             return 0;
         }
 
@@ -29,12 +31,12 @@ class ValidateAdviserNames extends Command
 
         foreach ($adviser as $user) {
             $problems = [];
-            
+
             // Check for missing email
-            if (!$user->email) {
+            if (! $user->email) {
                 $problems[] = 'Missing email address';
             }
-            
+
             // Check for extra whitespace
             if ($user->first_name !== trim($user->first_name)) {
                 $problems[] = 'First name has leading/trailing whitespace';
@@ -43,7 +45,7 @@ class ValidateAdviserNames extends Command
                     $fixed++;
                 }
             }
-            
+
             if ($user->middle_name && $user->middle_name !== trim($user->middle_name)) {
                 $problems[] = 'Middle name has leading/trailing whitespace';
                 if ($this->option('fix')) {
@@ -51,7 +53,7 @@ class ValidateAdviserNames extends Command
                     $fixed++;
                 }
             }
-            
+
             if ($user->last_name !== trim($user->last_name)) {
                 $problems[] = 'Last name has leading/trailing whitespace';
                 if ($this->option('fix')) {
@@ -59,7 +61,7 @@ class ValidateAdviserNames extends Command
                     $fixed++;
                 }
             }
-            
+
             // Check for multiple consecutive spaces
             if ($user->first_name && preg_match('/\s{2,}/', $user->first_name)) {
                 $problems[] = 'First name has multiple consecutive spaces';
@@ -68,7 +70,7 @@ class ValidateAdviserNames extends Command
                     $fixed++;
                 }
             }
-            
+
             if ($user->middle_name && preg_match('/\s{2,}/', $user->middle_name)) {
                 $problems[] = 'Middle name has multiple consecutive spaces';
                 if ($this->option('fix')) {
@@ -76,7 +78,7 @@ class ValidateAdviserNames extends Command
                     $fixed++;
                 }
             }
-            
+
             if ($user->last_name && preg_match('/\s{2,}/', $user->last_name)) {
                 $problems[] = 'Last name has multiple consecutive spaces';
                 if ($this->option('fix')) {
@@ -84,15 +86,15 @@ class ValidateAdviserNames extends Command
                     $fixed++;
                 }
             }
-            
-            if (!empty($problems)) {
+
+            if (! empty($problems)) {
                 $issues[] = [
                     'id' => $user->id,
                     'name' => $user->full_name,
                     'email' => $user->email ?? 'N/A',
-                    'problems' => implode(', ', $problems)
+                    'problems' => implode(', ', $problems),
                 ];
-                
+
                 if ($this->option('fix')) {
                     $user->save();
                 }
@@ -103,19 +105,19 @@ class ValidateAdviserNames extends Command
             $this->info('✅ All adviser names are properly formatted!');
             $this->newLine();
         } else {
-            $this->warn("⚠️  Found {$adviser->count()} advisers, " . count($issues) . " have issues:");
+            $this->warn("⚠️  Found {$adviser->count()} advisers, ".count($issues).' have issues:');
             $this->newLine();
-            
+
             $this->table(
                 ['ID', 'Name', 'Email', 'Issues'],
-                array_map(fn($issue) => [
+                array_map(fn ($issue) => [
                     $issue['id'],
                     $issue['name'],
                     $issue['email'],
-                    $issue['problems']
+                    $issue['problems'],
                 ], $issues)
             );
-            
+
             if ($this->option('fix')) {
                 $this->info("✅ Fixed {$fixed} issues!");
             } else {
@@ -129,10 +131,10 @@ class ValidateAdviserNames extends Command
         $this->info('📋 Adviser Summary:');
         $this->table(
             ['ID', 'Full Name', 'Email'],
-            $adviser->map(fn($f) => [
+            $adviser->map(fn ($f) => [
                 $f->id,
                 $f->full_name,
-                $f->email ?? '❌ NO EMAIL'
+                $f->email ?? '❌ NO EMAIL',
             ])->toArray()
         );
 

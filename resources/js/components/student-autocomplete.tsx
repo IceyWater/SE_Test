@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Loader2, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import axios from 'axios';
+import { Loader2, Search } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
 
 // Configure axios to include CSRF token
 const axiosInstance = axios.create();
@@ -31,33 +31,31 @@ type StudentAutocompleteProps = {
 
 export default function StudentAutocomplete({
     onSelect,
-    placeholder = "Search students by name, email, or ID...",
-    className = "",
+    placeholder = 'Search students by name, email, or ID...',
+    className = '',
     disabled = false,
     value: controlledValue,
-    onChange: controlledOnChange
+    onChange: controlledOnChange,
 }: StudentAutocompleteProps) {
     const [query, setQuery] = useState(controlledValue || '');
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
-    
+
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
-    
+
     // Handle controlled vs uncontrolled component
     const value = controlledValue !== undefined ? controlledValue : query;
     const onChange = controlledOnChange || setQuery;
-    
+
     useEffect(() => {
         if (controlledValue !== undefined) {
             setQuery(controlledValue);
         }
     }, [controlledValue]);
 
-
-    
     useEffect(() => {
         const searchStudents = async () => {
             if (value.length < 2) {
@@ -65,11 +63,11 @@ export default function StudentAutocomplete({
                 setShowDropdown(false);
                 return;
             }
-            
+
             setLoading(true);
             try {
                 const response = await axiosInstance.get('/api/students/search', {
-                    params: { q: value }
+                    params: { q: value },
                 });
                 setStudents(response.data);
                 setShowDropdown(true);
@@ -81,11 +79,11 @@ export default function StudentAutocomplete({
                 setLoading(false);
             }
         };
-        
+
         const debounceTimer = setTimeout(searchStudents, 300);
         return () => clearTimeout(debounceTimer);
     }, [value]);
-    
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = e.target.value;
         onChange(newValue);
@@ -93,25 +91,25 @@ export default function StudentAutocomplete({
             setQuery(newValue);
         }
     };
-    
+
     const handleStudentSelect = (student: Student) => {
         onSelect(student);
         setShowDropdown(false);
         setSelectedIndex(-1);
         // Don't clear the input immediately - let parent component handle it
     };
-    
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (!showDropdown || students.length === 0) return;
-        
+
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault();
-                setSelectedIndex(prev => (prev < students.length - 1 ? prev + 1 : 0));
+                setSelectedIndex((prev) => (prev < students.length - 1 ? prev + 1 : 0));
                 break;
             case 'ArrowUp':
                 e.preventDefault();
-                setSelectedIndex(prev => (prev > 0 ? prev - 1 : students.length - 1));
+                setSelectedIndex((prev) => (prev > 0 ? prev - 1 : students.length - 1));
                 break;
             case 'Enter':
                 e.preventDefault();
@@ -125,13 +123,13 @@ export default function StudentAutocomplete({
                 break;
         }
     };
-    
+
     const getInitials = (student: Student) => {
-        const first = student.first_name?.trim()?.[0] ?? "";
-        const last = student.last_name?.trim()?.[0] ?? "";
-        return (first + last).toUpperCase() || "U";
+        const first = student.first_name?.trim()?.[0] ?? '';
+        const last = student.last_name?.trim()?.[0] ?? '';
+        return (first + last).toUpperCase() || 'U';
     };
-    
+
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -145,11 +143,11 @@ export default function StudentAutocomplete({
                 setSelectedIndex(-1);
             }
         };
-        
+
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
-    
+
     return (
         <div className={`relative ${className}`}>
             <div className="relative">
@@ -164,59 +162,45 @@ export default function StudentAutocomplete({
                     disabled={disabled}
                     className="pr-8"
                 />
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                    {loading ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                    ) : (
-                        <Search className="h-4 w-4 text-gray-400" />
-                    )}
+                <div className="absolute top-1/2 right-2 -translate-y-1/2 transform">
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin text-gray-400" /> : <Search className="h-4 w-4 text-gray-400" />}
                 </div>
             </div>
-            
+
             {showDropdown && students.length > 0 && (
                 <div
                     ref={dropdownRef}
-                    className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto dark:bg-zinc-800 dark:border-zinc-700"
+                    className="absolute z-[9999] mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
                 >
                     {students.map((student, index) => (
                         <div
                             key={student.id}
-                            className={`px-3 py-2 cursor-pointer flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-zinc-700 ${
+                            className={`flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-zinc-700 ${
                                 index === selectedIndex ? 'bg-gray-50 dark:bg-zinc-700' : ''
                             }`}
                             onClick={() => handleStudentSelect(student)}
                         >
                             <Avatar className="h-8 w-8">
-                                <AvatarFallback className="text-xs">
-                                    {getInitials(student)}
-                                </AvatarFallback>
+                                <AvatarFallback className="text-xs">{getInitials(student)}</AvatarFallback>
                             </Avatar>
-                            <div className="flex-1 min-w-0">
-                                <div className="font-medium text-sm truncate dark:text-white">
-                                    {student.display_name}
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            <div className="min-w-0 flex-1">
+                                <div className="truncate text-sm font-medium dark:text-white">{student.display_name}</div>
+                                <div className="truncate text-xs text-gray-500 dark:text-gray-400">
                                     {student.email} • {student.school_id}
                                 </div>
-                                {student.program && (
-                                    <div className="text-xs text-gray-400 dark:text-gray-500 truncate">
-                                        {student.program}
-                                    </div>
-                                )}
+                                {student.program && <div className="truncate text-xs text-gray-400 dark:text-gray-500">{student.program}</div>}
                             </div>
                         </div>
                     ))}
                 </div>
             )}
-            
+
             {showDropdown && !loading && students.length === 0 && value.length >= 2 && (
                 <div
                     ref={dropdownRef}
-                    className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-3 dark:bg-zinc-800 dark:border-zinc-700"
+                    className="absolute z-[9999] mt-1 w-full rounded-md border border-gray-200 bg-white p-3 shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
                 >
-                    <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                        No students found for "{value}"
-                    </div>
+                    <div className="text-center text-sm text-gray-500 dark:text-gray-400">No students found for "{value}"</div>
                 </div>
             )}
         </div>

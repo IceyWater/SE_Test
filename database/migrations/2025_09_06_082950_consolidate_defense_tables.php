@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -14,43 +14,43 @@ return new class extends Migration
     {
         // First, add missing fields to defense_requests table
         Schema::table('defense_requests', function (Blueprint $table) {
-            if (!Schema::hasColumn('defense_requests', 'manuscript_proposal')) {
+            if (! Schema::hasColumn('defense_requests', 'manuscript_proposal')) {
                 $table->string('manuscript_proposal')->nullable()->after('advisers_endorsement');
             }
-            if (!Schema::hasColumn('defense_requests', 'similarity_index')) {
+            if (! Schema::hasColumn('defense_requests', 'similarity_index')) {
                 $table->string('similarity_index')->nullable()->after('manuscript_proposal');
             }
         });
 
         // Migrate all data from defense_requirements to defense_requests
         $requirements = DB::table('defense_requirements')->get();
-        
+
         foreach ($requirements as $req) {
             // Map adviser name to user ID if possible
             $adviserUserId = null;
             $assignedToUserId = null;
-            
+
             if ($req->adviser) {
                 $adviserUser = DB::table('users')
                     ->where('role', 'Faculty')
-                    ->where(function($query) use ($req) {
+                    ->where(function ($query) use ($req) {
                         $adviserName = $req->adviser;
                         $query->whereRaw('CONCAT(first_name, " ", last_name) = ?', [$adviserName])
-                              ->orWhereRaw('CONCAT(last_name, ", ", first_name) = ?', [$adviserName]);
-                        
+                            ->orWhereRaw('CONCAT(last_name, ", ", first_name) = ?', [$adviserName]);
+
                         // Handle name parts
                         $nameParts = explode(' ', $adviserName);
                         if (count($nameParts) >= 2) {
                             $firstName = $nameParts[0];
                             $lastName = end($nameParts);
-                            $query->orWhere(function($q) use ($firstName, $lastName) {
-                                $q->where('first_name', 'LIKE', '%' . $firstName . '%')
-                                  ->where('last_name', 'LIKE', '%' . $lastName . '%');
+                            $query->orWhere(function ($q) use ($firstName, $lastName) {
+                                $q->where('first_name', 'LIKE', '%'.$firstName.'%')
+                                    ->where('last_name', 'LIKE', '%'.$lastName.'%');
                             });
                         }
                     })
                     ->first();
-                    
+
                 if ($adviserUser) {
                     $adviserUserId = $adviserUser->id;
                     $assignedToUserId = $adviserUser->id;
@@ -64,7 +64,7 @@ return new class extends Migration
                 ->where('thesis_title', $req->thesis_title)
                 ->first();
 
-            if (!$existing) {
+            if (! $existing) {
                 // Insert new record into defense_requests
                 DB::table('defense_requests')->insert([
                     'first_name' => $req->first_name,

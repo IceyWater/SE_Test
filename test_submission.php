@@ -1,20 +1,20 @@
 <?php
 
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__.'/vendor/autoload.php';
 
-$app = require_once __DIR__ . '/bootstrap/app.php';
+$app = require_once __DIR__.'/bootstrap/app.php';
 $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\DefenseRequestController;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 echo "=== TESTING DEFENSE REQUEST SUBMISSION ===\n\n";
 
 // Simulate authentication as a student
 $student = User::where('role', 'Student')->first();
-if (!$student) {
+if (! $student) {
     echo "No student user found. Creating test student...\n";
     $student = User::create([
         'first_name' => 'Test',
@@ -24,15 +24,15 @@ if (!$student) {
         'password' => bcrypt('password'),
         'role' => 'Student',
         'school_id' => '2025-TEST-001',
-        'program' => 'Master of Science in Computer Science'
+        'program' => 'Master of Science in Computer Science',
     ]);
     echo "Created student: {$student->first_name} {$student->last_name} (ID: {$student->id})\n";
 } else {
     // Update existing student with required fields if missing
-    if (!$student->school_id || !$student->program) {
+    if (! $student->school_id || ! $student->program) {
         $student->update([
-            'school_id' => $student->school_id ?: '2025-TEST-' . $student->id,
-            'program' => $student->program ?: 'Master of Science in Computer Science'
+            'school_id' => $student->school_id ?: '2025-TEST-'.$student->id,
+            'program' => $student->program ?: 'Master of Science in Computer Science',
         ]);
         echo "Updated student data for required fields\n";
     }
@@ -52,13 +52,13 @@ $requestData = [
     'thesisTitle' => 'Test Thesis: Advanced AI Systems',
     'defenseType' => 'Proposal',
     'defenseAdviser' => 'Muslimin B. Ontong',
-    'referenceNo' => 'TEST-2025-002'
+    'referenceNo' => 'TEST-2025-002',
 ];
 
 // Create temporary files for testing
 $tempDir = sys_get_temp_dir();
-$testFile1 = $tempDir . DIRECTORY_SEPARATOR . 'test_endorsement.pdf';
-$testFile2 = $tempDir . DIRECTORY_SEPARATOR . 'test_payment.pdf';
+$testFile1 = $tempDir.DIRECTORY_SEPARATOR.'test_endorsement.pdf';
+$testFile2 = $tempDir.DIRECTORY_SEPARATOR.'test_payment.pdf';
 
 file_put_contents($testFile1, 'Test PDF content for adviser endorsement');
 file_put_contents($testFile2, 'Test PDF content for proof of payment');
@@ -71,28 +71,28 @@ foreach ($requestData as $key => $value) {
 echo "\nAttempting to create defense request...\n";
 
 try {
-    $controller = new DefenseRequestController();
-    
+    $controller = new DefenseRequestController;
+
     // Create a mock HTTP request
     $request = Request::create('/defense-request', 'POST', $requestData);
     $request->headers->set('Accept', 'application/json');
     $request->query->set('json', '1');
-    
+
     // Mock file uploads
     $uploadedFile1 = new \Illuminate\Http\Testing\File('rec_endorsement.pdf', fopen($testFile1, 'r'));
     $uploadedFile2 = new \Illuminate\Http\Testing\File('proof_payment.pdf', fopen($testFile2, 'r'));
-    
+
     $request->files->set('recEndorsement', $uploadedFile1);
     $request->files->set('proofOfPayment', $uploadedFile2);
-    
+
     $response = $controller->store($request);
-    
-    echo "Response Status: " . $response->getStatusCode() . "\n";
-    echo "Response Content: " . $response->getContent() . "\n";
-    
+
+    echo 'Response Status: '.$response->getStatusCode()."\n";
+    echo 'Response Content: '.$response->getContent()."\n";
+
 } catch (\Exception $e) {
-    echo "ERROR: " . $e->getMessage() . "\n";
-    echo "Stack trace:\n" . $e->getTraceAsString() . "\n";
+    echo 'ERROR: '.$e->getMessage()."\n";
+    echo "Stack trace:\n".$e->getTraceAsString()."\n";
 }
 
 // Clean up temp files

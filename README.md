@@ -8,6 +8,8 @@ Follow [the groupmate setup guide](docs/groupmate-setup.md) to clone this reposi
 
 ## Running an installation that is already configured
 
+The October 25 automated-check and runtime fixes are described in [the verification report](docs/check-fixes-2026-10-25.md).
+
 Open this folder in VS Code. Start XAMPP MySQL, then run `npm.cmd run dev`. Open http://127.0.0.1:8001.
 
 The integration uses its own `grad_integration_db` database. Original project folders and the original `grad_db` database were preserved.

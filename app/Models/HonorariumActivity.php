@@ -16,7 +16,18 @@ class HonorariumActivity extends Model
         return ['occurred_at' => 'datetime'];
     }
 
-    public function user() { return $this->belongsTo(User::class); }
-    public function defenseRequest() { return $this->belongsTo(DefenseRequest::class); }
-    public function documentSubmission() { return $this->belongsTo(FinanceDocumentSubmission::class, 'finance_document_submission_id'); }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function defenseRequest()
+    {
+        return $this->belongsTo(DefenseRequest::class);
+    }
+
+    public function documentSubmission()
+    {
+        return $this->belongsTo(FinanceDocumentSubmission::class, 'finance_document_submission_id');
+    }
 }

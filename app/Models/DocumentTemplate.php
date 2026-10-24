@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class DocumentTemplate extends Model
 {
     protected $fillable = [
-        'name', 'code', 'defense_type', 'file_path', 'page_count', 'version', 'fields', 'fields_meta', 'created_by'
+        'name', 'code', 'defense_type', 'file_path', 'page_count', 'version', 'fields', 'fields_meta', 'created_by',
     ];
 
     protected $casts = [

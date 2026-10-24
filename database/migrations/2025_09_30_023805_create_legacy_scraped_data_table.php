@@ -23,7 +23,7 @@ return new class extends Migration
             $table->json('scraping_errors')->nullable(); // Array of errors if any
             $table->timestamp('scraped_at');
             $table->timestamps();
-            
+
             // Indexes for better performance
             $table->index(['user_id', 'scraped_at']);
             $table->index(['school_id']);

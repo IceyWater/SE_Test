@@ -1,6 +1,6 @@
+import { Separator } from '@/components/ui/separator';
+import { Moon, Sun } from 'lucide-react';
 import React from 'react';
-import { Sun, Moon } from 'lucide-react';
-import { Separator } from "@/components/ui/separator";
 
 interface UnifiedDashboardLayoutProps {
     user: {
@@ -27,9 +27,9 @@ function isDaytime() {
 
 export default function UnifiedDashboardLayout({ user, children, customGreeting }: UnifiedDashboardLayoutProps) {
     const greeting = customGreeting || (isDaytime() ? 'Good morning' : 'Good evening');
-    
+
     return (
-        <div className="flex h-full flex-1 flex-col gap-6 overflow-auto rounded-xl pt-6 pr-7 pl-7 pb-6">
+        <div className="flex h-full flex-1 flex-col gap-6 overflow-auto rounded-xl pt-6 pr-7 pb-6 pl-7">
             {/* Unified Header Section */}
             <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
@@ -42,11 +42,7 @@ export default function UnifiedDashboardLayout({ user, children, customGreeting 
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        {isDaytime() ? (
-                            <Sun className="size-6 text-yellow-500" />
-                        ) : (
-                            <Moon className="size-6 text-blue-400" />
-                        )}
+                        {isDaytime() ? <Sun className="size-6 text-yellow-500" /> : <Moon className="size-6 text-blue-400" />}
                     </div>
                 </div>
                 <Separator />

@@ -16,15 +16,13 @@ export function NavMain({ items = [], expandedMenus, setExpandedMenus, sectionTi
     const page = usePage();
 
     const toggle = (title: string) => {
-        const newMenus = expandedMenus.includes(title)
-            ? expandedMenus.filter((t: string) => t !== title)
-            : [...expandedMenus, title];
+        const newMenus = expandedMenus.includes(title) ? expandedMenus.filter((t: string) => t !== title) : [...expandedMenus, title];
         setExpandedMenus(newMenus);
     };
 
     return (
         <SidebarGroup className="px-2 py-0">
-            <SidebarGroupLabel>{sectionTitle || "Graduate School"}</SidebarGroupLabel>
+            <SidebarGroupLabel>{sectionTitle || 'Graduate School'}</SidebarGroupLabel>
             <SidebarMenu>
                 {items.map((item) => {
                     const isActive = item.href === page.url;
@@ -45,9 +43,7 @@ export function NavMain({ items = [], expandedMenus, setExpandedMenus, sectionTi
                                             <span className="flex items-center gap-2">
                                                 {item.icon && <item.icon className="size-4" />}
                                                 {item.title}
-                                                {item.indicator && (
-                                                    <span className="ml-1 w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
-                                                )}
+                                                {item.indicator && <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-rose-500" />}
                                             </span>
                                             <ChevronRight className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
                                         </button>
@@ -56,9 +52,7 @@ export function NavMain({ items = [], expandedMenus, setExpandedMenus, sectionTi
                                             <span className="flex items-center gap-2">
                                                 {item.icon && <item.icon className="size-4" />}
                                                 {item.title}
-                                                {item.indicator && (
-                                                    <span className="ml-1 w-1 h-1 rounded-full bg-zinc-500 inline-block" />
-                                                )}
+                                                {item.indicator && <span className="ml-1 inline-block h-1 w-1 rounded-full bg-zinc-500" />}
                                             </span>
                                         </Link>
                                     )}
@@ -75,15 +69,10 @@ export function NavMain({ items = [], expandedMenus, setExpandedMenus, sectionTi
                                             return (
                                                 <SidebarMenuItem key={sub.title}>
                                                     <SidebarMenuButton asChild isActive={isSubActive} tooltip={undefined}>
-                                                        <Link
-                                                            href={sub.href}
-                                                            className="flex items-center justify-between py-1"
-                                                        >
+                                                        <Link href={sub.href} className="flex items-center justify-between py-1">
                                                             <span>{sub.title}</span>
                                                             {sub.title === 'Defense Requests' && !!sub.count && (
-                                                                <p className="ml-2 mr-2 text-xs text-rose-500 font-semibold">
-                                                                    {sub.count}
-                                                                </p>
+                                                                <p className="mr-2 ml-2 text-xs font-semibold text-rose-500">{sub.count}</p>
                                                             )}
                                                         </Link>
                                                     </SidebarMenuButton>

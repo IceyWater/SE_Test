@@ -60,4 +60,3 @@ class CoordinatorProgramAssignment extends Model
             ->toArray();
     }
 }
-

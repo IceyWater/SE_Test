@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\ServiceProvider;
 
 class UploadConfigServiceProvider extends ServiceProvider
 {
@@ -22,7 +22,7 @@ class UploadConfigServiceProvider extends ServiceProvider
     {
         // Apply PHP configuration for large file uploads
         $this->configurePhpForLargeUploads();
-        
+
         // Log configuration if in debug mode
         if (config('app.debug')) {
             Log::info('Upload Configuration Applied', [
@@ -33,7 +33,7 @@ class UploadConfigServiceProvider extends ServiceProvider
             ]);
         }
     }
-    
+
     /**
      * Configure PHP settings for large academic document uploads
      */
@@ -43,18 +43,18 @@ class UploadConfigServiceProvider extends ServiceProvider
         if (php_sapi_name() !== 'cli') {
             // Set memory limit for processing large files
             ini_set('memory_limit', '512M');
-            
+
             // Set upload limits for academic documents
             ini_set('upload_max_filesize', '200M');
             ini_set('post_max_size', '200M');
-            
+
             // Set execution time limits for file processing
             ini_set('max_execution_time', 300); // 5 minutes
             ini_set('max_input_time', 300);     // 5 minutes
-            
+
             // Increase input variables for complex forms
             ini_set('max_input_vars', 3000);
-            
+
             // File upload settings
             ini_set('file_uploads', 1);
             ini_set('max_file_uploads', 20);

@@ -32,7 +32,6 @@ export function Stepper({
       <div className="w-full overflow-x-auto mb-4 p-2 flex-shrink-0">
         <div className="min-w-fit flex items-center gap-2">
           {steps.map((_, i) => {
-            const done = i < currentStep;
             const active = i === currentStep;
             return (
               <Fragment key={i}>

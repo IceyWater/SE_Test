@@ -1,10 +1,9 @@
 <?php
 
-
 namespace App\Observers;
 
-use App\Models\User;
 use App\Models\Adviser;
+use App\Models\User;
 
 class UserObserver
 {

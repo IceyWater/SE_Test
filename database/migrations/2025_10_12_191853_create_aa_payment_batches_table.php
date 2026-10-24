@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('aa_payment_batches', function (Blueprint $table) {
             $table->id();
             $table->string('name')->nullable();
-            $table->unsignedBigInteger('created_by'); 
+            $table->unsignedBigInteger('created_by');
             $table->enum('status', ['pending', 'sent', 'archived'])->default('pending');
             $table->timestamps();
         });

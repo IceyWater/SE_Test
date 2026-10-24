@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Services\LegacyPortalClient;
 
 test('login screen can be rendered', function () {
     $response = $this->get('/login');
@@ -9,10 +10,12 @@ test('login screen can be rendered', function () {
 });
 
 test('users can authenticate using the login screen', function () {
-    $user = User::factory()->create();
+    $this->artisan('demo:diagram-accounts')->assertSuccessful();
+    $user = User::where('email', 'student@uic.edu.ph')->firstOrFail();
+    $this->mock(LegacyPortalClient::class)->shouldNotReceive('login', 'loginCoordinator');
 
     $response = $this->post('/login', [
-        'email' => $user->email,
+        'identifier' => $user->email,
         'password' => 'password',
     ]);
 
@@ -21,14 +24,17 @@ test('users can authenticate using the login screen', function () {
 });
 
 test('users can not authenticate with invalid password', function () {
-    $user = User::factory()->create();
+    $this->artisan('demo:diagram-accounts')->assertSuccessful();
+    $user = User::where('email', 'student@uic.edu.ph')->firstOrFail();
+    $this->mock(LegacyPortalClient::class)->shouldNotReceive('login', 'loginCoordinator');
 
-    $this->post('/login', [
-        'email' => $user->email,
+    $response = $this->post('/login', [
+        'identifier' => $user->email,
         'password' => 'wrong-password',
     ]);
 
     $this->assertGuest();
+    $response->assertSessionHasErrors('identifier');
 });
 
 test('users can logout', function () {

@@ -22,7 +22,7 @@ return new class extends Migration
 
             // Prevent duplicate assignments (one coordinator per program)
             $table->unique(['coordinator_user_id', 'program_name'], 'coord_prog_unique');
-            
+
             // Index for fast lookups
             $table->index('program_name', 'coord_prog_name_idx');
             $table->index(['coordinator_user_id', 'is_active'], 'coord_active_idx');
