@@ -292,7 +292,7 @@ it('resolves registered adviser choices to panel records without confusing user 
     expect((int) $d->fresh()->defense_chairperson)->toBe(1)->and($d->fresh()->panel_display['defense_chairperson'])->toBe('Demo Person');
     $this->actingAs(User::find(1))->getJson('/api/defense-request/'.$d->id)->assertOk()->assertJsonPath('defense_chairperson', 'Demo Person');
 });
-it('uses the correct program level for honorarium rates',function ($program,$expected) {
+it('uses the correct program level for honorarium rates', function ($program, $expected) {
     expect(\App\Helpers\ProgramLevel::getLevel($program))->toBe($expected);
 })->with([
     ['Master in Business Administration', 'Masteral'],

@@ -126,7 +126,7 @@ class FinanceDocumentWorkflowController extends Controller
             }
             $doc->update(['status' => $data['status'], 'finance_notes' => $data['finance_notes'] ?? null, 'reviewed_by' => auth()->id(), 'reviewed_at' => now()]);
             $this->activity($dr, $doc, 'finance_review', 'Finance reviewed '.str_replace('_', ' ', $doc->document_type), 'Finance marked the document '.$data['status'].'. '.($data['finance_notes'] ?? ''));
-            $this->notice($dr,'Finance Review Updated','Finance marked a defense document '.$data['status'].'.',['Administrative Assistant', 'Dean']);
+            $this->notice($dr, 'Finance Review Updated', 'Finance marked a defense document '.$data['status'].'.', ['Administrative Assistant', 'Dean']);
         });
 
         return $this->saved($request, 'Finance review saved.');
