@@ -24,7 +24,7 @@ class HonorariumLedgerService
         if ($docs->get('payment_receipt')?->status !== 'verified' || $docs->get('panel_breakdown')?->status !== 'verified') {
             throw ValidationException::withMessages(['workflow' => 'Finance must verify both the receipt and panel breakdown first.']);
         }
-        if (($docs['payment_receipt']->payload['receipt_path'] ?? null) !== $dr->proof_of_payment || ($docs['panel_breakdown']->payload['panel_names'] ?? []) !== app(HonorariumAccess::class)->panelNames($dr)) {
+        if (($docs['payment_receipt']->payload['receipt_path'] ?? null) !== $dr->proof_of_payment || ($docs['panel_breakdown']->payload['panel_names'] ?? []) !== app(HonorariumAccess::class)->panelNames($dr) || ($docs['panel_breakdown']->payload['panel_affiliations'] ?? []) !== ($dr->panel_affiliations ?? [])) {
             throw ValidationException::withMessages(['workflow' => 'Finance documents no longer match the current defense information. Resubmit them for verification.']);
         }
     }
@@ -32,15 +32,21 @@ class HonorariumLedgerService
     public function recipients(DefenseRequest $dr): array
     {
         $recipients = [];
+        $seen = [];
         foreach (['defense_chairperson' => 'Panel Chair', 'defense_panelist1' => 'Panel Member', 'defense_panelist2' => 'Panel Member', 'defense_panelist3' => 'Panel Member', 'defense_panelist4' => 'Panel Member'] as $field => $role) {
             $id = $dr->{$field};
             if (! $id) {
                 continue;
             }
-            $p = is_numeric($id) ? Panelist::find($id) : Panelist::where('name', $id)->first();
+            $matches = is_numeric($id) ? Panelist::whereKey($id)->get() : Panelist::where('name', $id)->get();
+            $p = $matches->count() === 1 ? $matches->first() : null;
             if (! $p) {
                 throw ValidationException::withMessages(['panelists' => 'Every panelist must have a registered panelist record.']);
             }
+            if (isset($seen[$p->id])) {
+                throw ValidationException::withMessages(['panelists' => 'Each panel seat must have a different registered panelist.']);
+            }
+            $seen[$p->id] = true;
             $recipients[] = ['recipient_key' => 'panel:'.$p->id.':'.$role, 'recipient_name' => $p->name, 'recipient_email' => $p->email, 'recipient_role' => $role];
         }
         if ($dr->adviser_user_id && ($adviser = User::find($dr->adviser_user_id))) {
@@ -58,18 +64,41 @@ class HonorariumLedgerService
         DB::transaction(function () use ($request, $actor, $data) {
             $dr = DefenseRequest::lockForUpdate()->findOrFail($request->id);
             $this->assertVerified($dr);
+            $service = app(DefenseServiceConfirmation::class)->assertRendered($dr);
             if (HonorariumDisbursement::where('defense_request_id', $dr->id)->where('status', '!=', 'voided')->exists()) {
                 throw ValidationException::withMessages(['workflow' => 'This defense already has active honorarium records. Review the existing records.']);
             }
-            foreach ($this->recipients($dr) as $recipient) {
+            $rendered = collect($service->participants)->where('attendance', 'rendered');
+            if ($rendered->isEmpty()) {
+                throw ValidationException::withMessages(['service' => 'No recipients have confirmed rendered service.']);
+            }
+            foreach ($rendered as $participant) {
+                $recipient = collect($participant)->only(['recipient_key', 'recipient_name', 'recipient_email', 'recipient_role'])->all();
+                if (($participant['affiliation'] ?? null) === 'external') {
+                    $recipient['recipient_role'] = 'External '.$recipient['recipient_role'];
+                }
                 $types = match ($recipient['recipient_role']) {
                     'Panel Chair' => ['Panel Chair', 'Chairperson', 'Panel Chairperson'],default => [$recipient['recipient_role']]
                 };
-                $rates = PaymentRate::where('program_level', ProgramLevel::getLevel($dr->program))->whereIn('type', $types)->get()->filter(fn ($r) => $this->normalizeDefense($r->defense_type) === $this->normalizeDefense($dr->defense_type));
+                $baseRates = PaymentRate::where('program_level', ProgramLevel::getLevel($dr->program))->get()->filter(fn ($r) => $this->normalizeDefense($r->defense_type) === $this->normalizeDefense($dr->defense_type));
+                $rates = $baseRates->whereIn('type', $types);
+                if ($recipient['recipient_role'] === 'Panel Member') {
+                    // Keep existing position-specific Dean rates authoritative when configured.
+                    $panelId = explode(':', $recipient['recipient_key'])[1];
+                    foreach (['defense_panelist1', 'defense_panelist2', 'defense_panelist3', 'defense_panelist4'] as $index => $field) {
+                        if ((string) $dr->{$field} === $panelId) {
+                            $specific = $baseRates->where('type', 'Panel Member '.($index + 1));
+                            if ($specific->isNotEmpty()) {
+                                $rates = $specific;
+                            }
+                            break;
+                        }
+                    }
+                }
                 if ($rates->count() !== 1 || (float) $rates->first()->amount <= 0) {
                     throw ValidationException::withMessages(['rates' => 'Configure one positive Dean payment rate for '.$recipient['recipient_role'].' and this defense type.']);
                 }
-                $row = HonorariumDisbursement::create($recipient + ['defense_request_id' => $dr->id, 'amount' => $rates->first()->amount, 'school_year' => $data['school_year'], 'semester' => $data['semester'], 'status' => 'prepared', 'prepared_by' => $actor->id, 'history' => [$this->entry('prepared', $actor, 'Prepared from configured payment rates.')]]);
+                HonorariumDisbursement::create($recipient + ['recipient_affiliation' => $participant['affiliation'], 'service_evidence' => ['participant' => $participant, 'completed_on' => $service->completed_on->format('Y-m-d'), 'confirmed_by' => $service->confirmed_by, 'confirmed_at' => $service->confirmed_at->toIso8601String(), 'snapshot_hash' => $service->snapshot_hash], 'defense_request_id' => $dr->id, 'amount' => $rates->first()->amount, 'school_year' => $data['school_year'], 'semester' => $data['semester'], 'status' => 'prepared', 'prepared_by' => $actor->id, 'history' => [$this->entry('prepared', $actor, 'Prepared from confirmed service and configured payment rates.')]]);
             }
             $this->notify($dr, 'Honoraria Prepared', 'Honorarium records are ready for Finance approval.', ['Finance', 'Finance Office', 'Finance Officer']);
         });
@@ -91,11 +120,18 @@ class HonorariumLedgerService
             $dr = DefenseRequest::lockForUpdate()->findOrFail($record->defense_request_id);
             $row = HonorariumDisbursement::lockForUpdate()->findOrFail($record->id);
             $this->assertVerified($dr);
+            $service = app(DefenseServiceConfirmation::class)->assertRendered($dr);
+            if (! $row->service_evidence || $row->service_evidence['snapshot_hash'] !== $service->snapshot_hash) {
+                throw ValidationException::withMessages(['service' => 'This payment has no matching current service evidence. Confirm service and prepare unpaid records again.']);
+            }
             $next = ['prepared' => 'approved', 'approved' => 'disbursed', 'disbursed' => 'claimed'][$row->status] ?? null;
             if ($row->requires_review || $next !== $data['status']) {
                 throw ValidationException::withMessages(['status' => 'This transition is not available. Refresh the record and check any review warnings.']);
             }
             if ($next === 'disbursed') {
+                if ($data['event_date'] < $service->completed_on->format('Y-m-d')) {
+                    throw ValidationException::withMessages(['event_date' => 'Disbursement cannot precede the confirmed service date.']);
+                }
                 if ($dr->workflow_state !== 'completed') {
                     throw ValidationException::withMessages(['workflow' => 'Record the completed defense before recording a disbursement.']);
                 }
@@ -133,7 +169,7 @@ class HonorariumLedgerService
         }
         $panelFields = ['defense_chairperson', 'defense_panelist1', 'defense_panelist2', 'defense_panelist3', 'defense_panelist4'];
         $receiptChanged = $dr->wasChanged('proof_of_payment');
-        $panelsChanged = $dr->wasChanged(array_merge($panelFields, ['adviser_user_id', 'program', 'defense_type']));
+        $panelsChanged = $dr->wasChanged(array_merge($panelFields, ['panel_affiliations', 'adviser_user_id', 'program', 'defense_type']));
         $cancelled = $dr->wasChanged('workflow_state') && in_array($dr->workflow_state, ['cancelled', 'rejected', 'coordinator-rejected', 'adviser-rejected'], true);
         if (! $receiptChanged && ! $panelsChanged && ! $cancelled) {
             return;

@@ -65,6 +65,7 @@ beforeEach(function () {
     }
     (require database_path('migrations/2026_10_24_000003_create_honorarium_disbursements.php'))->up();
     (require database_path('migrations/2026_10_24_000004_create_defense_schedule_mutex.php'))->up();
+    (require database_path('migrations/2026_10_26_000001_create_defense_service_records.php'))->up();
     foreach (['Student', 'Administrative Assistant', 'Finance', 'Adviser', 'Coordinator', 'Adviser'] as $i => $role) {
         DB::table('users')->insert(['id' => $i + 1, 'role' => $role, 'first_name' => 'Demo', 'last_name' => 'Person', 'email' => 'user'.($i + 1).'@example.test', 'school_id' => 'S'.($i + 1), 'program' => 'Test', 'email_verified_at' => now()]);
     }
@@ -75,7 +76,7 @@ beforeEach(function () {
 });
 afterEach(function () {
     $this->travelBack();
-    foreach (['honorarium_disbursements', 'defense_schedule_mutex', 'honorarium_activities', 'finance_document_submissions', 'finance_honorarium_submissions', 'notifications', 'honorarium_payments', 'defense_requests', 'payment_rates', 'panelists', 'advisers', 'users'] as $t) {
+    foreach (['defense_service_records', 'honorarium_disbursements', 'defense_schedule_mutex', 'honorarium_activities', 'finance_document_submissions', 'finance_honorarium_submissions', 'notifications', 'honorarium_payments', 'defense_requests', 'payment_rates', 'panelists', 'advisers', 'users'] as $t) {
         Schema::dropIfExists($t);
     }
 });
@@ -169,13 +170,16 @@ it('keeps Finance in its workspace and denies unauthenticated access', function 
 
 function verifiedLedgerDefense(): DefenseRequest
 {
-    $d = integratedDefense(['defense_type' => 'Proposal']);
+    $d = integratedDefense(['defense_type' => 'Proposal', 'workflow_state' => 'completed', 'status' => 'Completed', 'scheduled_date' => '2026-10-23', 'scheduled_time' => '09:00', 'scheduled_end_time' => '10:00', 'panel_affiliations' => ['panel:1:Panel Chair' => 'internal']]);
     foreach (['payment_receipt', 'panel_breakdown'] as $type) {
-        FinanceDocumentSubmission::create(['defense_request_id' => $d->id, 'document_type' => $type, 'status' => 'verified', 'payload' => $type === 'payment_receipt' ? ['receipt_path' => $d->proof_of_payment] : ['panel_names' => ['Demo Person']]]);
+        FinanceDocumentSubmission::create(['defense_request_id' => $d->id, 'document_type' => $type, 'status' => 'verified', 'payload' => $type === 'payment_receipt' ? ['receipt_path' => $d->proof_of_payment] : ['panel_names' => ['Demo Person'], 'panel_affiliations' => $d->panel_affiliations]]);
     }
     foreach (['Panel Chair' => 1500, 'Adviser' => 1000] as $type => $amount) {
         DB::table('payment_rates')->insert(['program_level' => 'Masteral', 'type' => $type, 'defense_type' => 'Proposal', 'amount' => $amount]);
     }
+
+    $service = app(\App\Services\DefenseServiceConfirmation::class);
+    \App\Models\DefenseServiceRecord::create(['defense_request_id' => $d->id, 'snapshot_hash' => $service->snapshot($d), 'participants' => array_map(fn ($person) => $person + ['affiliation' => $person['recipient_role'] === 'Adviser' ? null : 'internal', 'attendance' => 'rendered'], app(\App\Services\HonorariumLedgerService::class)->recipients($d)), 'completed_on' => '2026-10-23', 'confirmed_by' => 5, 'confirmed_at' => now(), 'history' => []]);
 
     return $d;
 }
@@ -202,7 +206,7 @@ it('records Finance approval disbursement and claiming in order with history', f
     $this->patchJson('/honorarium-ledger/'.$row->id, ['status' => 'approved'])->assertForbidden();
     $this->actingAs(User::find(3))->patchJson('/honorarium-ledger/'.$row->id, ['status' => 'claimed', 'event_date' => '2026-10-24'])->assertUnprocessable();
     $this->patchJson('/honorarium-ledger/'.$row->id, ['status' => 'approved'])->assertOk();
-    $this->patchJson('/honorarium-ledger/'.$row->id, ['status' => 'disbursed', 'event_date' => '2026-10-24', 'payment_reference' => 'TEST-RECORD'])->assertUnprocessable();
+    $this->patchJson('/honorarium-ledger/'.$row->id, ['status' => 'disbursed', 'event_date' => '2026-10-25', 'payment_reference' => 'TEST-RECORD'])->assertUnprocessable();
     $d->update(['workflow_state' => 'completed']);
     $this->patchJson('/honorarium-ledger/'.$row->id, ['status' => 'disbursed', 'event_date' => '2026-10-24'])->assertUnprocessable();
     $this->patchJson('/honorarium-ledger/'.$row->id, ['status' => 'disbursed', 'event_date' => '2026-10-24', 'payment_reference' => 'TEST-RECORD'])->assertOk();

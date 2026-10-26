@@ -99,7 +99,8 @@ class FinanceDocumentWorkflowController extends Controller
             abort_unless(in_array($doc->status, ['ready', 'rejected'], true), 422, 'The panel breakdown is not ready or has already been sent.');
             $names = $access->panelNames($dr);
             abort_unless(count($names) > 0, 422, 'Assign panelists before sending the breakdown.');
-            $doc->update(['status' => 'submitted', 'payload' => ['panel_names' => $names], 'submitted_by' => auth()->id(), 'submitted_at' => now(), 'finance_notes' => null, 'reviewed_by' => null, 'reviewed_at' => null]);
+            $details = collect(app(\App\Services\HonorariumLedgerService::class)->recipients($dr))->where('recipient_role', '!=', 'Adviser')->map(fn ($person) => ['name' => $person['recipient_name'], 'role' => $person['recipient_role'], 'affiliation' => $dr->panel_affiliations[$person['recipient_key']] ?? 'unclassified'])->values()->all();
+            $doc->update(['status' => 'submitted', 'payload' => ['panel_names' => $names, 'panel_affiliations' => $dr->panel_affiliations ?? [], 'panel_details' => $details], 'submitted_by' => auth()->id(), 'submitted_at' => now(), 'finance_notes' => null, 'reviewed_by' => null, 'reviewed_at' => null]);
             $this->activity($dr, $doc, 'document_submitted', 'Panel breakdown sent to Finance', 'Current panel names: '.implode(', ', $names));
             $this->notice($dr, 'Panel Breakdown for Review', 'A defense panel breakdown is awaiting Finance verification.', ['Finance', 'Finance Office', 'Finance Officer']);
         });
@@ -122,6 +123,7 @@ class FinanceDocumentWorkflowController extends Controller
                     abort_unless(($doc->payload['receipt_path'] ?? null) === $dr->proof_of_payment, 422, 'The receipt changed. Reject this document so the AA can send the replacement.');
                 } else {
                     abort_unless(($doc->payload['panel_names'] ?? []) === $access->panelNames($dr), 422, 'Panel assignments changed. Reject this document so the AA can send the current panel.');
+                    abort_unless(($doc->payload['panel_affiliations'] ?? []) === ($dr->panel_affiliations ?? []), 422, 'Panel classifications changed. Request an updated breakdown.');
                 }
             }
             $doc->update(['status' => $data['status'], 'finance_notes' => $data['finance_notes'] ?? null, 'reviewed_by' => auth()->id(), 'reviewed_at' => now()]);

@@ -11,7 +11,18 @@ import { toast } from 'sonner';
 
 const PROGRAM_LEVELS = ['Masteral', 'Doctorate'] as const;
 const DEFENSE_TYPES = ['Proposal', 'Pre-final', 'Final'] as const;
-const TYPES = ['Adviser', 'Panel Chair', 'Panel Member 1', 'Panel Member 2', 'Panel Member 3', 'Panel Member 4', 'REC Fee', 'School Share'];
+const TYPES = [
+    'Adviser',
+    'Panel Chair',
+    'Panel Member 1',
+    'Panel Member 2',
+    'Panel Member 3',
+    'Panel Member 4',
+    'External Panel Chair',
+    'External Panel Member',
+    'REC Fee',
+    'School Share',
+];
 
 type Rate = {
     id?: number;
@@ -154,10 +165,10 @@ export default function PaymentRatesPage({ rates: initialRates }: Props) {
         });
 
         const totalRow = [
-            'TOTAL',
+            'BASE SUBTOTAL (EXCLUDES EXTERNAL)',
             ...DEFENSE_TYPES.map((dtype) => {
                 const total = rates
-                    .filter((r) => r.program_level === program_level && r.defense_type === dtype)
+                    .filter((r) => r.program_level === program_level && r.defense_type === dtype && !r.type.startsWith('External Panel '))
                     .reduce((sum, r) => sum + (parseFloat(String(r.amount)) || 0), 0);
                 return total === 0 ? '--' : `₱${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
             }),
@@ -229,6 +240,10 @@ export default function PaymentRatesPage({ rates: initialRates }: Props) {
                 <div className="mb-6 px-6">
                     <h1 className="mb-1 text-2xl font-bold">Payment Rates</h1>
                     <p className="text-muted-foreground mb-4 text-sm">View and manage payment rates for Masteral and Doctorate programs.</p>
+                    <p className="text-muted-foreground text-sm">
+                        External rates are per recipient and excluded from the base subtotal. Actual honoraria depend on assigned roles and confirmed
+                        service; configuring a rate does not change student charges.
+                    </p>
                 </div>
                 {/* Tabs and Print Button */}
                 <div className="mb-6 flex flex-col items-start justify-between gap-4 px-4 sm:flex-row sm:items-center sm:px-6">
@@ -301,12 +316,17 @@ export default function PaymentRatesPage({ rates: initialRates }: Props) {
                                                 ))}
                                                 {/* Total row */}
                                                 <TableRow className="border-t border-zinc-400 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800">
-                                                    <TableCell className="text-left text-xs font-bold">TOTAL</TableCell>
+                                                    <TableCell className="text-left text-xs font-bold">BASE SUBTOTAL (EXCLUDES EXTERNAL)</TableCell>
                                                     {DEFENSE_TYPES.map((dtype) => (
                                                         <TableCell key={dtype} className="text-end text-xs font-bold">
                                                             {(() => {
                                                                 const total = rates
-                                                                    .filter((r) => r.program_level === program_level && r.defense_type === dtype)
+                                                                    .filter(
+                                                                        (r) =>
+                                                                            r.program_level === program_level &&
+                                                                            r.defense_type === dtype &&
+                                                                            !r.type.startsWith('External Panel '),
+                                                                    )
                                                                     .reduce((sum, r) => sum + (parseFloat(String(r.amount)) || 0), 0);
                                                                 return total === 0
                                                                     ? '--'

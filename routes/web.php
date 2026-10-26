@@ -183,6 +183,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     /* Notifications */
     Route::get('/notification', [NotificationController::class, 'index'])->name('notification.index');
     Route::get('/honorarium-ledger', [\App\Http\Controllers\HonorariumLedgerController::class, 'index'])->name('honorarium-ledger.index');
+    Route::get('/defense-register', [\App\Http\Controllers\DefenseRegisterController::class, 'index'])->name('defense-register.index');
+    Route::get('/defense-register/export', [\App\Http\Controllers\DefenseRegisterController::class, 'export'])->name('defense-register.export');
+    Route::get('/defense-register/print', [\App\Http\Controllers\DefenseRegisterController::class, 'print'])->name('defense-register.print');
+    Route::patch('/defense-register/{defenseRequest}/panel-types', [\App\Http\Controllers\DefenseRegisterController::class, 'classify'])->name('defense-register.classify');
+    Route::post('/defense-register/{defenseRequest}/confirm-service', [\App\Http\Controllers\DefenseRegisterController::class, 'confirm'])->name('defense-register.confirm');
     Route::post('/honorarium-ledger/{defenseRequest}/prepare', [\App\Http\Controllers\HonorariumLedgerController::class, 'prepare'])->name('honorarium-ledger.prepare');
     Route::patch('/honorarium-ledger/{disbursement}', [\App\Http\Controllers\HonorariumLedgerController::class, 'update'])->name('honorarium-ledger.update');
     // Honorarium module additions, preserving the defense and comprehensive exam routes.

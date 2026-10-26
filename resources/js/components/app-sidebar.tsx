@@ -154,6 +154,7 @@ export function AppSidebar() {
             ...navItems,
             { title: 'Honorarium Tracking', href: '/honorarium-workspace', icon: DollarSign },
             { title: 'Honorarium Payments', href: '/honorarium-ledger', icon: DollarSign },
+            { title: 'Defense Register', href: '/defense-register', icon: CalendarFold },
         ];
         if (['Administrative Assistant', 'Dean', 'Super Admin', 'SuperAdmin', 'Finance', 'Finance Office', 'Finance Officer'].includes(user.role)) {
             navItems.push({ title: 'Finance Documents', href: '/honorarium-documents', icon: FileText });

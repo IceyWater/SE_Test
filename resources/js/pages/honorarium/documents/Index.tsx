@@ -13,7 +13,7 @@ type Doc = {
     ready_on?: string | null;
     submitted_at?: string | null;
     finance_notes?: string | null;
-    payload?: { panel_names?: string[] } | null;
+    payload?: { panel_names?: string[]; panel_details?: { name: string; role: string; affiliation: string }[] } | null;
 };
 type Item = {
     can_send: boolean;
@@ -141,6 +141,12 @@ export default function FinanceDocumentsPage() {
                         </p>
                     )}
                     {doc.finance_notes && <p className="bg-muted mt-2 rounded p-2 text-sm">Finance note: {doc.finance_notes}</p>}
+                    {type === 'two' &&
+                        doc.payload?.panel_details?.map((person, index) => (
+                            <p key={index} className="text-muted-foreground mt-1 text-xs">
+                                {person.name} · {person.role} · {person.affiliation}
+                            </p>
+                        ))}
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {canSubmit && item.can_send && type === 'one' && ['ready', 'rejected'].includes(doc.status) && (

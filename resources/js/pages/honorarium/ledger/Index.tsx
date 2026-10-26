@@ -117,6 +117,9 @@ export default function HonorariumLedger() {
                     <Link href="/honorarium-documents" className="mt-2 inline-block text-sm underline">
                         Review Finance documents
                     </Link>
+                    <Link href="/defense-register" className="mt-2 ml-4 inline-block text-sm underline">
+                        Defense register and service confirmation
+                    </Link>
                 </div>
                 {error && (
                     <p role="alert" className="rounded border border-red-300 p-3 text-red-700 dark:text-red-300">
@@ -148,8 +151,8 @@ export default function HonorariumLedger() {
                     >
                         <h2 className="font-semibold">Prepare recipient records</h2>
                         <p className="text-muted-foreground text-sm">
-                            Both Finance documents must be verified. Amounts are copied from the dean’s current rates and preserved in the payment
-                            record.
+                            Confirm defense completion and recipient service in the Defense Register first. Both Finance documents must be verified.
+                            Only rendered services are included. Amounts are copied from the dean’s current rates and preserved in the payment record.
                         </p>
                         <div className="grid gap-3 sm:grid-cols-3">
                             <label className="text-sm">

@@ -10,6 +10,8 @@ Follow [the groupmate setup guide](docs/groupmate-setup.md) to clone this reposi
 
 The October 25 automated-check and runtime fixes are described in [the verification report](docs/check-fixes-2026-10-25.md).
 
+The new [Defense Register](docs/defense-register-2026-10-26.md) provides schedule exports, internal/external panel classification, and actual service confirmation before honorarium preparation. Run `php artisan migrate` after updating.
+
 Open this folder in VS Code. Start XAMPP MySQL, then run `npm.cmd run dev`. Open http://127.0.0.1:8001.
 
 The integration uses its own `grad_integration_db` database. Original project folders and the original `grad_db` database were preserved.

@@ -1440,6 +1440,7 @@ class DefenseRequestController extends Controller
                 // Sum all rates for this program level and defense type
                 $expectedTotal = \App\Models\PaymentRate::where('program_level', $programLevel)
                     ->where('defense_type', $r->defense_type)
+                    ->whereNotIn('type', ['External Panel Chair', 'External Panel Member'])
                     ->sum('amount');
 
                 // Get coordinator name

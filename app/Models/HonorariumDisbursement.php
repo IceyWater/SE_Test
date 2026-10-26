@@ -8,7 +8,7 @@ class HonorariumDisbursement extends Model
 {
     protected $guarded = [];
 
-    protected $casts = ['amount' => 'decimal:2', 'history' => 'array', 'requires_review' => 'boolean', 'disbursed_on' => 'date', 'claimed_on' => 'date'];
+    protected $casts = ['amount' => 'decimal:2', 'history' => 'array', 'requires_review' => 'boolean', 'disbursed_on' => 'date', 'claimed_on' => 'date', 'service_evidence' => 'array'];
 
     public function defenseRequest()
     {

@@ -14,6 +14,7 @@ class DefenseRequest extends Model
     // protected $fillable = [..., 'ai_detection_certificate', 'endorsement_form'];
 
     protected $casts = [
+        'panel_affiliations' => 'array',
         'correction_requested_at' => 'datetime',
         'correction_count' => 'integer',
         'workflow_history' => 'array',
