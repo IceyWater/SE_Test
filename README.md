@@ -18,4 +18,8 @@ Finance demo: `finance@uic.edu.ph` / `password`. Existing local demo logins rema
 
 See [integration setup and limitations](docs/integration-setup.md) for the module handoff, running workers, Google OAuth redirect configuration, and the Comprehensive Exam audit findings.
 
+To seed a mock defense schedule from the legacy workbook student rosters, run `php artisan db:seed --class="Database\Seeders\LegacyMockDefenseScheduleSeeder"`. This creates clearly labeled mock defense requests on future weekdays from the current date; it does not use the workbook's old calendar or delete existing data.
+
+To preview Honorarium Tracking with mock receipts, finance workflow states, payment rates, and payment lifecycle examples, first ensure the database has at least one user, then run `php artisan db:seed --class="Database\Seeders\HonorariumTrackingDemoSeeder"`. The seeder only resets its own `MOCK-HONORARIUM-*` records; all included receipt and payment data are explicitly mock.
+
 Validation on October 24, 2026: payment-ledger, re-verification, scheduling and eligibility improvements are documented in docs/implemented-improvements-2026-10-24.md. The role-page checks include existing Defense Request pages and the new Finance pages. Live school-portal eligibility and final honorarium disbursement remain outside those validated paths.
