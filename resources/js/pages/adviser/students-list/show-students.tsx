@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { defaultProgressFilters, filterStudentProgress, type StudentProgressSummary } from '@/utils/student-progress-filters';
 import { Link } from '@inertiajs/react';
 import axios from 'axios';
 import { Check, Mail, Trash, Users } from 'lucide-react';
@@ -18,7 +19,7 @@ type Student = {
     last_name: string | null;
     email: string | null;
     program: string | null;
-    progress?: { stage: string | null; status: string; enrollment_year: number | null; completion_year: number | null };
+    progress?: StudentProgressSummary;
     coordinator_name?: string | null; // <-- Add this line
 };
 
@@ -34,6 +35,7 @@ export default function ShowStudents() {
     const [pendingLoading, setPendingLoading] = useState(false);
     const [loading, setLoading] = useState(true);
     const [query, setQuery] = useState('');
+    const [filters, setFilters] = useState(defaultProgressFilters);
 
     const [confirmation, setConfirmation] = useState<{ student: Student; decision: 'accept' | 'reject' } | null>(null);
 
@@ -67,7 +69,7 @@ export default function ShowStudents() {
     };
 
     const lowerQuery = query.toLowerCase();
-    const filteredStudents = students.filter(
+    const searchedStudents = students.filter(
         (s) =>
             (s.student_number?.toLowerCase().includes(lowerQuery) ?? false) ||
             (s.first_name?.toLowerCase().includes(lowerQuery) ?? false) ||
@@ -75,6 +77,12 @@ export default function ShowStudents() {
             (s.email?.toLowerCase().includes(lowerQuery) ?? false) ||
             (s.program?.toLowerCase().includes(lowerQuery) ?? false),
     );
+
+    const filteredStudents = filterStudentProgress(searchedStudents, filters);
+    const years = (field: 'enrollment_year' | 'completion_year') =>
+        [...new Set(students.flatMap((s) => (s.progress?.[field] ? [s.progress[field]!] : [])))].sort((a, b) => b - a);
+    const semesters = [...new Set(students.flatMap((s) => (s.progress?.semester ? [s.progress.semester] : [])))].sort();
+    const selectClass = 'bg-background border-input h-9 w-full rounded-md border px-2 text-sm';
 
     const [assignmentError, setAssignmentError] = useState('');
     const [decidingStudent, setDecidingStudent] = useState<number | null>(null);
@@ -279,6 +287,106 @@ export default function ShowStudents() {
                 </TabsContent>
 
                 <TabsContent value="assigned">
+                    <div className="bg-card text-card-foreground mb-4 space-y-3 rounded-lg border p-3">
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            <label className="space-y-1 text-sm">
+                                Sort students
+                                <select
+                                    className={selectClass}
+                                    value={filters.sort}
+                                    onChange={(e) => setFilters({ ...filters, sort: e.target.value })}
+                                >
+                                    <option value="updated-desc">Progress updated: newest first</option>
+                                    <option value="updated-asc">Progress updated: oldest first</option>
+                                    <option value="enrollment-desc">Enrollment year: newest first</option>
+                                    <option value="enrollment-asc">Enrollment year: oldest first</option>
+                                    <option value="name">Name: A–Z</option>
+                                </select>
+                            </label>
+                            <label className="space-y-1 text-sm">
+                                Defense stage
+                                <select
+                                    className={selectClass}
+                                    value={filters.stage}
+                                    onChange={(e) => setFilters({ ...filters, stage: e.target.value })}
+                                >
+                                    <option value="">All stages</option>
+                                    {['Proposal', 'Prefinal', 'Final'].map((stage) => (
+                                        <option key={stage}>{stage}</option>
+                                    ))}
+                                    <option value="not-started">Not started</option>
+                                </select>
+                            </label>
+                            <label className="space-y-1 text-sm">
+                                Enrollment year
+                                <select
+                                    className={selectClass}
+                                    value={filters.enrollment}
+                                    onChange={(e) => setFilters({ ...filters, enrollment: e.target.value })}
+                                >
+                                    <option value="">All enrollment years</option>
+                                    {years('enrollment_year').map((year) => (
+                                        <option key={year}>{year}</option>
+                                    ))}
+                                    <option value="unknown">Not available</option>
+                                </select>
+                            </label>
+                            <label className="space-y-1 text-sm">
+                                Program completion year
+                                <select
+                                    className={selectClass}
+                                    value={filters.completion}
+                                    onChange={(e) => setFilters({ ...filters, completion: e.target.value })}
+                                >
+                                    <option value="">All completion years</option>
+                                    {years('completion_year').map((year) => (
+                                        <option key={year}>{year}</option>
+                                    ))}
+                                    <option value="not-verified">Not verified</option>
+                                </select>
+                            </label>
+                            <label className="space-y-1 text-sm">
+                                Recorded semester
+                                <select
+                                    className={selectClass}
+                                    value={filters.semester}
+                                    onChange={(e) => setFilters({ ...filters, semester: e.target.value })}
+                                >
+                                    <option value="">All recorded semesters</option>
+                                    {semesters.map((semester) => (
+                                        <option key={semester}>{semester}</option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="space-y-1 text-sm">
+                                Recorded subject
+                                <Input
+                                    className="h-9"
+                                    placeholder="Subject name or code"
+                                    value={filters.subject}
+                                    onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
+                                />
+                            </label>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p role="status" className="text-muted-foreground text-sm">
+                                Showing {filteredStudents.length} of {students.length} assigned students
+                            </p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setFilters(defaultProgressFilters);
+                                    setQuery('');
+                                }}
+                            >
+                                Reset filters
+                            </Button>
+                        </div>
+                        <p className="text-muted-foreground text-xs">
+                            Semester and subject filters use adviser-recorded school information. Missing years appear last in either sort direction.
+                        </p>
+                    </div>
                     <div className="border-border w-full max-w-full overflow-x-auto rounded-md border bg-white dark:border-zinc-700 dark:bg-zinc-900">
                         <Table>
                             <TableHeader>

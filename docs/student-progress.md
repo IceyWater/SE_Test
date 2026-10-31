@@ -17,3 +17,7 @@ Run `php artisan migrate` before opening My Students. The new migration creates 
 ## Validation
 
 `php artisan test --filter=AdviserStudentProgressTest` covers authorization, honest missing values, record validation, history, stale edits, defense service evidence, current stage selection, and school-subject privacy.
+
+## Student list filters
+
+The Assigned tab combines name/ID/email/program search with defense stage, enrollment year, completion year, recorded semester, and subject name/code filters. Subject and semester filters use adviser-recorded information, not cached portal subjects. The default sort is newest progress update first (latest defense update or academic record update). Enrollment year can be sorted in either direction; missing years and update dates stay last. Name A–Z, matching counts, and Reset filters are available. Pending assignments are not filtered by academic progress.

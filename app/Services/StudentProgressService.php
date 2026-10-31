@@ -58,6 +58,10 @@ class StudentProgressService
                 'stage' => $this->stage($current?->defense_type),
                 'status' => $current ? $this->status($current, in_array($current->id, $held, true)) : 'No defense request',
                 'enrollment_year' => $record?->enrollment_year, 'completion_year' => $record?->completion_year,
+                'semester' => $record?->semester,
+                'subjects' => collect($record?->subjects ?? [])->map(fn ($subject) => collect($subject)->only(['code', 'title'])->all())->values()->all(),
+                'updated_at' => collect([$record?->recorded_at, $requests->get($student->id, collect())->max('updated_at')])
+                    ->filter()->sortDesc()->first()?->toIso8601String(),
             ]];
         })->all();
     }

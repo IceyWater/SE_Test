@@ -66,7 +66,12 @@ it('records academic details with provenance without changing roles or defense s
         ->and($record->recorded_by)->toBe($this->adviser->id)->and($record->version)->toBe(1)
         ->and($record->subjects[0]['title'])->toBe('Research Methods');
     expect($this->student->fresh()->role)->toBe('Student')->and($defense->fresh()->workflow_state)->toBe('submitted');
-    $this->getJson('/api/adviser/students')->assertOk()->assertJsonPath('0.progress.enrollment_year', 2023)->assertJsonPath('0.progress.stage', 'Proposal');
+    $this->getJson('/api/adviser/students')->assertOk()->assertJsonPath('0.progress.enrollment_year', 2023)->assertJsonPath('0.progress.stage', 'Proposal')
+        ->assertJsonPath('0.progress.semester', '1st semester 2026-2027')
+        ->assertJsonPath('0.progress.subjects.0.code', 'RES101')
+        ->assertJsonPath('0.progress.subjects.0.title', 'Research Methods')
+        ->assertJsonStructure([['progress' => ['updated_at']]])
+        ->assertJsonMissingPath('0.progress.record_reference');
 });
 
 it('requires verification a record reference and valid academic years', function () {
