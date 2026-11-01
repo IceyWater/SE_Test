@@ -162,5 +162,5 @@ it('requires AA to review and release again after a corrected passed outcome', f
 it('keeps a prior missed defense discoverable after a successful revision', function () {
     $this->actingAs($this->coordinator)->put($this->url, array_replace($this->payload, ['completion' => 'did-not-defend', 'result' => 'not-recorded', 'completed_on' => null, 'next_stage' => null, 'reason' => 'Student postponed']))->assertRedirect();
     $this->put($this->url, array_replace($this->payload, ['version' => 1, 'reason' => 'Repeat session held and result verified']))->assertRedirect();
-    $this->get('/academic-progress')->assertInertia(fn (Assert $p) => $p->where('students.0.progress.missed_defenses',1));
+    $this->get('/academic-progress')->assertInertia(fn (Assert $p) => $p->where('students.0.progress.missed_defenses', 1));
 });

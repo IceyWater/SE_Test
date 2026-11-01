@@ -384,7 +384,8 @@ export default function ShowStudents() {
                             </Button>
                         </div>
                         <p className="text-muted-foreground text-xs">
-                            Semester and subject filters use coordinator-recorded school information. Missing years appear last in either sort direction.
+                            Semester and subject filters use coordinator-recorded school information. Missing years appear last in either sort
+                            direction.
                         </p>
                     </div>
                     <div className="border-border w-full max-w-full overflow-x-auto rounded-md border bg-white dark:border-zinc-700 dark:bg-zinc-900">
