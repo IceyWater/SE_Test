@@ -29,3 +29,7 @@ Local PHP tests, frontend checks and a successful Render Docker build are separa
 ## Certificate access troubleshooting
 
 Render Docker secret files can require group 1000 access. The image adds Apache's www-data user to that group and startup validates CA readability and PEM parsing as www-data before starting the app. This does not disable TLS verification or prove that the CA matches the database server. The CA file is excluded from the build context copy; only its runtime mount is used.
+
+## Optional hosted testing accounts
+
+For a separate demo database, set HOSTED_DEMO_ENABLED=true and HOSTED_DEMO_PASSWORD to a private 16–128 character password in Render Environment. Keep APP_ENV=production and APP_DEBUG=false. Set RUN_MIGRATIONS=true for initial provisioning. Startup creates the configured student, student2, adviser, acadcoor, aa, dean and finance @uic.edu.ph demo accounts. All use the chosen testing password; it is never printed. The command refuses to overwrite non-demo users. Repeated starts preserve profiles and records; changing the environment password rotates demo passwords on the next deployment. No Super Admin is created. These are fictional test identities, not school-issued accounts. Do not enable this mode on a database holding real student records. Set HOSTED_DEMO_ENABLED=false and redeploy to disable new demo password logins; already authenticated sessions are not automatically revoked. Google sign-in configuration is separate. Persistent uploads remain unfinished.

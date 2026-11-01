@@ -28,6 +28,9 @@ php artisan config:clear
 if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
     php artisan migrate --force --no-interaction
 fi
+if [ "${HOSTED_DEMO_ENABLED:-false}" = "true" ]; then
+    php artisan demo:hosted-accounts --no-interaction
+fi
 php artisan config:cache
 php artisan view:cache
 exec apache2-foreground

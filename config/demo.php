@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'hosted_enabled' => filter_var(env('HOSTED_DEMO_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
     'finance_accounts' => ['finance@uic.edu.ph' => ['role' => 'Finance']],
     'accounts' => [
         'student@uic.edu.ph' => ['role' => 'Student', 'first_name' => 'Demo', 'last_name' => 'Student', 'school_id' => 'DEMO-STUDENT'],
