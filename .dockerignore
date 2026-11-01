@@ -17,3 +17,6 @@ bootstrap/cache/*.php
 tests
 docs
 integration-tools
+
+# Render injects secret files into the build context; keep them out of images.
+aiven-ca.pem

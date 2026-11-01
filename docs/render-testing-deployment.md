@@ -25,3 +25,7 @@ Scheduled reminders are not guaranteed while the free instance sleeps. No paid w
 ## Checks
 
 Local PHP tests, frontend checks and a successful Render Docker build are separate checks. Docker is not installed in the current Windows environment, so the container build must still be verified through Render after database and storage configuration is complete.
+
+## Certificate access troubleshooting
+
+Render Docker secret files can require group 1000 access. The image adds Apache's www-data user to that group and startup validates CA readability and PEM parsing as www-data before starting the app. This does not disable TLS verification or prove that the CA matches the database server. The CA file is excluded from the build context copy; only its runtime mount is used.
