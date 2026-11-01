@@ -138,6 +138,9 @@ export function AppSidebar() {
         navItems = studentNavItems;
     }
 
+    // Build each render from a fresh list; never append to the shared role menus.
+    navItems = [...navItems];
+
     if (
         [
             'Administrative Assistant',
