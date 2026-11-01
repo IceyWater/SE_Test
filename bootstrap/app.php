@@ -16,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        if (env('RENDER') === 'true') {
+        if (filter_var(env('RENDER', false), FILTER_VALIDATE_BOOLEAN)) {
             $middleware->trustProxies(at: '*');
         }
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
