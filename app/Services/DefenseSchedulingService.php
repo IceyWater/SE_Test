@@ -14,10 +14,7 @@ class DefenseSchedulingService
 {
     public function authorize(DefenseRequest $dr, ?User $user): void
     {
-        abort_unless($user && in_array($user->role, ['Coordinator', 'Administrative Assistant', 'Dean'], true), 403);
-        if ($user->role === 'Coordinator') {
-            abort_unless((int) $dr->coordinator_user_id === (int) $user->id, 403);
-        }
+        abort_unless($user && $user->role === 'Coordinator' && (int) $dr->coordinator_user_id === (int) $user->id, 403);
     }
 
     public function persist(DefenseRequest $request, array $data, User $user, bool $schedule): DefenseRequest

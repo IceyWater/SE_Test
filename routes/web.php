@@ -16,6 +16,8 @@ use App\Http\Controllers\CoordinatorDefenseController;
 use App\Http\Controllers\CoordinatorProgramAssignmentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DebugController;
+use App\Http\Controllers\DefenseAcademicOutcomeController;
+use App\Http\Controllers\DefenseCertificateController;
 use App\Http\Controllers\DefenseCorrectionController;
 use App\Http\Controllers\DefenseRegisterController;
 use App\Http\Controllers\DefenseRequestController;
@@ -204,6 +206,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     /* Notifications */
     Route::get('/notification', [NotificationController::class, 'index'])->name('notification.index');
     Route::get('/honorarium-ledger', [HonorariumLedgerController::class, 'index'])->name('honorarium-ledger.index');
+    Route::get('/certificates', [DefenseCertificateController::class, 'index'])->name('certificates.index');
+    Route::post('/certificates/request/{defenseRequest}', [DefenseCertificateController::class, 'requestCertificate'])->name('certificates.request');
+    Route::post('/certificates/{certificate}/release', [DefenseCertificateController::class, 'release'])->name('certificates.release');
+    Route::post('/certificates/{certificate}/email', [DefenseCertificateController::class, 'email'])->middleware('throttle:10,1')->name('certificates.email');
+    Route::get('/certificates/{certificate}/download', [DefenseCertificateController::class, 'download'])->name('certificates.download');
+    Route::get('/academic-progress', [AdviserStudentProgressController::class, 'index'])->name('academic-progress.index');
+    Route::get('/academic-progress/{student}', [AdviserStudentProgressController::class, 'show'])->name('academic-progress.show');
+    Route::put('/academic-progress/{student}', [AdviserStudentProgressController::class, 'update'])->name('academic-progress.update');
+    Route::put('/defense-outcomes/{defenseRequest}', [DefenseAcademicOutcomeController::class, 'update'])->name('defense-outcomes.update');
+    Route::get('/defense-register/csv', [DefenseRegisterController::class, 'csv'])->name('defense-register.csv');
     Route::get('/defense-register', [DefenseRegisterController::class, 'index'])->name('defense-register.index');
     Route::get('/defense-register/export', [DefenseRegisterController::class, 'export'])->name('defense-register.export');
     Route::get('/defense-register/print', [DefenseRegisterController::class, 'print'])->name('defense-register.print');

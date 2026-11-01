@@ -1,3 +1,4 @@
+import { DefenseOutcomeEditor, type AcademicOutcome } from '@/components/defense-outcome-editor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -6,8 +7,18 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, BookOpen, GraduationCap, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-type Subject = { code: string | null; title: string | null; section?: string | null };
+type Subject = {
+    code: string | null;
+    title: string | null;
+    section?: string | null;
+    research_subject?: string | null;
+    started_on?: string | null;
+    school_year?: string | null;
+    semester?: string | null;
+};
 type AcademicRecord = {
+    classification: string | null;
+    school_year: string | null;
     enrollment_year: number | null;
     completion_year: number | null;
     semester: string | null;
@@ -17,6 +28,9 @@ type AcademicRecord = {
     recorded_at: string;
     version: number;
     history: {
+        subjects?: Subject[];
+        school_year?: string | null;
+        classification?: string | null;
         at: string;
         actor_name: string;
         record_reference: string;
@@ -26,6 +40,8 @@ type AcademicRecord = {
     }[];
 };
 type Defense = {
+    outcome: AcademicOutcome | null;
+    can_record_outcome: boolean;
     id: number;
     title: string;
     stage: string | null;
@@ -55,16 +71,23 @@ const readableDate = (value: string | null) => {
 };
 const eventLabel = (event: string) => event.replaceAll('-', ' ').replace(/^./, (letter) => letter.toUpperCase());
 
-export default function StudentProgressPage({ progress }: { progress: Progress }) {
+export default function StudentProgressPage({ progress, canEdit = false }: { progress: Progress; canEdit?: boolean }) {
     const { student, record, defenses, portal } = progress;
     const [editing, setEditing] = useState(false);
     const [saved, setSaved] = useState(false);
     const form = useForm({
         version: record?.version ?? 0,
+        classification: record?.classification ?? '',
+        school_year: record?.school_year ?? '',
         enrollment_year: record?.enrollment_year?.toString() ?? '',
         completion_year: record?.completion_year?.toString() ?? '',
         semester: record?.semester ?? '',
-        subjects: (record?.subjects ?? []).map((subject) => ({ code: subject.code ?? '', title: subject.title ?? '' })),
+        subjects: (record?.subjects ?? []).map((subject) => ({
+            code: subject.code ?? '',
+            title: subject.title ?? '',
+            research_subject: subject.research_subject ?? '',
+            started_on: subject.started_on ?? '',
+        })),
         record_reference: record?.record_reference ?? '',
         verified_against_school_records: false as boolean,
     });
@@ -78,6 +101,7 @@ export default function StudentProgressPage({ progress }: { progress: Progress }
                         <th className="py-2 pr-4">Code</th>
                         <th className="py-2 pr-4">Subject</th>
                         <th className="py-2">Section</th>
+                        <th className="py-2">Research subject / started</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -86,6 +110,9 @@ export default function StudentProgressPage({ progress }: { progress: Progress }
                             <td className="py-3 pr-4">{subject.code || '—'}</td>
                             <td className="py-3 pr-4">{subject.title || 'Not available'}</td>
                             <td className="py-3">{subject.section || '—'}</td>
+                            <td className="py-3">
+                                {subject.research_subject || '—'} · {subject.started_on || 'Not recorded'}
+                            </td>
                         </tr>
                     ))}
                 </tbody>
@@ -96,15 +123,15 @@ export default function StudentProgressPage({ progress }: { progress: Progress }
         <AppLayout
             breadcrumbs={[
                 { title: 'Dashboard', href: '/dashboard' },
-                { title: 'My Students', href: '/adviser/students-list' },
-                { title: 'Student Progress', href: `/adviser/students/${student.id}/progress` },
+                { title: 'Academic Progress', href: '/academic-progress' },
+                { title: 'Student Progress', href: `/academic-progress/${student.id}` },
             ]}
         >
             <Head title={`Student Progress · ${student.name}`} />
             <main className="mx-auto w-full max-w-6xl space-y-5 p-4 md:p-8">
-                <Link href="/adviser/students-list" className="inline-flex items-center gap-2 text-sm underline">
+                <Link href="/academic-progress" className="inline-flex items-center gap-2 text-sm underline">
                     <ArrowLeft className="h-4 w-4" />
-                    My Students
+                    Academic Progress
                 </Link>
                 <header className="space-y-2">
                     <h1 className="flex items-center gap-2 text-2xl font-semibold">
@@ -163,21 +190,31 @@ export default function StudentProgressPage({ progress }: { progress: Progress }
                 <section className={section}>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <h2 className="font-semibold">School-record information</h2>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                                setSaved(false);
-                                setEditing(!editing);
-                            }}
-                        >
-                            {editing ? 'Close form' : record ? 'Update school-record information' : 'Record school-verified information'}
-                        </Button>
+                        {canEdit && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setSaved(false);
+                                    setEditing(!editing);
+                                }}
+                            >
+                                {editing ? 'Close form' : record ? 'Update school-record information' : 'Record school-verified information'}
+                            </Button>
+                        )}
                     </div>
                     <p className="text-muted-foreground mt-3 text-sm">
-                        Enter enrollment, program completion, and subjects only after checking the school records. This is an adviser-recorded
+                        Enter enrollment, program completion, and subjects only after checking the school records. This is a coordinator-recorded
                         reference, not an automatic Registrar certification.
                     </p>
+                    {record && (
+                        <p className="mt-3 text-sm">
+                            Classification: {record.classification || 'Not recorded'} · School year: {record.school_year || 'Not recorded'}
+                        </p>
+                    )}
+                    {!canEdit && (
+                        <p className="text-muted-foreground mt-3 text-sm">Only the assigned Coordinator can update these academic records.</p>
+                    )}
                     {record ? (
                         <div className="mt-3 space-y-1 text-sm">
                             <p>
@@ -191,12 +228,12 @@ export default function StudentProgressPage({ progress }: { progress: Progress }
                             account creation date.
                         </p>
                     )}
-                    {editing && (
+                    {editing && canEdit && (
                         <form
                             className="mt-5 space-y-4 border-t pt-5"
                             onSubmit={(event) => {
                                 event.preventDefault();
-                                form.put(`/adviser/students/${student.id}/progress`, {
+                                form.put(`/academic-progress/${student.id}`, {
                                     preserveScroll: true,
                                     onSuccess: () => {
                                         form.setData('version', form.data.version + 1);
@@ -213,6 +250,26 @@ export default function StudentProgressPage({ progress }: { progress: Progress }
                                 </p>
                             )}
                             <div className="grid gap-4 sm:grid-cols-2">
+                                <label className="text-sm">
+                                    Classification
+                                    <select
+                                        className="bg-background w-full rounded border p-2"
+                                        value={form.data.classification}
+                                        onChange={(e) => form.setData('classification', e.target.value)}
+                                    >
+                                        <option value="">Not recorded</option>
+                                        <option value="new">New</option>
+                                        <option value="continuing">Continuing</option>
+                                    </select>
+                                </label>
+                                <label className="text-sm">
+                                    School year
+                                    <Input
+                                        placeholder="2026-2027"
+                                        value={form.data.school_year}
+                                        onChange={(e) => form.setData('school_year', e.target.value)}
+                                    />
+                                </label>
                                 <label className="space-y-1 text-sm">
                                     Enrollment year
                                     <Input
@@ -253,7 +310,12 @@ export default function StudentProgressPage({ progress }: { progress: Progress }
                                         size="sm"
                                         variant="outline"
                                         disabled={form.data.subjects.length >= 50}
-                                        onClick={() => form.setData('subjects', [...form.data.subjects, { code: '', title: '' }])}
+                                        onClick={() =>
+                                            form.setData('subjects', [
+                                                ...form.data.subjects,
+                                                { code: '', title: '', research_subject: '', started_on: '' },
+                                            ])
+                                        }
                                     >
                                         <Plus className="mr-1 h-4 w-4" />
                                         Add subject
@@ -261,6 +323,39 @@ export default function StudentProgressPage({ progress }: { progress: Progress }
                                 </div>
                                 {form.data.subjects.map((subject, index) => (
                                     <div key={index} className="flex flex-wrap gap-2">
+                                        <select
+                                            aria-label={`Research subject ${index + 1}`}
+                                            className="bg-background rounded border p-2 text-sm"
+                                            value={subject.research_subject}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'subjects',
+                                                    form.data.subjects.map((row, i) =>
+                                                        i === index
+                                                            ? { ...row, research_subject: e.target.value, title: e.target.value || row.title }
+                                                            : row,
+                                                    ),
+                                                )
+                                            }
+                                        >
+                                            <option value="">Other subject</option>
+                                            {['Thesis 1', 'Thesis 2', 'Dissertation 1', 'Dissertation 2'].map((s) => (
+                                                <option key={s}>{s}</option>
+                                            ))}
+                                        </select>
+                                        <Input
+                                            type="date"
+                                            className="w-40"
+                                            aria-label={`Subject ${index + 1} start date`}
+                                            required={!!subject.research_subject}
+                                            value={subject.started_on}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'subjects',
+                                                    form.data.subjects.map((row, i) => (i === index ? { ...row, started_on: e.target.value } : row)),
+                                                )
+                                            }
+                                        />
                                         <Input
                                             aria-label={`Subject ${index + 1} code`}
                                             className="w-28"
@@ -339,7 +434,7 @@ export default function StudentProgressPage({ progress }: { progress: Progress }
                     </h2>
                     {record?.semester ? (
                         <div className="mt-3 space-y-3">
-                            <p className="text-sm">{record.semester} · Adviser-recorded</p>
+                            <p className="text-sm">{record.semester} · Coordinator-recorded</p>
                             {record.subjects.length ? (
                                 subjectsTable(record.subjects)
                             ) : (
@@ -386,6 +481,13 @@ export default function StudentProgressPage({ progress }: { progress: Progress }
                                         {defense.date &&
                                             ` · Scheduled: ${readableDate(defense.date)} ${defense.start?.slice(0, 5) || ''}${defense.end ? '–' + defense.end.slice(0, 5) : ''} (PH)`}
                                     </p>
+                                    <DefenseOutcomeEditor
+                                        key={`${defense.id}-${defense.outcome?.version ?? 0}`}
+                                        id={defense.id}
+                                        stage={defense.stage}
+                                        outcome={defense.outcome}
+                                        canEdit={defense.can_record_outcome}
+                                    />
                                     {defense.history.length > 0 && (
                                         <ol className="space-y-2 border-l pl-4 text-sm">
                                             {defense.history.map((event, index) => (
@@ -416,6 +518,10 @@ export default function StudentProgressPage({ progress }: { progress: Progress }
                                         Enrollment: {entry.enrollment_year ?? 'Not available'} · Completion: {entry.completion_year ?? 'Not verified'}
                                     </p>
                                     <p className="break-words whitespace-pre-wrap">{entry.record_reference}</p>
+                                    <p>
+                                        {entry.school_year} · {entry.semester} · {entry.classification}
+                                    </p>
+                                    {!!entry.subjects?.length && subjectsTable(entry.subjects)}
                                 </li>
                             ))}
                         </ul>

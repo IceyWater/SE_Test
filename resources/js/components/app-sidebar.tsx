@@ -162,6 +162,10 @@ export function AppSidebar() {
         }
     }
 
+    if (['Coordinator', 'Adviser', 'Dean'].includes(user.role))
+        navItems.push({ title: 'Academic Progress', href: '/academic-progress', icon: Users });
+    if (['Student', 'Administrative Assistant'].includes(user.role)) navItems.push({ title: 'Certificates', href: '/certificates', icon: FileText });
+
     // Expanded menus state
     const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
         try {

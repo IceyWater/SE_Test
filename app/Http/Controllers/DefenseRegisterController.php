@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DefenseAcademicOutcome;
 use App\Models\DefenseRequest;
 use App\Models\DefenseServiceRecord;
+use App\Services\DefenseAcademicProgress;
 use App\Services\DefenseRegisterExport;
 use App\Services\DefenseServiceConfirmation;
 use App\Services\HonorariumAccess;
@@ -28,8 +30,9 @@ class DefenseRegisterController extends Controller
         $requests = $access->scope(DefenseRequest::query(), $request->user())->with('student', 'adviserUser')
             ->whereBetween('scheduled_date', [$from, $to])->whereIn('workflow_state', ['scheduled', 'completed'])
             ->whereRaw("LOWER(COALESCE(status, '')) NOT IN ('cancelled', 'rejected')")->orderBy('scheduled_date')->orderBy('scheduled_time')->orderBy('id')->get();
+        $academic = DefenseAcademicOutcome::whereIn('defense_request_id', $requests->pluck('id'))->get()->keyBy('defense_request_id');
         $records = DefenseServiceRecord::whereIn('defense_request_id', $requests->pluck('id'))->get()->keyBy('defense_request_id');
-        $items = $requests->map(function ($dr) use ($records, $service, $request) {
+        $items = $requests->map(function ($dr) use ($records, $service, $request, $academic) {
             $record = $records->get($dr->id);
             $error = null;
             try {
@@ -43,6 +46,7 @@ class DefenseRegisterController extends Controller
             $saved = collect($record?->participants ?? [])->keyBy('recipient_key');
 
             return [
+                'academic_outcome' => app(DefenseAcademicProgress::class)->view($dr, $academic->get($dr->id)),
                 'id' => $dr->id, 'student' => $dr->student?->full_name ?: trim($dr->first_name.' '.$dr->last_name),
                 'school_id' => $dr->school_id, 'program' => $dr->program, 'title' => $dr->thesis_title,
                 'defense_type' => $dr->defense_type, 'date' => $dr->scheduled_date->format('Y-m-d'),
@@ -63,6 +67,24 @@ class DefenseRegisterController extends Controller
     public function index(Request $request)
     {
         return Inertia::render('defense-register/Index', $this->data($request));
+    }
+
+    public function csv(Request $request)
+    {
+        $data = $this->data($request);
+
+        return response()->streamDownload(function () use ($data) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['Request ID', 'Date', 'Start (PH)', 'End (PH)', 'Student', 'School ID', 'Program', 'Title', 'Defense stage', 'Mode', 'Venue', 'Adviser', 'Service status', 'Completed on', 'Defense completion', 'Academic result', 'Research subject', 'Next stage', 'Academic outcome current']);
+            foreach ($data['items'] as $item) {
+                $values = array_map(fn ($key) => $item[$key] ?? '', ['id', 'date', 'start', 'end', 'student', 'school_id', 'program', 'title', 'defense_type', 'mode', 'venue', 'adviser', 'service_status', 'completed_on']);
+                $outcome = $item['academic_outcome'];
+                $values = [...$values, $outcome['completion'] ?? '', $outcome['result'] ?? '', $outcome['subject'] ?? '', $outcome['next_stage'] ?? '', $outcome ? ($outcome['current'] ? 'Yes' : 'Needs reconfirmation') : 'Not recorded'];
+                fputcsv($out, array_map(fn ($value) => preg_match('/^[\s]*[=+@-]/u', (string) $value) ? "'".$value : $value, $values));
+            }
+            fclose($out);
+        }, 'defense-schedule-'.$data['from'].'-to-'.$data['to'].'.csv', ['Content-Type' => 'text/csv; charset=UTF-8', 'Cache-Control' => 'private, no-store']);
     }
 
     public function export(Request $request, DefenseRegisterExport $export)

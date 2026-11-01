@@ -24,7 +24,9 @@ beforeEach(function () {
     $this->adviser = User::factory()->create(['role' => 'Adviser']);
     $this->student = User::factory()->create(['role' => 'Student', 'school_id' => '2023000123', 'program' => 'Master of Arts']);
     $this->adviser->advisedStudents()->attach($this->student->id, ['status' => 'accepted']);
-    $this->url = '/adviser/students/'.$this->student->id.'/progress';
+    $this->coordinator = User::factory()->create(['role' => 'Coordinator']);
+    $this->adviser->advisedStudents()->updateExistingPivot($this->student->id, ['requested_by' => $this->coordinator->id]);
+    $this->url = '/academic-progress/'.$this->student->id;
     $this->payload = [
         'version' => 0, 'enrollment_year' => 2023, 'completion_year' => null, 'semester' => '1st semester 2026-2027',
         'subjects' => [['code' => 'RES101', 'title' => 'Research Methods']],
@@ -40,7 +42,7 @@ it('shows empty progress honestly and does not infer years from the school id or
 });
 
 it('restricts viewing and updating to the accepted assigned adviser', function () {
-    foreach (['Student', 'Finance', 'Coordinator', 'Dean', 'Adviser'] as $role) {
+    foreach (['Student', 'Finance', 'Coordinator', 'Adviser'] as $role) {
         $other = User::factory()->create(['role' => $role]);
         $this->actingAs($other)->get($this->url)->assertForbidden();
         $this->put($this->url, $this->payload)->assertForbidden();
@@ -60,13 +62,13 @@ it('denies pending rejected and revoked assignments', function () {
 
 it('records academic details with provenance without changing roles or defense status', function () {
     $defense = progressDefense($this->student, $this->adviser);
-    $this->actingAs($this->adviser)->put($this->url, $this->payload + ['student_id' => $this->adviser->id, 'role' => 'Dean'])->assertRedirect();
+    $this->actingAs($this->coordinator)->put($this->url, $this->payload + ['student_id' => $this->adviser->id, 'role' => 'Dean'])->assertRedirect();
     $record = StudentProgressRecord::where('student_id', $this->student->id)->firstOrFail();
     expect($record->enrollment_year)->toBe(2023)->and($record->completion_year)->toBeNull()
-        ->and($record->recorded_by)->toBe($this->adviser->id)->and($record->version)->toBe(1)
+        ->and($record->recorded_by)->toBe($this->coordinator->id)->and($record->version)->toBe(1)
         ->and($record->subjects[0]['title'])->toBe('Research Methods');
     expect($this->student->fresh()->role)->toBe('Student')->and($defense->fresh()->workflow_state)->toBe('submitted');
-    $this->getJson('/api/adviser/students')->assertOk()->assertJsonPath('0.progress.enrollment_year', 2023)->assertJsonPath('0.progress.stage', 'Proposal')
+    $this->actingAs($this->adviser)->getJson('/api/adviser/students')->assertOk()->assertJsonPath('0.progress.enrollment_year', 2023)->assertJsonPath('0.progress.stage', 'Proposal')
         ->assertJsonPath('0.progress.semester', '1st semester 2026-2027')
         ->assertJsonPath('0.progress.subjects.0.code', 'RES101')
         ->assertJsonPath('0.progress.subjects.0.title', 'Research Methods')
@@ -79,7 +81,7 @@ it('requires verification a record reference and valid academic years', function
     $invalid['verified_against_school_records'] = false;
     $invalid['record_reference'] = '';
     $invalid['enrollment_year'] = now('Asia/Manila')->year + 1;
-    $this->actingAs($this->adviser)->putJson($this->url, $invalid)->assertUnprocessable()
+    $this->actingAs($this->coordinator)->putJson($this->url, $invalid)->assertUnprocessable()
         ->assertJsonValidationErrors(['verified_against_school_records', 'record_reference', 'enrollment_year']);
     $this->putJson($this->url, array_replace($this->payload, ['completion_year' => 2022]))->assertUnprocessable()->assertJsonValidationErrors('completion_year');
     $this->putJson($this->url, array_replace($this->payload, ['semester' => null]))->assertUnprocessable()->assertJsonValidationErrors('semester');
@@ -87,7 +89,7 @@ it('requires verification a record reference and valid academic years', function
 });
 
 it('allows missing academic values without fabricating completion', function () {
-    $this->actingAs($this->adviser)->put($this->url, [
+    $this->actingAs($this->coordinator)->put($this->url, [
         'version' => 0, 'subjects' => [], 'record_reference' => 'School records requested; no year or subjects confirmed.', 'verified_against_school_records' => true,
     ])->assertRedirect();
     $record = StudentProgressRecord::firstOrFail();
@@ -95,7 +97,7 @@ it('allows missing academic values without fabricating completion', function () 
 });
 
 it('preserves prior academic values and rejects stale edits', function () {
-    $this->actingAs($this->adviser)->put($this->url, $this->payload)->assertRedirect();
+    $this->actingAs($this->coordinator)->put($this->url, $this->payload)->assertRedirect();
     $updated = array_replace($this->payload, ['version' => 1, 'completion_year' => 2026, 'record_reference' => 'Checked official program completion record.']);
     $this->put($this->url, $updated)->assertRedirect();
     $record = StudentProgressRecord::firstOrFail();

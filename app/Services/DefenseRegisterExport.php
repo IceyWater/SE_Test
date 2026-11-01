@@ -17,6 +17,10 @@ class DefenseRegisterExport
             $people = collect($item['participants']);
             $prefix = '#'.$item['id'].' ';
             $warning = empty($item['roster_error']) ? '' : "\nCommittee needs review: ".$item['roster_error'];
+            $outcome = $item['academic_outcome'] ?? null;
+            if ($outcome) {
+                $warning .= "\nAcademic: ".$outcome['completion'].' / '.$outcome['result'].' · '.$outcome['subject'].(! empty($outcome['next_stage']) ? ' · Next stage: '.$outcome['next_stage'] : '').($outcome['current'] ? '' : ' · Needs reconfirmation');
+            }
             $lines = [
                 'Defense' => $prefix.$item['student'].' — '.$item['defense_type']."\n".$item['title']."\nAdviser: ".($item['adviser'] ?: 'Unassigned')."\n".($item['start'] ?: 'Time unspecified').($item['end'] ? '–'.$item['end'] : '').' · '.($item['mode'] ?: 'Mode unspecified').' · '.($item['venue'] ?: 'Venue unspecified').$warning,
                 'Chair / internal panel' => $people->where('affiliation', 'internal')->map(fn ($p) => $p['recipient_name'].' ('.$p['recipient_role'].')')->implode(', '),
@@ -42,11 +46,12 @@ class DefenseRegisterExport
                 $schedule[] = [($slot ?: 'Unspecified')."\n".$kind, ...array_map(fn ($date) => implode("\n\n", $matrix['grid'][$slot][$date][$kind] ?? []), $matrix['dates'])];
             }
         }
-        $details = [['Request ID', 'Date', 'Start', 'End', 'Student', 'School ID', 'Program', 'Title', 'Defense stage', 'Mode', 'Venue', 'Adviser', 'Service status', 'Completed on']];
+        $details = [['Request ID', 'Date', 'Start', 'End', 'Student', 'School ID', 'Program', 'Title', 'Defense stage', 'Mode', 'Venue', 'Adviser', 'Service status', 'Completed on', 'Defense completion', 'Academic result', 'Research subject', 'Next stage', 'Academic outcome current']];
         $participants = [['Request ID', 'Defense date', 'Student', 'Recipient', 'Role', 'Affiliation', 'Service attendance', 'Completed on']];
         foreach ($data['items'] as $item) {
             $date = CarbonImmutable::parse($item['date']);
-            $details[] = [$item['id'], $date, $item['start'], $item['end'], $item['student'], $item['school_id'], $item['program'], $item['title'], $item['defense_type'], $item['mode'], $item['venue'], $item['adviser'], $item['service_status'], $item['completed_on'] ? CarbonImmutable::parse($item['completed_on']) : null];
+            $outcome = $item['academic_outcome'] ?? null;
+            $details[] = [$item['id'], $date, $item['start'], $item['end'], $item['student'], $item['school_id'], $item['program'], $item['title'], $item['defense_type'], $item['mode'], $item['venue'], $item['adviser'], $item['service_status'], $item['completed_on'] ? CarbonImmutable::parse($item['completed_on']) : null, $outcome['completion'] ?? '', $outcome['result'] ?? '', $outcome['subject'] ?? '', $outcome['next_stage'] ?? '', $outcome ? ($outcome['current'] ? 'Yes' : 'Needs reconfirmation') : 'Not recorded'];
             foreach ($item['participants'] as $person) {
                 $participants[] = [$item['id'], $date, $item['student'], $person['recipient_name'], $person['recipient_role'], $person['recipient_role'] === 'Adviser' ? 'Not applicable' : ($person['affiliation'] ?? 'Unclassified'), $person['attendance'], $item['completed_on'] ? CarbonImmutable::parse($item['completed_on']) : null];
             }

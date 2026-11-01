@@ -825,10 +825,12 @@ function LoadedDefenseRequestDetailsPage(rawProps: PageProps) {
                                 <TabsTrigger value="details" className="flex items-center gap-1 px-3 text-sm">
                                     <FileText className="h-4 w-4" /> Details
                                 </TabsTrigger>
-                                <TabsTrigger value="assign-schedule" className="flex items-center gap-1 px-3 text-sm font-medium">
-                                    <Calendar className="h-4 w-4" />
-                                    Assign &amp; Schedule
-                                </TabsTrigger>
+                                {userRole === 'Coordinator' && (
+                                    <TabsTrigger value="assign-schedule" className="flex items-center gap-1 px-3 text-sm font-medium">
+                                        <Calendar className="h-4 w-4" />
+                                        Assign &amp; Schedule
+                                    </TabsTrigger>
+                                )}
                             </TabsList>
                         </Tabs>
                     </div>

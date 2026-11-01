@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DefenseAcademicOutcome;
 use App\Models\DefenseRequest;
 use App\Models\DefenseServiceRecord;
 use App\Models\LegacyGradesData;
@@ -49,18 +50,22 @@ class StudentProgressService
         $requests = DefenseRequest::whereIn('submitted_by', $ids)->latest('created_at')->orderByDesc('id')->get()->groupBy('submitted_by');
         $records = StudentProgressRecord::whereIn('student_id', $ids)->get()->keyBy('student_id');
         $held = $this->confirmedServices($requests->flatten())->keys()->all();
+        $outcomes = DefenseAcademicOutcome::whereIn('defense_request_id', $requests->flatten()->pluck('id'))->get()->keyBy('defense_request_id');
 
-        return $students->mapWithKeys(function ($student) use ($requests, $records, $held) {
+        return $students->mapWithKeys(function ($student) use ($requests, $records, $held, $outcomes) {
             $current = $this->current($requests->get($student->id, collect()));
             $record = $records->get($student->id);
+            $outcome = $current ? $outcomes->get($current->id) : null;
+            $outcomeCurrent = $current && app(DefenseAcademicProgress::class)->current($current, $outcome);
 
             return [$student->id => [
-                'stage' => $this->stage($current?->defense_type),
+                'stage' => ($outcomeCurrent ? $outcome?->next_stage : null) ?: $this->stage($current?->defense_type),
                 'status' => $current ? $this->status($current, in_array($current->id, $held, true)) : 'No defense request',
                 'enrollment_year' => $record?->enrollment_year, 'completion_year' => $record?->completion_year,
-                'semester' => $record?->semester,
+                'missed_defenses' => $outcomes->whereIn('defense_request_id', $requests->get($student->id, collect())->pluck('id'))->filter(fn ($entry) => $entry->completion === 'did-not-defend' || collect($entry->history ?? [])->contains(fn ($prior) => ($prior['completion'] ?? '') === 'did-not-defend'))->count(),
+                'classification' => $record?->classification, 'school_year' => $record?->school_year, 'completion' => $outcomeCurrent ? $outcome?->completion : null, 'result' => $outcomeCurrent ? $outcome?->result : null, 'semester' => $record?->semester,
                 'subjects' => collect($record?->subjects ?? [])->map(fn ($subject) => collect($subject)->only(['code', 'title'])->all())->values()->all(),
-                'updated_at' => collect([$record?->recorded_at, $requests->get($student->id, collect())->max('updated_at')])
+                'updated_at' => collect([$record?->recorded_at, $outcome?->updated_at, $requests->get($student->id, collect())->max('updated_at')])
                     ->filter()->sortDesc()->first()?->toIso8601String(),
             ]];
         })->all();
@@ -72,12 +77,15 @@ class StudentProgressService
         $services = $this->confirmedServices($requests);
         $record = StudentProgressRecord::with('recorder')->where('student_id', $student->id)->first();
         $current = $this->current($requests);
-        $defenses = $requests->map(function ($row) use ($services, $adviser) {
+        $outcomes = DefenseAcademicOutcome::whereIn('defense_request_id', $requests->pluck('id'))->get()->keyBy('defense_request_id');
+        $defenses = $requests->map(function ($row) use ($services, $adviser, $outcomes) {
             $service = $services->get($row->id);
             $history = $row->getRawOriginal('workflow_history');
             $history = is_string($history) ? json_decode($history, true) : $history;
 
             return [
+                'outcome' => app(DefenseAcademicProgress::class)->view($row, $outcomes->get($row->id)),
+                'can_record_outcome' => $adviser->role === 'Coordinator' && (int) $row->coordinator_user_id === (int) $adviser->id && in_array($row->workflow_state, ['scheduled', 'completed'], true),
                 'id' => $row->id, 'title' => $row->thesis_title, 'stage' => $this->stage($row->defense_type),
                 'status' => $this->status($row, $service !== null), 'submitted_at' => $row->submitted_at?->toIso8601String() ?? $row->created_at?->toIso8601String(),
                 'date' => $row->scheduled_date?->format('Y-m-d'), 'start' => $row->scheduled_time, 'end' => $row->scheduled_end_time,
@@ -93,14 +101,14 @@ class StudentProgressService
         return [
             'student' => ['id' => $student->id, 'name' => $student->name, 'school_id' => $student->school_id ?: $student->student_number,
                 'email' => $student->email, 'program' => $student->program],
-            'stage' => $this->stage($current?->defense_type),
+            'stage' => ($current && app(DefenseAcademicProgress::class)->current($current, $outcomes->get($current->id)) ? $outcomes->get($current->id)?->next_stage : null) ?: $this->stage($current?->defense_type),
             'status' => $current ? $this->status($current, $services->has($current->id)) : 'No defense request',
             'record' => $record ? [
-                'enrollment_year' => $record->enrollment_year, 'completion_year' => $record->completion_year,
+                'classification' => $record->classification, 'school_year' => $record->school_year, 'enrollment_year' => $record->enrollment_year, 'completion_year' => $record->completion_year,
                 'semester' => $record->semester, 'subjects' => $record->subjects ?? [], 'record_reference' => $record->record_reference,
                 'recorded_by' => $record->recorder?->name ?? 'Former staff member', 'recorded_at' => $record->recorded_at->toIso8601String(),
                 'version' => $record->version,
-                'history' => collect($record->history ?? [])->map(fn ($entry) => collect($entry)->only(['at', 'actor_name', 'record_reference', 'enrollment_year', 'completion_year', 'semester'])->all())->values(),
+                'history' => collect($record->history ?? [])->map(fn ($entry) => collect($entry)->only(['at', 'actor_name', 'record_reference', 'enrollment_year', 'completion_year', 'semester', 'school_year', 'classification', 'subjects'])->all())->values(),
             ] : null,
             'defenses' => $defenses,
             'portal' => $this->portalSubjects($student),

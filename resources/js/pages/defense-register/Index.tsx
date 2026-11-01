@@ -168,6 +168,9 @@ export default function DefenseRegister() {
                     >
                         Download Excel
                     </a>
+                    <a className="inline-flex items-center rounded-md border px-4 py-2 text-sm" href={`/defense-register/csv?${query}`}>
+                        Download CSV
+                    </a>
                     <a
                         href={`/defense-register/print?${query}`}
                         target="_blank"
