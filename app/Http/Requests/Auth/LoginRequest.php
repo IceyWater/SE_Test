@@ -45,7 +45,7 @@ class LoginRequest extends FormRequest
         if ($identifier === 'superadmin@uic.edu.ph' || $identifier === 'superadmin') {
             $superAdmin = User::where('email', 'superadmin@uic.edu.ph')->first();
 
-            if (! $superAdmin) {
+            if (! $superAdmin && app()->environment(['local', 'testing'])) {
                 $superAdmin = User::create([
                     'first_name' => 'Super',
                     'middle_name' => null,
@@ -57,7 +57,7 @@ class LoginRequest extends FormRequest
                 ]);
             }
 
-            if (Hash::check($password, $superAdmin->password)) {
+            if ($superAdmin && Hash::check($password, $superAdmin->password)) {
                 Auth::login($superAdmin, $this->boolean('remember'));
                 RateLimiter::clear($this->throttleKey());
 
