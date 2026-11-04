@@ -51,7 +51,12 @@ type Item = {
     progress_percent: number;
     follow_ups: { id: number; recipient_role: string; notes: string; actor: string; occurred_at?: string | null }[];
     submitted_at?: string | null;
+<<<<<<< Updated upstream
     last_updated_at?: string | null;
+=======
+    finance_submission_id?: number | null;
+    follow_ups: { id: number; recipient_role: string; notes: string; actor: string; occurred_at?: string | null }[];
+>>>>>>> Stashed changes
 };
 type Rate = { id: number; program_level: string; type: string; defense_type?: string | null; amount: number };
 type ProgramReport = {
@@ -69,12 +74,20 @@ type Props = {
     canManageDocuments: boolean;
     role: string;
     canSubmitToFinance: boolean;
+<<<<<<< Updated upstream
     items: Item[];
     rates: Rate[];
     facultyOptions: string[];
     terms: { school_year: string; semester: string; value: string }[];
     canFollowUp: boolean;
     canViewReports: boolean;
+=======
+    canVerifyFinance: boolean;
+    canFollowUp: boolean;
+    canViewReports: boolean;
+    items: Item[];
+    rates: Rate[];
+>>>>>>> Stashed changes
     programReports: ProgramReport[];
     flash?: { success?: string };
 };
@@ -85,6 +98,7 @@ const statusLabel: Record<string, string> = {
     verified: 'Finance verified',
     rejected: 'Finance rejected',
 };
+<<<<<<< Updated upstream
 const progressSteps = ['Receipt', 'Panel breakdown', 'Prepare', 'Approve', 'Disburse', 'Claim', 'Complete'];
 const formatDate = (value?: string | null) =>
     value ? new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' }).format(new Date(value)) : '—';
@@ -114,11 +128,30 @@ function stepIndex(stage: number): number {
     if (stage === 7) return 5;
 
     return 6;
+=======
+function currentAction(item: Item): { owner: string; action: string } {
+    if (item.finance_status === 'rejected') return { owner: 'AA', action: 'Update and resubmit documents' };
+
+    const activeStep = item.progress.steps.findIndex((step) => !step.done);
+    const actions = [
+        { owner: 'AA', action: 'Send receipt to Finance' },
+        { owner: 'Finance', action: 'Verify receipt' },
+        { owner: 'AA', action: 'Send panel breakdown' },
+        { owner: 'Finance', action: 'Verify panel breakdown' },
+        { owner: 'AA', action: 'Prepare payment records' },
+        { owner: 'Dean / Finance', action: 'Approve payments' },
+        { owner: 'Finance', action: 'Record disbursement' },
+        { owner: 'Finance', action: 'Record recipient claim' },
+    ];
+
+    return activeStep < 0 || activeStep >= actions.length ? { owner: 'Complete', action: 'All payments claimed' } : actions[activeStep];
+>>>>>>> Stashed changes
 }
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Honorarium Tracking', href: '/honorarium-workspace' }];
 
 export default function HonorariumWorkspace() {
+<<<<<<< Updated upstream
     const {
         canManageDocuments,
         role,
@@ -132,11 +165,15 @@ export default function HonorariumWorkspace() {
         programReports = [],
         flash,
     } = usePage<Props>().props;
+=======
+    const { canManageDocuments, role, canFollowUp, canViewReports, items = [], rates = [], programReports = [], flash } = usePage<Props>().props;
+>>>>>>> Stashed changes
     const [tab, setTab] = useState<'workflow' | 'schedule' | 'rates' | 'records' | 'reports'>('workflow');
     const [archived, setArchived] = useState(false);
     const active = items.filter((item) => !item.archived);
     const categoryItems = items.filter((item) => item.archived === archived);
     const [search, setSearch] = useState('');
+<<<<<<< Updated upstream
     const [statusFilter, setStatusFilter] = useState('all');
     const [facultyFilter, setFacultyFilter] = useState('all');
     const [termFilter, setTermFilter] = useState('all');
@@ -147,6 +184,17 @@ export default function HonorariumWorkspace() {
 
         return () => window.clearInterval(interval);
     }, []);
+=======
+    const [faculty, setFaculty] = useState('');
+    const [semester, setSemester] = useState('');
+    const [year, setYear] = useState('');
+    const [status, setStatus] = useState('');
+    const [program, setProgram] = useState('');
+    const [followUpErrors, setFollowUpErrors] = useState<Record<number, string>>({});
+    const facultyOptions = [...new Set(categoryItems.flatMap((item) => item.faculty))].sort();
+    const yearOptions = [...new Set(categoryItems.flatMap((item) => item.periods.map((period) => period.school_year)))].sort().reverse();
+    const programOptions = [...new Set(categoryItems.map((item) => item.program).filter(Boolean))] as string[];
+>>>>>>> Stashed changes
     const filtered = categoryItems.filter(
         (item) =>
             `${item.student_name} ${item.student_number ?? ''} ${item.program ?? ''} ${item.defense_type}`
@@ -159,13 +207,78 @@ export default function HonorariumWorkspace() {
                 (statusFilter === 'verified' && item.finance_status === 'verified') ||
                 (statusFilter === 'receipts' && Boolean(item.receipt_url))),
     );
+<<<<<<< Updated upstream
     const submit = (item: Item) => router.post(`/honorarium-workspace/${item.id}/submit-to-finance`, {}, { preserveScroll: true });
+=======
+    useEffect(() => {
+        const timer = window.setInterval(() => {
+            if (document.visibilityState === 'visible') router.reload({ only: ['items', 'programReports'] });
+        }, 60000);
+        return () => window.clearInterval(timer);
+    }, []);
+    const displayDate = (value?: string | null) =>
+        value ? new Date(value).toLocaleString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' }) : 'Not sent';
+    const formatAmount = (value: number) => Number(value).toLocaleString('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 });
+>>>>>>> Stashed changes
     const followUp = (item: Item, form: HTMLFormElement) => {
         const values = new FormData(form);
         router.post(
             `/honorarium-workspace/${item.id}/follow-ups`,
             { recipient_role: String(values.get('recipient_role') ?? ''), notes: String(values.get('notes') ?? '') },
+<<<<<<< Updated upstream
             { preserveScroll: true, onSuccess: () => form.reset() },
+=======
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    form.reset();
+                    setFollowUpErrors((current) => {
+                        const next = { ...current };
+                        delete next[item.id];
+
+                        return next;
+                    });
+                },
+                onError: (errors) => {
+                    const message = errors.recipient_role ?? errors.notes;
+                    if (message) setFollowUpErrors((current) => ({ ...current, [item.id]: message }));
+                },
+            },
+        );
+    };
+    function exportTracking() {
+        const cell = (value: string) => '"' + (/^[=+\-@]/.test(value) ? "'" + value : value).replaceAll('"', '""') + '"';
+        const rows = [
+            [
+                'Request',
+                'Student',
+                'Program',
+                'Defense',
+                'Faculty',
+                'School year / semester',
+                'Defense submitted (PH)',
+                'Latest Finance handoff (PH)',
+                'Finance status',
+                'Progress',
+                'Next action',
+            ],
+            ...filtered.map((item) => [
+                String(item.id),
+                item.student_name,
+                item.program ?? '',
+                item.defense_type,
+                item.faculty.join('; '),
+                item.periods.map((period) => `${period.school_year} / ${period.semester}`).join('; ') || 'Not recorded',
+                displayDate(item.requested_at),
+                displayDate(item.submitted_at),
+                statusLabel[item.finance_status],
+                `${item.progress.percent}%`,
+                item.progress.label,
+            ]),
+        ];
+        const url = URL.createObjectURL(
+            new Blob(['\uFEFF' + rows.map((row) => row.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8;' }),
+>>>>>>> Stashed changes
         );
     };
     return (
@@ -220,6 +333,98 @@ export default function HonorariumWorkspace() {
                     activeCount={active.length}
                     archivedCount={items.length - active.length}
                 />
+<<<<<<< Updated upstream
+=======
+                {tab !== 'rates' && tab !== 'reports' && (
+                    <section aria-label="Tracking filters" className="bg-card space-y-3 rounded-lg border p-3">
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                            <Input
+                                aria-label="Search tracking records"
+                                className="h-9"
+                                placeholder="Search student, program, or faculty"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                            <select
+                                aria-label="Filter by faculty"
+                                className="bg-background h-9 rounded-md border px-3 text-sm"
+                                value={faculty}
+                                onChange={(e) => setFaculty(e.target.value)}
+                            >
+                                <option value="">All faculty</option>
+                                {facultyOptions.map((name) => (
+                                    <option key={name}>{name}</option>
+                                ))}
+                            </select>
+                            <select
+                                aria-label="Filter by program"
+                                className="bg-background h-9 rounded-md border px-3 text-sm"
+                                value={program}
+                                onChange={(e) => setProgram(e.target.value)}
+                            >
+                                <option value="">All programs</option>
+                                {programOptions.sort().map((name) => (
+                                    <option key={name}>{name}</option>
+                                ))}
+                            </select>
+                            <select
+                                aria-label="Filter by school year"
+                                className="bg-background h-9 rounded-md border px-3 text-sm"
+                                value={year}
+                                onChange={(e) => setYear(e.target.value)}
+                            >
+                                <option value="">All school years</option>
+                                {yearOptions.map((name) => (
+                                    <option key={name}>{name}</option>
+                                ))}
+                            </select>
+                            <select
+                                aria-label="Filter by semester"
+                                className="bg-background h-9 rounded-md border px-3 text-sm"
+                                value={semester}
+                                onChange={(e) => setSemester(e.target.value)}
+                            >
+                                <option value="">All semesters</option>
+                                {['1st', '2nd', 'Summer'].map((name) => (
+                                    <option key={name}>{name}</option>
+                                ))}
+                            </select>
+                            <select
+                                aria-label="Filter by Finance status"
+                                className="bg-background h-9 rounded-md border px-3 text-sm"
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value)}
+                            >
+                                <option value="">All Finance statuses</option>
+                                {Object.entries(statusLabel).map(([value, label]) => (
+                                    <option key={value} value={value}>
+                                        {label}
+                                    </option>
+                                ))}
+                                <option value="receipts">Receipts available</option>
+                            </select>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setSearch('');
+                                    setFaculty('');
+                                    setProgram('');
+                                    setSemester('');
+                                    setYear('');
+                                    setStatus('');
+                                }}
+                            >
+                                Reset filters
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={exportTracking}>
+                                Export filtered CSV
+                            </Button>
+                        </div>
+                        <p className="text-muted-foreground text-xs">{filtered.length} matching records · Updated every minute</p>
+                    </section>
+                )}
+>>>>>>> Stashed changes
                 {tab === 'workflow' && (
                     <Card className="overflow-hidden">
                         <CardHeader className="pb-4">
@@ -227,6 +432,7 @@ export default function HonorariumWorkspace() {
                                 <CardTitle className="text-base">Defense requests</CardTitle>
                                 <span className="text-muted-foreground text-sm">{filtered.length} requests</span>
                             </div>
+<<<<<<< Updated upstream
                             <div className="grid gap-2 pt-2 md:grid-cols-2 xl:grid-cols-4">
                                 <div className="relative">
                                     <Search className="text-muted-foreground absolute top-2.5 left-3 size-4" />
@@ -287,10 +493,25 @@ export default function HonorariumWorkspace() {
                                             <th className="w-[20%] px-3 py-3 font-medium">Progress</th>
                                             <th className="w-[18%] px-3 py-3 font-medium">Finance & payments</th>
                                             <th className="w-[16%] px-3 py-3 font-medium">Follow-up</th>
+=======
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[760px] table-fixed text-left text-sm">
+                                    <thead>
+                                        <tr className="text-muted-foreground bg-muted/30 border-y text-xs tracking-wide uppercase">
+                                            <th className="w-[21%] px-3 py-3 font-medium">Request</th>
+                                            <th className="w-[15%] px-2 py-3 font-medium">Faculty & panel</th>
+                                            <th className="w-[10%] px-2 py-3 font-medium">Semester</th>
+                                            <th className="w-[28%] px-2 py-3 font-medium">Progress</th>
+                                            <th className="w-[18%] px-2 py-3 font-medium">Finance</th>
+                                            <th className="w-[16%] px-2 py-3 font-medium">Follow-up</th>
+>>>>>>> Stashed changes
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filtered.map((item) => {
+<<<<<<< Updated upstream
                                             const latestFollowUp = item.follow_ups[0];
                                             const activeStep = stepIndex(item.progress_stage);
                                             const nextAction = currentAction(item);
@@ -327,12 +548,51 @@ export default function HonorariumWorkspace() {
                                                                 <summary className="cursor-pointer">Panel · {item.panel_names.length}</summary>
                                                                 <ul className="mt-1 space-y-0.5">
                                                                     {item.panel_names.map((name) => (
+=======
+                                            const activeStep = item.progress.steps.findIndex((step) => !step.done);
+                                            const nextAction = currentAction(item);
+
+                                            return (
+                                                <tr key={item.id} className="hover:bg-muted/20 border-b align-top transition-colors last:border-0">
+                                                    <td className="px-3 py-4">
+                                                        <p className="truncate font-medium" title={item.student_name}>
+                                                            {item.student_name}
+                                                        </p>
+                                                        <p className="text-muted-foreground mt-1 truncate text-xs" title={item.program ?? ''}>
+                                                            {item.program || 'Program not set'} · {item.defense_type}
+                                                        </p>
+                                                        <p className="text-muted-foreground mt-1 text-xs">Request #{item.id}</p>
+                                                        <p className="text-muted-foreground text-[11px]">
+                                                            Requested {displayDate(item.requested_at)}
+                                                        </p>
+                                                        {item.receipt_url && (
+                                                            <a
+                                                                className="text-primary mt-1 inline-block text-xs underline-offset-2 hover:underline"
+                                                                href={item.receipt_url}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                            >
+                                                                View receipt
+                                                            </a>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-2 py-4">
+                                                        <p className="truncate text-sm" title={item.faculty[0] ?? ''}>
+                                                            {item.faculty[0] || 'Not assigned'}
+                                                        </p>
+                                                        {item.faculty.length > 1 && (
+                                                            <details className="text-muted-foreground mt-1 text-xs">
+                                                                <summary className="cursor-pointer">View all · {item.faculty.length}</summary>
+                                                                <ul className="mt-1 space-y-0.5">
+                                                                    {item.faculty.map((name) => (
+>>>>>>> Stashed changes
                                                                         <li className="truncate" key={name}>
                                                                             {name}
                                                                         </li>
                                                                     ))}
                                                                 </ul>
                                                             </details>
+<<<<<<< Updated upstream
                                                         ) : (
                                                             <div className="text-muted-foreground mt-1 text-xs">No panel assigned</div>
                                                         )}
@@ -352,10 +612,34 @@ export default function HonorariumWorkspace() {
                                                         <ol className="flex items-center" aria-label="Honorarium progress">
                                                             {progressSteps.map((step, index) => {
                                                                 const complete = index < activeStep;
+=======
+                                                        )}
+                                                    </td>
+                                                    <td className="text-muted-foreground px-2 py-4 text-xs">
+                                                        {item.periods.length
+                                                            ? item.periods.map((period) => (
+                                                                  <div className="mb-1 last:mb-0" key={`${period.school_year}-${period.semester}`}>
+                                                                      <span className="text-foreground font-medium">{period.semester}</span>
+                                                                      <div>{period.school_year}</div>
+                                                                  </div>
+                                                              ))
+                                                            : '—'}
+                                                    </td>
+                                                    <td className="px-2 py-4">
+                                                        <div className="mb-2 flex items-center justify-between gap-2 text-xs">
+                                                            <span className="truncate font-medium" title={item.progress.label}>
+                                                                {item.progress.label}
+                                                            </span>
+                                                            <span className="text-muted-foreground shrink-0">{item.progress.percent}%</span>
+                                                        </div>
+                                                        <ol className="flex items-center" aria-label="Honorarium progress">
+                                                            {item.progress.steps.map((step, index) => {
+>>>>>>> Stashed changes
                                                                 const current = index === activeStep;
 
                                                                 return (
                                                                     <li
+<<<<<<< Updated upstream
                                                                         className={`flex min-w-0 items-center ${index < progressSteps.length - 1 ? 'flex-1' : 'shrink-0'}`}
                                                                         key={step}
                                                                         aria-current={current ? 'step' : undefined}
@@ -365,28 +649,53 @@ export default function HonorariumWorkspace() {
                                                                             title={step}
                                                                             className={`flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold ${
                                                                                 complete
+=======
+                                                                        className={`flex min-w-0 items-center ${index < item.progress.steps.length - 1 ? 'flex-1' : 'shrink-0'}`}
+                                                                        key={step.label}
+                                                                        aria-current={current ? 'step' : undefined}
+                                                                        aria-label={`${step.label}${step.done ? ', complete' : current ? ', current step' : ', upcoming'}`}
+                                                                    >
+                                                                        <span
+                                                                            className={`flex size-4 shrink-0 items-center justify-center rounded-full border text-[9px] font-semibold ${
+                                                                                step.done
+>>>>>>> Stashed changes
                                                                                     ? 'border-emerald-600 bg-emerald-600 text-white'
                                                                                     : current
                                                                                       ? 'border-primary bg-primary text-primary-foreground'
                                                                                       : 'border-muted-foreground/40 text-muted-foreground'
                                                                             }`}
+<<<<<<< Updated upstream
                                                                         >
                                                                             {complete ? '✓' : index + 1}
                                                                         </span>
                                                                         {index < progressSteps.length - 1 && (
                                                                             <span className="bg-border mx-1 h-px flex-1" aria-hidden="true" />
+=======
+                                                                            title={step.label}
+                                                                        >
+                                                                            {step.done ? '✓' : index + 1}
+                                                                        </span>
+                                                                        {index < item.progress.steps.length - 1 && (
+                                                                            <span className="bg-border mx-0.5 h-px flex-1" aria-hidden="true" />
+>>>>>>> Stashed changes
                                                                         )}
                                                                     </li>
                                                                 );
                                                             })}
                                                         </ol>
+<<<<<<< Updated upstream
                                                         <div
                                                             className="text-muted-foreground mt-2 truncate text-xs"
                                                             role="status"
+=======
+                                                        <p
+                                                            className="text-muted-foreground mt-2 truncate text-xs"
+>>>>>>> Stashed changes
                                                             title={`${nextAction.owner}: ${nextAction.action}`}
                                                         >
                                                             Next: <span className="text-foreground font-medium">{nextAction.owner}</span> ·{' '}
                                                             {nextAction.action}
+<<<<<<< Updated upstream
                                                         </div>
                                                     </td>
                                                     <td className="px-3 py-4">
@@ -452,6 +761,49 @@ export default function HonorariumWorkspace() {
                                                                 </p>
                                                                 <p>{latestFollowUp.notes}</p>
                                                             </details>
+=======
+                                                        </p>
+                                                    </td>
+                                                    <td className="px-2 py-4">
+                                                        <Badge
+                                                            variant={
+                                                                item.finance_status === 'verified'
+                                                                    ? 'default'
+                                                                    : item.finance_status === 'rejected'
+                                                                      ? 'destructive'
+                                                                      : 'secondary'
+                                                            }
+                                                        >
+                                                            {statusLabel[item.finance_status] ?? item.finance_status}
+                                                        </Badge>
+                                                        <p className="text-muted-foreground mt-1 text-[11px]">
+                                                            Handoff {displayDate(item.submitted_at)}
+                                                        </p>
+                                                        {item.finance_notes && (
+                                                            <details className="text-muted-foreground mt-1 text-xs">
+                                                                <summary className="cursor-pointer">Finance note</summary>
+                                                                <p className="mt-1 break-words">{item.finance_notes}</p>
+                                                            </details>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-2 py-4">
+                                                        {item.follow_ups.length > 0 && (
+                                                            <details className="text-muted-foreground mb-2 text-[11px]">
+                                                                <summary className="cursor-pointer">History · {item.follow_ups.length}</summary>
+                                                                <div className="mt-1 space-y-2">
+                                                                    {item.follow_ups.map((entry) => (
+                                                                        <div key={entry.id}>
+                                                                            <div className="text-foreground font-medium">
+                                                                                {entry.recipient_role} · {displayDate(entry.occurred_at)}
+                                                                            </div>
+                                                                            <div>
+                                                                                {entry.actor}: {entry.notes}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </details>
+>>>>>>> Stashed changes
                                                         )}
                                                         {canFollowUp && !item.archived && (
                                                             <details>
@@ -459,7 +811,11 @@ export default function HonorariumWorkspace() {
                                                                     + Follow up
                                                                 </summary>
                                                                 <form
+<<<<<<< Updated upstream
                                                                     className="bg-background mt-2 w-full space-y-2 rounded-lg border p-3"
+=======
+                                                                    className="bg-background mt-2 w-full min-w-36 space-y-2 rounded-md border p-2"
+>>>>>>> Stashed changes
                                                                     onSubmit={(event) => {
                                                                         event.preventDefault();
                                                                         followUp(item, event.currentTarget);
@@ -483,26 +839,98 @@ export default function HonorariumWorkspace() {
                                                                         maxLength={2000}
                                                                         placeholder="Add a short note"
                                                                     />
+<<<<<<< Updated upstream
+=======
+                                                                    {followUpErrors[item.id] && (
+                                                                        <p className="text-destructive text-xs" role="alert">
+                                                                            {followUpErrors[item.id]}
+                                                                        </p>
+                                                                    )}
+>>>>>>> Stashed changes
                                                                     <Button type="submit" size="sm" className="w-full">
                                                                         Send follow-up
                                                                     </Button>
                                                                 </form>
                                                             </details>
                                                         )}
+<<<<<<< Updated upstream
                                                         {!item.archived && canSubmitToFinance && item.receipt_url && (
                                                             <Button className="mt-2 h-7 px-2 text-xs" size="sm" onClick={() => submit(item)}>
                                                                 <Send className="mr-1 size-3" />
                                                                 Send receipt
                                                             </Button>
                                                         )}
+=======
+>>>>>>> Stashed changes
                                                     </td>
                                                 </tr>
                                             );
                                         })}
                                         {filtered.length === 0 && (
                                             <tr>
+<<<<<<< Updated upstream
                                                 <td className="text-muted-foreground p-10 text-center" colSpan={6}>
                                                     No matching defense requests.
+=======
+                                                <td colSpan={6} className="text-muted-foreground p-10 text-center">
+                                                    No matching honorarium records.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+                {tab === 'reports' && canViewReports && (
+                    <Card className="overflow-hidden">
+                        <CardHeader>
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <CardTitle className="text-base">Program honorarium report</CardTitle>
+                                    <p className="text-muted-foreground mt-1 text-sm">Amounts grouped by program, school year, and semester.</p>
+                                </div>
+                                <Button asChild size="sm" variant="outline">
+                                    <a href="/honorarium-workspace/reports.csv">Export CSV</a>
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[900px] text-left text-sm">
+                                    <thead>
+                                        <tr className="text-muted-foreground bg-muted/30 border-y text-xs tracking-wide uppercase">
+                                            <th className="px-4 py-3 font-medium">Program</th>
+                                            <th className="px-3 py-3 font-medium">School year</th>
+                                            <th className="px-3 py-3 font-medium">Semester</th>
+                                            <th className="px-3 py-3 text-right font-medium">Recipients</th>
+                                            <th className="px-3 py-3 text-right font-medium">Total</th>
+                                            <th className="px-3 py-3 text-right font-medium">Prepared</th>
+                                            <th className="px-3 py-3 text-right font-medium">Approved</th>
+                                            <th className="px-3 py-3 text-right font-medium">Disbursed</th>
+                                            <th className="px-3 py-3 text-right font-medium">Claimed</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {programReports.map((report) => (
+                                            <tr className="border-b last:border-0" key={`${report.program}-${report.school_year}-${report.semester}`}>
+                                                <td className="px-4 py-3 font-medium">{report.program}</td>
+                                                <td className="text-muted-foreground px-3 py-3">{report.school_year}</td>
+                                                <td className="text-muted-foreground px-3 py-3">{report.semester}</td>
+                                                <td className="px-3 py-3 text-right">{report.recipients_count}</td>
+                                                <td className="px-3 py-3 text-right font-medium">{formatAmount(report.total_amount)}</td>
+                                                <td className="px-3 py-3 text-right">{formatAmount(report.prepared_amount)}</td>
+                                                <td className="px-3 py-3 text-right">{formatAmount(report.approved_amount)}</td>
+                                                <td className="px-3 py-3 text-right">{formatAmount(report.disbursed_amount)}</td>
+                                                <td className="px-3 py-3 text-right">{formatAmount(report.claimed_amount)}</td>
+                                            </tr>
+                                        ))}
+                                        {programReports.length === 0 && (
+                                            <tr>
+                                                <td className="text-muted-foreground p-10 text-center" colSpan={9}>
+                                                    No honorarium payments have been prepared.
+>>>>>>> Stashed changes
                                                 </td>
                                             </tr>
                                         )}

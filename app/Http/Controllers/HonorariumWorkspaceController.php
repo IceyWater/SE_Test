@@ -14,6 +14,11 @@ use App\Services\HonorariumAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+<<<<<<< Updated upstream
+=======
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+>>>>>>> Stashed changes
 use Inertia\Inertia;
 
 class HonorariumWorkspaceController extends Controller
@@ -26,6 +31,7 @@ class HonorariumWorkspaceController extends Controller
                 $q->whereNotNull('proof_of_payment')->orWhereHas('honorariumPayments');
             })
             ->latest('updated_at')->limit(500)->get();
+<<<<<<< Updated upstream
         $requestIds = $requests->pluck('id');
         $docs = FinanceDocumentSubmission::with(['submitter:id,first_name,last_name,role', 'reviewer:id,first_name,last_name,role'])
             ->whereIn('defense_request_id', $requestIds)->get()->groupBy('defense_request_id');
@@ -35,6 +41,15 @@ class HonorariumWorkspaceController extends Controller
             ->whereIn('defense_request_id', $requestIds)->where('activity_type', 'follow_up')
             ->latest('occurred_at')->get()->groupBy('defense_request_id');
         $items = $requests->map(function ($r) use ($docs, $disbursements, $activities, $access) {
+=======
+        $docs = FinanceDocumentSubmission::whereIn('defense_request_id', $requests->pluck('id'))->get()->groupBy('defense_request_id');
+        $payments = HonorariumDisbursement::whereIn('defense_request_id', $requests->pluck('id'))
+            ->get(['defense_request_id', 'recipient_name', 'school_year', 'semester', 'status', 'requires_review'])->groupBy('defense_request_id');
+        $followUps = HonorariumActivity::whereIn('defense_request_id', $requests->pluck('id'))
+            ->where('activity_type', 'follow_up')->with('user:id,first_name,last_name')
+            ->latest('occurred_at')->limit(500)->get()->groupBy('defense_request_id');
+        $items = $requests->map(function ($r) use ($docs, $payments, $followUps, $access) {
+>>>>>>> Stashed changes
             $documents = $docs->get($r->id, collect());
             $documentsByType = $documents->keyBy('document_type');
             $recipientRecords = $disbursements->get($r->id, collect());
@@ -76,6 +91,7 @@ class HonorariumWorkspaceController extends Controller
                 'receipt_url' => $access->receiptUrl($r->proof_of_payment, $r), 'panel_names' => $panelNames,
                 'faculty_names' => $facultyNames,
                 'finance_status' => $status, 'finance_notes' => $documents->where('status', 'rejected')->first()?->finance_notes,
+<<<<<<< Updated upstream
                 'finance_documents' => $financeDocuments,
                 'honorarium_recipients' => $recipientRecords->map(fn ($record) => [
                     'name' => $record->recipient_name,
@@ -109,11 +125,25 @@ class HonorariumWorkspaceController extends Controller
             'value' => $record->school_year.'|'.$record->semester,
         ])->unique('value')->sortByDesc('value')->values();
         $isDean = in_array($access->role($user), ['dean', 'super admin', 'superadmin'], true);
+=======
+                'submitted_at' => $documents->max('submitted_at')?->toIso8601String(), 'finance_submission_id' => null,
+                'follow_ups' => $followUps->get($r->id, collect())->map(fn ($activity) => [
+                    'id' => $activity->id,
+                    'recipient_role' => $activity->recipient_role,
+                    'notes' => $activity->description,
+                    'actor' => $activity->user?->full_name ?: 'System',
+                    'occurred_at' => $activity->occurred_at?->toIso8601String(),
+                ])->values(),
+            ];
+        });
+        $canViewReports = $access->role($user) === 'dean';
+>>>>>>> Stashed changes
 
         return Inertia::render('honorarium/workspace/Index', [
             'role' => $access->role($user), 'canSubmitToFinance' => false, 'canVerifyFinance' => false,
             'canManageDocuments' => $access->canSubmit($user) || $access->canReview($user), 'items' => $items,
             'rates' => $access->canSubmit($user) || $access->canReview($user) ? DB::table('payment_rates')->orderBy('program_level')->get() : [],
+<<<<<<< Updated upstream
             'facultyOptions' => $facultyOptions,
             'terms' => $terms,
             'canFollowUp' => in_array($access->role($user), ['administrative assistant', 'assistant', 'aa', 'dean', 'super admin', 'superadmin'], true),
@@ -230,19 +260,83 @@ class HonorariumWorkspaceController extends Controller
                 'recipient_role' => $data['recipient_role'],
                 'occurred_at' => now(),
             ]);
+=======
+            'canFollowUp' => $access->canSubmit($user) || $access->canReview($user),
+            'canViewReports' => $canViewReports,
+            'programReports' => $canViewReports ? $this->programReports($access, $user) : [],
+        ]);
+    }
+
+    public function followUp(Request $request, DefenseRequest $defenseRequest, HonorariumAccess $access)
+    {
+        $user = $request->user();
+        abort_unless($access->canSubmit($user) || $access->canReview($user), 403);
+        $defenseRequest = $access->scope(DefenseRequest::query(), $user)
+            ->with('student')->findOrFail($defenseRequest->id);
+        $data = $request->validate([
+            'recipient_role' => ['required', Rule::in(['Finance', 'Administrative Assistant', 'Dean'])],
+            'notes' => ['required', 'string', 'min:3', 'max:2000'],
+        ]);
+        $roles = match ($data['recipient_role']) {
+            'Finance' => ['finance', 'finance office', 'finance officer'],
+            'Administrative Assistant' => ['administrative assistant', 'assistant', 'aa'],
+            'Dean' => ['dean'],
+        };
+        $recipients = User::query()->whereIn(DB::raw('LOWER(role)'), $roles)
+            ->whereNotNull('email')->where('email', '!=', '')->get(['id', 'email']);
+        if ($recipients->isEmpty()) {
+            throw ValidationException::withMessages([
+                'recipient_role' => 'No user with an email address is assigned to this office.',
+            ]);
+        }
+
+        $studentName = $defenseRequest->student?->full_name
+            ?: trim($defenseRequest->first_name.' '.$defenseRequest->last_name);
+        $program = $defenseRequest->program ?: 'Not specified';
+        foreach ($recipients as $recipient) {
+            Mail::to($recipient->email)->send(new HonorariumFollowUp(
+                $studentName,
+                $program,
+                (string) $defenseRequest->defense_type,
+                $data['recipient_role'],
+                $data['notes'],
+                $defenseRequest->id,
+            ));
+        }
+
+        DB::transaction(function () use ($defenseRequest, $user, $data, $recipients, $studentName) {
+            HonorariumActivity::create([
+                'defense_request_id' => $defenseRequest->id,
+                'user_id' => $user->id,
+                'activity_type' => 'follow_up',
+                'title' => 'Follow-up sent to '.$data['recipient_role'],
+                'description' => $data['notes'],
+                'recipient_role' => $data['recipient_role'],
+                'occurred_at' => now(),
+            ]);
+
+>>>>>>> Stashed changes
             foreach ($recipients as $recipient) {
                 Notification::create([
                     'user_id' => $recipient->id,
                     'defense_request_id' => $defenseRequest->id,
+<<<<<<< Updated upstream
                     'type' => 'honorarium_follow_up',
                     'title' => 'Honorarium follow-up',
                     'message' => 'A follow-up was recorded for defense request #'.$defenseRequest->id.'.',
                     'link' => route('honorarium-workspace.index'),
+=======
+                    'type' => 'honorarium',
+                    'title' => 'Honorarium follow-up',
+                    'message' => 'A follow-up was recorded for '.$studentName.': '.$data['notes'],
+                    'link' => '/honorarium-workspace',
+>>>>>>> Stashed changes
                     'read' => false,
                 ]);
             }
         });
 
+<<<<<<< Updated upstream
         foreach ($recipients as $recipient) {
             Mail::to($recipient->email)->send(new HonorariumFollowUp(
                 $defenseRequest,
@@ -254,6 +348,51 @@ class HonorariumWorkspaceController extends Controller
         }
 
         return back()->with('success', 'Follow-up recorded and email sent to '.$data['recipient_role'].'.');
+=======
+        return back()->with('success', 'Follow-up emailed and recorded.');
+    }
+
+    public function downloadReport(Request $request, HonorariumAccess $access)
+    {
+        abort_unless($access->role($request->user()) === 'dean', 403);
+        $reports = $this->programReports($access, $request->user());
+
+        return response()->streamDownload(function () use ($reports) {
+            $stream = fopen('php://output', 'w');
+            fputcsv($stream, ['Program', 'School Year', 'Semester', 'Recipients', 'Total Amount', 'Prepared', 'Approved', 'Disbursed', 'Claimed']);
+            foreach ($reports as $report) {
+                $values = [
+                    $report->program, $report->school_year, $report->semester, $report->recipients_count,
+                    $report->total_amount, $report->prepared_amount, $report->approved_amount,
+                    $report->disbursed_amount, $report->claimed_amount,
+                ];
+                fputcsv($stream, array_map(function ($value) {
+                    $value = (string) $value;
+
+                    return preg_match('/^[=+\-@]/', $value) ? "'".$value : $value;
+                }, $values));
+            }
+            fclose($stream);
+        }, 'honorarium-program-report.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function programReports(HonorariumAccess $access, User $user)
+    {
+        $requestIds = $access->scope(DefenseRequest::query(), $user)->select('defense_requests.id');
+
+        return HonorariumDisbursement::query()
+            ->join('defense_requests as defense', 'defense.id', '=', 'honorarium_disbursements.defense_request_id')
+            ->whereIn('honorarium_disbursements.defense_request_id', $requestIds)
+            ->where('honorarium_disbursements.status', '!=', 'voided')
+            ->selectRaw("COALESCE(NULLIF(defense.program, ''), 'Unassigned') as program, honorarium_disbursements.school_year, honorarium_disbursements.semester, COUNT(*) as recipients_count, SUM(honorarium_disbursements.amount) as total_amount")
+            ->selectRaw("SUM(CASE WHEN honorarium_disbursements.status = 'prepared' THEN honorarium_disbursements.amount ELSE 0 END) as prepared_amount")
+            ->selectRaw("SUM(CASE WHEN honorarium_disbursements.status = 'approved' THEN honorarium_disbursements.amount ELSE 0 END) as approved_amount")
+            ->selectRaw("SUM(CASE WHEN honorarium_disbursements.status = 'disbursed' THEN honorarium_disbursements.amount ELSE 0 END) as disbursed_amount")
+            ->selectRaw("SUM(CASE WHEN honorarium_disbursements.status = 'claimed' THEN honorarium_disbursements.amount ELSE 0 END) as claimed_amount")
+            ->groupBy('defense.program', 'honorarium_disbursements.school_year', 'honorarium_disbursements.semester')
+            ->orderBy('program')->orderByDesc('honorarium_disbursements.school_year')->orderBy('honorarium_disbursements.semester')
+            ->get();
+>>>>>>> Stashed changes
     }
 
     public function submitToFinance(Request $request, DefenseRequest $defenseRequest)
