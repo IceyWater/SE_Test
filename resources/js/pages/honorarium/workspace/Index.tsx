@@ -7,9 +7,28 @@ import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { CalendarDays, CheckCircle2, CircleDollarSign, FileCheck2, FileText, Search, Send, ShieldCheck, XCircle } from 'lucide-react';
-import { useState } from 'react';
+import { CalendarDays, CircleDollarSign, FileCheck2, FileText, Search, Send } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
+type FinanceDocument = {
+    type: string;
+    status: string;
+    submitted_at?: string | null;
+    submitted_by?: string | null;
+    reviewed_at?: string | null;
+    reviewed_by?: string | null;
+    reviewer_role?: string | null;
+    finance_notes?: string | null;
+};
+type HonorariumRecipient = {
+    name: string;
+    role: string;
+    status: string;
+    school_year: string;
+    semester: string;
+    amount: number;
+    updated_at?: string | null;
+};
 type Item = {
     archived: boolean;
     id: number;
@@ -22,19 +41,41 @@ type Item = {
     scheduled_time?: string | null;
     receipt_url?: string | null;
     panel_names: string[];
+    faculty_names: string[];
     finance_status: string;
-    finance_notes?: string | null;
+    finance_documents: FinanceDocument[];
+    honorarium_recipients: HonorariumRecipient[];
+    school_year?: string | null;
+    semester?: string | null;
+    progress_stage: number;
+    progress_percent: number;
+    follow_ups: { id: number; recipient_role: string; notes: string; actor: string; occurred_at?: string | null }[];
     submitted_at?: string | null;
-    finance_submission_id?: number | null;
+    last_updated_at?: string | null;
 };
 type Rate = { id: number; program_level: string; type: string; defense_type?: string | null; amount: number };
+type ProgramReport = {
+    program: string;
+    school_year: string;
+    semester: string;
+    recipients_count: number;
+    total_amount: number;
+    prepared_amount: number;
+    approved_amount: number;
+    disbursed_amount: number;
+    claimed_amount: number;
+};
 type Props = {
     canManageDocuments: boolean;
     role: string;
     canSubmitToFinance: boolean;
-    canVerifyFinance: boolean;
     items: Item[];
     rates: Rate[];
+    facultyOptions: string[];
+    terms: { school_year: string; semester: string; value: string }[];
+    canFollowUp: boolean;
+    canViewReports: boolean;
+    programReports: ProgramReport[];
     flash?: { success?: string };
 };
 
@@ -44,80 +85,119 @@ const statusLabel: Record<string, string> = {
     verified: 'Finance verified',
     rejected: 'Finance rejected',
 };
+const progressSteps = ['Receipt', 'Panel breakdown', 'Prepare', 'Approve', 'Disburse', 'Claim', 'Complete'];
+const formatDate = (value?: string | null) =>
+    value ? new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' }).format(new Date(value)) : '—';
+
+function currentAction(item: Item): { owner: string; action: string } {
+    const receipt = item.finance_documents.find((document) => document.type === 'payment_receipt');
+    const breakdown = item.finance_documents.find((document) => document.type === 'panel_breakdown');
+
+    if (!receipt || ['ready', 'rejected'].includes(receipt.status)) return { owner: 'AA', action: 'Send receipt to Finance' };
+    if (receipt.status === 'submitted') return { owner: 'Finance', action: 'Verify receipt' };
+    if (!breakdown || ['locked', 'ready', 'rejected'].includes(breakdown.status)) return { owner: 'AA', action: 'Send panel breakdown' };
+    if (breakdown.status === 'submitted') return { owner: 'Finance', action: 'Verify panel breakdown' };
+    if (!item.honorarium_recipients.length) return { owner: 'AA', action: 'Prepare honorarium records' };
+    if (item.progress_stage === 5) return { owner: 'Dean / Finance', action: 'Approve honorarium records' };
+    if (item.progress_stage === 6) return { owner: 'Finance', action: 'Record disbursement' };
+    if (item.progress_stage === 7) return { owner: 'Recipients', action: 'Record claims' };
+
+    return { owner: 'Complete', action: 'All honorarium steps are complete' };
+}
+
+function stepIndex(stage: number): number {
+    if (stage <= 1) return 0;
+    if (stage <= 3) return 1;
+    if (stage === 4) return 2;
+    if (stage === 5) return 3;
+    if (stage === 6) return 4;
+    if (stage === 7) return 5;
+
+    return 6;
+}
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Honorarium Tracking', href: '/honorarium-workspace' }];
 
 export default function HonorariumWorkspace() {
-    const { canManageDocuments, role, canSubmitToFinance, canVerifyFinance, items = [], rates = [], flash } = usePage<Props>().props;
-    const [tab, setTab] = useState<'workflow' | 'schedule' | 'rates' | 'records'>('workflow');
+    const {
+        canManageDocuments,
+        role,
+        canSubmitToFinance,
+        items = [],
+        rates = [],
+        facultyOptions = [],
+        terms = [],
+        canFollowUp,
+        canViewReports,
+        programReports = [],
+        flash,
+    } = usePage<Props>().props;
+    const [tab, setTab] = useState<'workflow' | 'schedule' | 'rates' | 'records' | 'reports'>('workflow');
     const [archived, setArchived] = useState(false);
     const active = items.filter((item) => !item.archived);
     const categoryItems = items.filter((item) => item.archived === archived);
     const [search, setSearch] = useState('');
-    const [notes, setNotes] = useState<Record<number, string>>({});
-    const filtered = categoryItems.filter((item) =>
-        `${item.student_name} ${item.student_number ?? ''} ${item.program ?? ''} ${item.defense_type}`.toLowerCase().includes(search.toLowerCase()),
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [facultyFilter, setFacultyFilter] = useState('all');
+    const [termFilter, setTermFilter] = useState('all');
+    useEffect(() => {
+        const interval = window.setInterval(() => {
+            router.reload({ only: ['items', 'facultyOptions', 'terms', 'programReports'] });
+        }, 30_000);
+
+        return () => window.clearInterval(interval);
+    }, []);
+    const filtered = categoryItems.filter(
+        (item) =>
+            `${item.student_name} ${item.student_number ?? ''} ${item.program ?? ''} ${item.defense_type}`
+                .toLowerCase()
+                .includes(search.toLowerCase()) &&
+            (facultyFilter === 'all' || item.faculty_names.includes(facultyFilter)) &&
+            (termFilter === 'all' || `${item.school_year ?? ''}|${item.semester ?? ''}` === termFilter) &&
+            (statusFilter === 'all' ||
+                (statusFilter === 'awaiting' && item.finance_status === 'submitted') ||
+                (statusFilter === 'verified' && item.finance_status === 'verified') ||
+                (statusFilter === 'receipts' && Boolean(item.receipt_url))),
     );
     const submit = (item: Item) => router.post(`/honorarium-workspace/${item.id}/submit-to-finance`, {}, { preserveScroll: true });
-    const financeReview = (item: Item, status: 'verified' | 'rejected') => {
-        if (!item.finance_submission_id) return;
-        if (status === 'rejected' && !notes[item.id]?.trim()) {
-            window.alert('Please enter a reason before rejecting.');
-            return;
-        }
+    const followUp = (item: Item, form: HTMLFormElement) => {
+        const values = new FormData(form);
         router.post(
-            `/honorarium-workspace/finance/${item.finance_submission_id}/status`,
-            { status, finance_notes: notes[item.id] ?? '' },
-            { preserveScroll: true },
+            `/honorarium-workspace/${item.id}/follow-ups`,
+            { recipient_role: String(values.get('recipient_role') ?? ''), notes: String(values.get('notes') ?? '') },
+            { preserveScroll: true, onSuccess: () => form.reset() },
         );
     };
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Honorarium Tracking" />
-            <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 md:p-8">
-                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-                    <div>
-                        <p className="text-muted-foreground text-sm">Graduate School · Shared workspace</p>
-                        <h1 className="text-3xl font-bold tracking-tight">Honorarium Tracking</h1>
-                        <p className="text-muted-foreground mt-1 text-sm">
-                            Receipts, panel assignments, scheduling, rates, and verification in one place.
-                        </p>
+            <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 p-4 md:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div>
+                            <h1 className="text-2xl font-semibold tracking-tight">Honorarium</h1>
+                            <p className="text-muted-foreground text-sm">Defense request tracking</p>
+                        </div>
+                        <Badge variant="outline" className="capitalize">
+                            {role}
+                        </Badge>
                     </div>
-                    <Badge variant="outline" className="w-fit capitalize">
-                        {role}
-                    </Badge>
+                    <div className="flex flex-wrap gap-2">
+                        {canManageDocuments && (
+                            <Button asChild variant="outline" size="sm">
+                                <Link href="/honorarium-documents">Finance documents</Link>
+                            </Button>
+                        )}
+                        <Button asChild variant="outline" size="sm">
+                            <Link href="/honorarium-ledger">Payment ledger</Link>
+                        </Button>
+                    </div>
                 </div>
-                {canManageDocuments && (
-                    <Button asChild className="w-fit">
-                        <Link href="/honorarium-documents">Manage Finance documents</Link>
-                    </Button>
-                )}
-                <Button asChild variant="outline" className="w-fit">
-                    <Link href="/honorarium-ledger">View honorarium payments</Link>
-                </Button>
                 {flash?.success && (
                     <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
                         {flash.success}
                     </div>
                 )}
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {[
-                        { label: 'Tracked defenses', value: active.length, icon: FileText },
-                        { label: 'Awaiting Finance', value: active.filter((x) => x.finance_status === 'submitted').length, icon: FileCheck2 },
-                        { label: 'Verified', value: active.filter((x) => x.finance_status === 'verified').length, icon: CheckCircle2 },
-                        { label: 'Receipts available', value: active.filter((x) => x.receipt_url).length, icon: ShieldCheck },
-                    ].map((metric) => (
-                        <Card key={metric.label}>
-                            <CardContent className="flex items-center justify-between p-5">
-                                <div>
-                                    <p className="text-muted-foreground text-sm">{metric.label}</p>
-                                    <p className="mt-1 text-2xl font-semibold">{metric.value}</p>
-                                </div>
-                                <metric.icon className="text-muted-foreground size-5" />
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
                 <div className="flex flex-wrap gap-2 border-b pb-3">
                     {(
                         [
@@ -125,6 +205,7 @@ export default function HonorariumWorkspace() {
                             { id: 'schedule', label: 'Schedule board', icon: CalendarDays },
                             { id: 'rates', label: 'Payment rates', icon: CircleDollarSign },
                             { id: 'records', label: 'Records', icon: FileText },
+                            ...(canViewReports ? [{ id: 'reports' as const, label: 'Program reports', icon: FileCheck2 }] : []),
                         ] as const
                     ).map((t) => (
                         <Button key={t.id} variant={tab === t.id ? 'default' : 'outline'} onClick={() => setTab(t.id)} className="gap-2">
@@ -140,100 +221,293 @@ export default function HonorariumWorkspace() {
                     archivedCount={items.length - active.length}
                 />
                 {tab === 'workflow' && (
-                    <Card>
-                        <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <CardTitle>Receipt and honorarium workflow</CardTitle>
-                                <p className="text-muted-foreground text-sm">
-                                    AA sends the student's receipt and panel list to Finance; Finance can review but cannot edit the submission.
-                                </p>
+                    <Card className="overflow-hidden">
+                        <CardHeader className="pb-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <CardTitle className="text-base">Defense requests</CardTitle>
+                                <span className="text-muted-foreground text-sm">{filtered.length} requests</span>
                             </div>
-                            <div className="relative w-full sm:max-w-xs">
-                                <Search className="text-muted-foreground absolute top-2.5 left-3 size-4" />
-                                <Input
-                                    className="pl-9"
-                                    placeholder="Search student or program"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                />
+                            <div className="grid gap-2 pt-2 md:grid-cols-2 xl:grid-cols-4">
+                                <div className="relative">
+                                    <Search className="text-muted-foreground absolute top-2.5 left-3 size-4" />
+                                    <Input
+                                        className="h-9 pl-9"
+                                        placeholder="Search student or program"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                    />
+                                </div>
+                                <select
+                                    className="bg-background h-9 rounded-md border px-3 text-sm"
+                                    aria-label="Filter by faculty"
+                                    value={facultyFilter}
+                                    onChange={(e) => setFacultyFilter(e.target.value)}
+                                >
+                                    <option value="all">All faculty</option>
+                                    {facultyOptions.map((faculty) => (
+                                        <option key={faculty} value={faculty}>
+                                            {faculty}
+                                        </option>
+                                    ))}
+                                </select>
+                                <select
+                                    className="bg-background h-9 rounded-md border px-3 text-sm"
+                                    aria-label="Filter by semester"
+                                    value={termFilter}
+                                    onChange={(e) => setTermFilter(e.target.value)}
+                                >
+                                    <option value="all">All semesters</option>
+                                    {terms.map((term) => (
+                                        <option key={term.value} value={term.value}>
+                                            {term.school_year} · {term.semester}
+                                        </option>
+                                    ))}
+                                </select>
+                                <select
+                                    className="bg-background h-9 rounded-md border px-3 text-sm"
+                                    aria-label="Filter by honorarium status"
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                >
+                                    <option value="all">All statuses</option>
+                                    <option value="awaiting">Awaiting Finance</option>
+                                    <option value="verified">Verified</option>
+                                    <option value="receipts">Receipts Available</option>
+                                </select>
                             </div>
                         </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {filtered.length === 0 && (
-                                    <p className="text-muted-foreground rounded-lg border border-dashed p-8 text-center text-sm">
-                                        No matching receipt-backed defense records found.
-                                    </p>
-                                )}
-                                {filtered.map((item) => (
-                                    <div key={item.id} className="rounded-xl border p-4">
-                                        <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <h3 className="font-semibold">{item.student_name}</h3>
-                                                    <Badge variant="outline">Request #{item.id}</Badge>
-                                                    <Badge variant={item.finance_status === 'verified' ? 'default' : 'secondary'}>
-                                                        {statusLabel[item.finance_status] ?? item.finance_status}
-                                                    </Badge>
-                                                </div>
-                                                <p className="text-muted-foreground mt-1 text-sm">
-                                                    {[item.student_number, item.program, item.defense_type].filter(Boolean).join(' · ')}
-                                                </p>
-                                                <p className="mt-2 text-sm">
-                                                    <span className="font-medium">Workflow:</span> {item.workflow_state}{' '}
-                                                    {item.scheduled_date ? `· ${item.scheduled_date} ${item.scheduled_time ?? ''}` : ''}
-                                                </p>
-                                                <p className="mt-2 text-sm">
-                                                    <span className="font-medium">Panel:</span>{' '}
-                                                    {item.panel_names?.length ? item.panel_names.join(', ') : 'No panel names recorded'}
-                                                </p>
-                                                {item.finance_notes && (
-                                                    <p className="bg-muted mt-2 rounded-md p-2 text-sm">
-                                                        <span className="font-medium">Finance note:</span> {item.finance_notes}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className="flex flex-wrap gap-2">
-                                                {item.receipt_url ? (
-                                                    <Button variant="outline" asChild>
-                                                        <a href={item.receipt_url} target="_blank" rel="noreferrer">
-                                                            <FileText className="mr-2 size-4" />
-                                                            View receipt
-                                                        </a>
-                                                    </Button>
-                                                ) : (
-                                                    <span className="text-muted-foreground text-sm">No receipt uploaded</span>
-                                                )}
-                                                {!item.archived && canSubmitToFinance && item.receipt_url && (
-                                                    <Button onClick={() => submit(item)} className="gap-2">
-                                                        <Send className="size-4" />
-                                                        {item.finance_status === 'not_submitted' ? 'Send to Finance' : 'Resend to Finance'}
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {!item.archived && canVerifyFinance && item.finance_submission_id && item.finance_status === 'submitted' && (
-                                            <div className="mt-4 border-t pt-4">
-                                                <label className="mb-2 block text-sm font-medium">Review notes (required for rejection)</label>
-                                                <Textarea
-                                                    value={notes[item.id] ?? ''}
-                                                    onChange={(e) => setNotes((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                                                    placeholder="Enter verification note or rejection reason"
-                                                />
-                                                <div className="mt-3 flex flex-wrap gap-2">
-                                                    <Button onClick={() => financeReview(item, 'verified')} className="gap-2">
-                                                        <CheckCircle2 className="size-4" />
-                                                        Verify receipt
-                                                    </Button>
-                                                    <Button variant="destructive" onClick={() => financeReview(item, 'rejected')} className="gap-2">
-                                                        <XCircle className="size-4" />
-                                                        Reject with reason
-                                                    </Button>
-                                                </div>
-                                            </div>
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[980px] table-fixed text-left text-sm">
+                                    <thead>
+                                        <tr className="text-muted-foreground bg-muted/30 border-y text-xs tracking-wide uppercase">
+                                            <th className="w-[19%] px-4 py-3 font-medium">Request</th>
+                                            <th className="w-[16%] px-3 py-3 font-medium">Faculty & panel</th>
+                                            <th className="w-[11%] px-3 py-3 font-medium">Semester</th>
+                                            <th className="w-[20%] px-3 py-3 font-medium">Progress</th>
+                                            <th className="w-[18%] px-3 py-3 font-medium">Finance & payments</th>
+                                            <th className="w-[16%] px-3 py-3 font-medium">Follow-up</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filtered.map((item) => {
+                                            const latestFollowUp = item.follow_ups[0];
+                                            const activeStep = stepIndex(item.progress_stage);
+                                            const nextAction = currentAction(item);
+                                            return (
+                                                <tr className="hover:bg-muted/20 border-b align-top transition-colors last:border-0" key={item.id}>
+                                                    <td className="px-4 py-4">
+                                                        <div className="truncate font-medium" title={item.student_name}>
+                                                            {item.student_name}
+                                                        </div>
+                                                        <div className="text-muted-foreground mt-1 truncate text-xs" title={item.program ?? ''}>
+                                                            {item.program || 'Program not set'}
+                                                        </div>
+                                                        <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 text-xs">
+                                                            <span>#{item.id}</span>
+                                                            <span>{item.defense_type}</span>
+                                                            {item.receipt_url && (
+                                                                <a
+                                                                    className="text-primary underline-offset-2 hover:underline"
+                                                                    href={item.receipt_url}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                >
+                                                                    Receipt
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-4">
+                                                        <div className="truncate text-sm" title={item.faculty_names[0] ?? ''}>
+                                                            {item.faculty_names[0] || 'Not assigned'}
+                                                        </div>
+                                                        {item.panel_names.length > 0 ? (
+                                                            <details className="text-muted-foreground mt-1 text-xs">
+                                                                <summary className="cursor-pointer">Panel · {item.panel_names.length}</summary>
+                                                                <ul className="mt-1 space-y-0.5">
+                                                                    {item.panel_names.map((name) => (
+                                                                        <li className="truncate" key={name}>
+                                                                            {name}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </details>
+                                                        ) : (
+                                                            <div className="text-muted-foreground mt-1 text-xs">No panel assigned</div>
+                                                        )}
+                                                    </td>
+                                                    <td className="text-muted-foreground px-3 py-4 text-xs">
+                                                        {item.school_year && item.semester ? (
+                                                            <>
+                                                                <div className="text-foreground font-medium">{item.semester}</div>
+                                                                <div>{item.school_year}</div>
+                                                            </>
+                                                        ) : (
+                                                            '—'
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-4">
+                                                        <div className="mb-2 text-xs font-medium">{progressSteps[activeStep]}</div>
+                                                        <ol className="flex items-center" aria-label="Honorarium progress">
+                                                            {progressSteps.map((step, index) => {
+                                                                const complete = index < activeStep;
+                                                                const current = index === activeStep;
+
+                                                                return (
+                                                                    <li
+                                                                        className={`flex min-w-0 items-center ${index < progressSteps.length - 1 ? 'flex-1' : 'shrink-0'}`}
+                                                                        key={step}
+                                                                        aria-current={current ? 'step' : undefined}
+                                                                        aria-label={`${step}${complete ? ', complete' : current ? ', current step' : ', upcoming'}`}
+                                                                    >
+                                                                        <span
+                                                                            title={step}
+                                                                            className={`flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold ${
+                                                                                complete
+                                                                                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                                                                                    : current
+                                                                                      ? 'border-primary bg-primary text-primary-foreground'
+                                                                                      : 'border-muted-foreground/40 text-muted-foreground'
+                                                                            }`}
+                                                                        >
+                                                                            {complete ? '✓' : index + 1}
+                                                                        </span>
+                                                                        {index < progressSteps.length - 1 && (
+                                                                            <span className="bg-border mx-1 h-px flex-1" aria-hidden="true" />
+                                                                        )}
+                                                                    </li>
+                                                                );
+                                                            })}
+                                                        </ol>
+                                                        <div
+                                                            className="text-muted-foreground mt-2 truncate text-xs"
+                                                            role="status"
+                                                            title={`${nextAction.owner}: ${nextAction.action}`}
+                                                        >
+                                                            Next: <span className="text-foreground font-medium">{nextAction.owner}</span> ·{' '}
+                                                            {nextAction.action}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-4">
+                                                        <div className="space-y-1.5">
+                                                            {(['payment_receipt', 'panel_breakdown'] as const).map((type) => {
+                                                                const doc = item.finance_documents.find((document) => document.type === type);
+                                                                const label = type === 'payment_receipt' ? 'Receipt' : 'Breakdown';
+
+                                                                return (
+                                                                    <div className="flex items-center justify-between gap-2 text-xs" key={type}>
+                                                                        <span className="text-muted-foreground">{label}</span>
+                                                                        <Badge
+                                                                            variant={doc?.status === 'verified' ? 'default' : 'secondary'}
+                                                                            className="h-5 px-1.5 text-[10px]"
+                                                                        >
+                                                                            {doc?.status ?? 'Not sent'}
+                                                                        </Badge>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            <details className="text-muted-foreground border-t pt-1.5 text-[11px]">
+                                                                <summary className="cursor-pointer">Activity & panel payments</summary>
+                                                                <div className="mt-1 space-y-2">
+                                                                    {item.finance_documents.map((doc) => (
+                                                                        <div key={doc.type}>
+                                                                            <div className="text-foreground font-medium">
+                                                                                {doc.type === 'payment_receipt' ? 'Receipt' : 'Panel breakdown'}
+                                                                            </div>
+                                                                            <div>Sent {formatDate(doc.submitted_at)}</div>
+                                                                            <div>
+                                                                                Reviewed {formatDate(doc.reviewed_at)}
+                                                                                {doc.reviewer_role ? ` · ${doc.reviewer_role}` : ''}
+                                                                            </div>
+                                                                            {doc.finance_notes && <div>Note: {doc.finance_notes}</div>}
+                                                                        </div>
+                                                                    ))}
+                                                                    <div className="text-foreground font-medium">Panel honoraria</div>
+                                                                    {item.honorarium_recipients.length ? (
+                                                                        item.honorarium_recipients.map((recipient) => (
+                                                                            <div
+                                                                                className="flex justify-between gap-2"
+                                                                                key={`${recipient.role}-${recipient.name}`}
+                                                                            >
+                                                                                <span className="truncate">{recipient.name}</span>
+                                                                                <span>{recipient.status}</span>
+                                                                            </div>
+                                                                        ))
+                                                                    ) : (
+                                                                        <div>No payment records</div>
+                                                                    )}
+                                                                </div>
+                                                            </details>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-4">
+                                                        {latestFollowUp && (
+                                                            <details className="text-muted-foreground mb-2 text-[11px]">
+                                                                <summary className="cursor-pointer">
+                                                                    Follow-up · {formatDate(latestFollowUp.occurred_at)}
+                                                                </summary>
+                                                                <p className="mt-1">
+                                                                    {latestFollowUp.actor} → {latestFollowUp.recipient_role}
+                                                                </p>
+                                                                <p>{latestFollowUp.notes}</p>
+                                                            </details>
+                                                        )}
+                                                        {canFollowUp && !item.archived && (
+                                                            <details>
+                                                                <summary className="text-primary cursor-pointer text-xs font-medium">
+                                                                    + Follow up
+                                                                </summary>
+                                                                <form
+                                                                    className="bg-background mt-2 w-full space-y-2 rounded-lg border p-3"
+                                                                    onSubmit={(event) => {
+                                                                        event.preventDefault();
+                                                                        followUp(item, event.currentTarget);
+                                                                    }}
+                                                                >
+                                                                    <select
+                                                                        className="bg-background h-8 w-full rounded-md border px-2 text-xs"
+                                                                        name="recipient_role"
+                                                                        defaultValue="Finance"
+                                                                        aria-label={`Follow-up recipient for request ${item.id}`}
+                                                                    >
+                                                                        <option>Finance</option>
+                                                                        <option>Administrative Assistant</option>
+                                                                        <option>Dean</option>
+                                                                    </select>
+                                                                    <Textarea
+                                                                        className="min-h-16 text-xs"
+                                                                        name="notes"
+                                                                        required
+                                                                        minLength={3}
+                                                                        maxLength={2000}
+                                                                        placeholder="Add a short note"
+                                                                    />
+                                                                    <Button type="submit" size="sm" className="w-full">
+                                                                        Send follow-up
+                                                                    </Button>
+                                                                </form>
+                                                            </details>
+                                                        )}
+                                                        {!item.archived && canSubmitToFinance && item.receipt_url && (
+                                                            <Button className="mt-2 h-7 px-2 text-xs" size="sm" onClick={() => submit(item)}>
+                                                                <Send className="mr-1 size-3" />
+                                                                Send receipt
+                                                            </Button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {filtered.length === 0 && (
+                                            <tr>
+                                                <td className="text-muted-foreground p-10 text-center" colSpan={6}>
+                                                    No matching defense requests.
+                                                </td>
+                                            </tr>
                                         )}
-                                    </div>
-                                ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </CardContent>
                     </Card>
@@ -352,6 +626,70 @@ export default function HonorariumWorkspace() {
                                                 <td className="p-3">{i.submitted_at ?? '—'}</td>
                                             </tr>
                                         ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+                {tab === 'reports' && canViewReports && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Program honorarium by semester</CardTitle>
+                            <p className="text-muted-foreground text-sm">
+                                Live totals from prepared honorarium recipient records. Voided records are excluded.
+                            </p>
+                            <Button asChild variant="outline" className="w-fit">
+                                <a href="/honorarium-workspace/reports.csv">Download CSV report</a>
+                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[900px] text-left text-sm">
+                                    <thead>
+                                        <tr className="text-muted-foreground border-b">
+                                            <th className="p-3">School year / semester</th>
+                                            <th className="p-3">Program</th>
+                                            <th className="p-3">Recipients</th>
+                                            <th className="p-3 text-right">Prepared</th>
+                                            <th className="p-3 text-right">Approved</th>
+                                            <th className="p-3 text-right">Disbursed</th>
+                                            <th className="p-3 text-right">Claimed</th>
+                                            <th className="p-3 text-right">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {programReports.map((report) => (
+                                            <tr className="border-b last:border-0" key={`${report.school_year}-${report.semester}-${report.program}`}>
+                                                <td className="p-3">
+                                                    {report.school_year} · {report.semester}
+                                                </td>
+                                                <td className="p-3">{report.program || 'Unspecified program'}</td>
+                                                <td className="p-3">{report.recipients_count}</td>
+                                                {[
+                                                    report.prepared_amount,
+                                                    report.approved_amount,
+                                                    report.disbursed_amount,
+                                                    report.claimed_amount,
+                                                    report.total_amount,
+                                                ].map((amount, index) => (
+                                                    <td className="p-3 text-right" key={index}>
+                                                        ₱
+                                                        {Number(amount).toLocaleString('en-PH', {
+                                                            minimumFractionDigits: 2,
+                                                            maximumFractionDigits: 2,
+                                                        })}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                        {programReports.length === 0 && (
+                                            <tr>
+                                                <td className="text-muted-foreground p-8 text-center" colSpan={8}>
+                                                    No honorarium records are available to report.
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
