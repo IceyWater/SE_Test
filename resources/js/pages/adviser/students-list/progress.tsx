@@ -1,3 +1,4 @@
+import ComprehensiveExamResult, { type ExamResultRecord } from '@/components/comprehensive-exam-result';
 import { DefenseOutcomeEditor, type AcademicOutcome } from '@/components/defense-outcome-editor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,7 +74,15 @@ const readableDate = (value: string | null) => {
 };
 const eventLabel = (event: string) => event.replaceAll('-', ' ').replace(/^./, (letter) => letter.toUpperCase());
 
-export default function StudentProgressPage({ progress, canEdit = false }: { progress: Progress; canEdit?: boolean }) {
+export default function StudentProgressPage({
+    progress,
+    canEdit = false,
+    comprehensiveResult = null,
+}: {
+    progress: Progress;
+    canEdit?: boolean;
+    comprehensiveResult?: ExamResultRecord | null;
+}) {
     const { student, record, defenses, portal } = progress;
     const [editing, setEditing] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -135,6 +144,12 @@ export default function StudentProgressPage({ progress, canEdit = false }: { pro
                     <ArrowLeft className="h-4 w-4" />
                     Academic Progress
                 </Link>
+                <ComprehensiveExamResult
+                    key={`${student.id}-${student.program}-${comprehensiveResult?.version ?? 0}`}
+                    studentId={student.id}
+                    record={comprehensiveResult}
+                    canEdit={canEdit}
+                />
                 <header className="space-y-2">
                     <h1 className="flex items-center gap-2 text-2xl font-semibold">
                         <GraduationCap />

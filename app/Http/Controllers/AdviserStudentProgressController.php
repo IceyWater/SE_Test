@@ -6,6 +6,7 @@ use App\Models\StudentProgressRecord;
 use App\Models\User;
 use App\Services\AcademicProgressAccess;
 use App\Services\DefenseAcademicProgress;
+use App\Services\DefenseSubmissionEligibility;
 use App\Services\StudentProgressService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +33,9 @@ class AdviserStudentProgressController extends Controller
     {
         $this->authorizeStudent($request, $student);
 
-        return Inertia::render('adviser/students-list/progress', ['progress' => $service->detail($student, $request->user()), 'canEdit' => $request->user()->role === 'Coordinator']);
+        $exam = app(DefenseSubmissionEligibility::class)->examRecord($student);
+
+        return Inertia::render('adviser/students-list/progress', ['progress' => $service->detail($student, $request->user()), 'canEdit' => $request->user()->role === 'Coordinator', 'comprehensiveResult' => $exam ? $exam->only(['result', 'record_reference', 'version', 'updated_at']) + ['exam_date' => $exam->exam_date->format('Y-m-d')] : null]);
     }
 
     public function update(Request $request, User $student)

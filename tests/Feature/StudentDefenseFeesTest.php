@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
+require_once __DIR__.'/../Support/DefenseEligibilityFixtures.php';
+
 beforeEach(function () {
     $this->withoutVite();
     Mail::fake();
@@ -15,6 +17,14 @@ beforeEach(function () {
 
 it('fills and enforces the published student fee for each program and defense stage', function ($program, $level, $stage, $amount) {
     $student = User::factory()->create(['role' => 'Student', 'program' => $program, 'school_id' => 'FEE-TEST']);
+    passedComprehensiveFixture($student);
+    if ($stage !== 'Proposal') {
+        passedDefenseStageFixture($student, 'Proposal');
+    }
+    if ($stage === 'Final') {
+        passedDefenseStageFixture($student, 'Prefinal');
+    }
+    $beforeCount = DefenseRequest::count();
     $adviser = User::factory()->create(['role' => 'Adviser']);
     $student->advisers()->attach($adviser->id, ['status' => 'accepted']);
     $this->actingAs($student)->get('/defense-requirements')->assertOk()->assertInertia(fn (Assert $p) => $p
@@ -27,10 +37,10 @@ it('fills and enforces the published student fee for each program and defense st
         $data[$field] = UploadedFile::fake()->createWithContent($field.'.pdf', "%PDF-1.4\nFee test document");
     }
     $this->postJson('/defense-requirements', $data)->assertUnprocessable()->assertJsonValidationErrors('amount');
-    $this->assertDatabaseCount('defense_requests', 0);
+    $this->assertDatabaseCount('defense_requests', $beforeCount);
     $data['amount'] = $amount;
     $this->post('/defense-requirements', $data)->assertSessionHasNoErrors();
-    expect((float) DefenseRequest::where('submitted_by', $student->id)->firstOrFail()->amount)->toBe((float) $amount);
+    expect((float) DefenseRequest::where('submitted_by', $student->id)->latest('id')->firstOrFail()->amount)->toBe((float) $amount);
     expect(config('student_defense_fees.'.$level.'.'.$stage))->toBe($amount);
 })->with([
     ['Master of Arts in Education', 'Masteral', 'Proposal', 11250],

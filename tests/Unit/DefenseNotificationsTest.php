@@ -2,6 +2,7 @@
 
 use App\Jobs\SendDefenseCountdownEmail;
 use App\Mail\DefenseCountdownReminder;
+use App\Models\ComprehensiveExamResult;
 use App\Models\DefenseRequest;
 use App\Models\Notification;
 use App\Models\User;
@@ -112,6 +113,12 @@ it('reminds on defense day before its start and stops after it starts', function
 });
 
 it('requires an accepted assignment and resolves its adviser when the form omits it', function () {
+    (require database_path('migrations/2026_11_04_000001_create_comprehensive_exam_results.php'))->up();
+    Schema::create('defense_academic_outcomes', function (Blueprint $t) {
+        $t->id();
+        $t->unsignedBigInteger('defense_request_id');
+    });
+    ComprehensiveExamResult::create(['student_id' => 1, 'program' => 'Test', 'result' => 'passed', 'exam_date' => '2026-10-22', 'recorded_by' => 3, 'record_reference' => 'Synthetic verified exam result']);
     Schema::create('settings', function (Blueprint $t) {
         $t->string('key');
         $t->string('value')->nullable();
@@ -124,14 +131,16 @@ it('requires an accepted assignment and resolves its adviser when the form omits
         $t->timestamps();
     });
     try {
-        $this->actingAs(User::find(1))->post(route('defense-requirements.store'), [])->assertSessionHasErrors('adviser');
+        $this->actingAs(User::find(1))->post(route('defense-requirements.store'), ['defense_type' => 'Proposal'])->assertSessionHasErrors('adviser');
         DB::table('adviser_student')->insert(['adviser_id' => 2, 'student_id' => 1, 'status' => 'pending']);
-        $this->post(route('defense-requirements.store'), [])->assertSessionHasErrors('adviser');
+        $this->post(route('defense-requirements.store'), ['defense_type' => 'Proposal'])->assertSessionHasErrors('adviser');
         DB::table('adviser_student')->update(['status' => 'accepted']);
         // The accepted assignment supplies adviser/name, even from a stale form.
-        $this->post(route('defense-requirements.store'), [])->assertSessionHasErrors('thesis_title')->assertSessionDoesntHaveErrors('adviser');
-        $this->post(route('defense-requirements.store'), ['adviser_id' => 3])->assertSessionHasErrors('adviser');
+        $this->post(route('defense-requirements.store'), ['defense_type' => 'Proposal'])->assertSessionHasErrors('thesis_title')->assertSessionDoesntHaveErrors('adviser');
+        $this->post(route('defense-requirements.store'), ['adviser_id' => 3, 'defense_type' => 'Proposal'])->assertSessionHasErrors('adviser');
     } finally {
+        Schema::dropIfExists('comprehensive_exam_results');
+        Schema::dropIfExists('defense_academic_outcomes');
         Schema::dropIfExists('adviser_student');
         Schema::dropIfExists('settings');
     }

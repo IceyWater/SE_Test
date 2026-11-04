@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Storage;
 use setasign\Fpdi\Fpdi;
 use Tests\TestCase;
 
+require_once __DIR__.'/../Support/DefenseEligibilityFixtures.php';
+
 class ManuscriptFeatureRegressionTest extends TestCase
 {
     use RefreshDatabase;
@@ -137,8 +139,9 @@ class ManuscriptFeatureRegressionTest extends TestCase
     {
         $coordinator = User::factory()->create(['role' => 'Coordinator']);
         $adviser = User::factory()->create(['role' => 'Adviser']);
-        $student = User::factory()->create(['role' => 'Student']);
+        $student = User::factory()->create(['role' => 'Student', 'program' => 'Master of Arts']);
         $adviser->advisedStudents()->attach($student->id, ['status' => 'accepted', 'requested_by' => $coordinator->id]);
+        passedComprehensiveFixture($student);
         $this->actingAs($student);
 
         return ['first_name' => 'Audit', 'last_name' => 'Student', 'school_id' => 'AUDIT-STUDENT', 'program' => 'Master of Arts', 'thesis_title' => 'Synthetic audit request', 'defense_type' => 'Proposal', 'adviser' => $adviser->display_name, 'adviser_id' => $adviser->id, 'reference_no' => 'AUDIT-001', 'amount' => 11250];
@@ -192,11 +195,12 @@ class ManuscriptFeatureRegressionTest extends TestCase
     {
         $data = $this->submission();
         $data['defense_type'] = 'Prefinal';
+        passedDefenseStageFixture(auth()->user(), 'Proposal');
         foreach (['manuscript_proposal', 'similarity_index', 'proof_of_payment'] as $field) {
             $data[$field] = UploadedFile::fake()->createWithContent($field.'.pdf', "%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF");
         }
         $response = $this->postJson('/defense-requirements', $data);
-        $this->assertDatabaseCount('defense_requests', 0);
+        $this->assertDatabaseCount('defense_requests', 1);
         $response->assertUnprocessable()->assertJsonValidationErrors('rec_endorsement');
     }
 

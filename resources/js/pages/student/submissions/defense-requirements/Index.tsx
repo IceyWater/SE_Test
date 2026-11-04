@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
+import { type DefenseEligibility } from '@/types/defense-eligibility';
 import { Head, usePage } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -136,11 +137,14 @@ type PageProps = {
     defenseRequirements?: DefenseRequirement[];
     defenseRequest?: DefenseRequest | null;
     acceptDefense?: boolean;
+    defenseEligibility?: DefenseEligibility;
 };
 
 export default function DefenseRequestIndex() {
     const { props } = usePage<PageProps>();
     const { defenseRequirements = [], defenseRequest: initialDefenseRequest, acceptDefense = true } = props;
+
+    const eligibleToSubmit = Object.values(props.defenseEligibility?.stages ?? {}).some((stage) => stage.allowed);
 
     const [showClosedAlert, setShowClosedAlert] = useState(!acceptDefense);
     const [defenseRequest, setDefenseRequest] = useState<DefenseRequest | null>(initialDefenseRequest || null);
@@ -290,19 +294,37 @@ export default function DefenseRequestIndex() {
                             <Button
                                 className="rounded-md bg-rose-500 px-5 text-sm disabled:opacity-60 dark:bg-rose-600"
                                 onClick={() => setOpen(true)}
-                                disabled={hasActiveWorkflow || !acceptDefense}
+                                disabled={hasActiveWorkflow || !acceptDefense || !eligibleToSubmit}
                                 title={
-                                    !acceptDefense
-                                        ? 'Submissions closed'
-                                        : hasActiveWorkflow
-                                          ? 'Finish current workflow before submitting another'
-                                          : 'Submit new defense requirements'
+                                    !eligibleToSubmit
+                                        ? 'A verified passed comprehensive exam result is required'
+                                        : !acceptDefense
+                                          ? 'Submissions closed'
+                                          : hasActiveWorkflow
+                                            ? 'Finish current workflow before submitting another'
+                                            : 'Submit new defense requirements'
                                 }
                             >
                                 <Plus /> Submit requirements
                             </Button>
                             <SubmitDefenseRequirements open={open} onOpenChange={setOpen} onFinish={() => {}} acceptDefense={acceptDefense} />
                         </div>
+                        {props.defenseEligibility && (
+                            <section className="space-y-2 border-b p-4" aria-label="Defense submission eligibility">
+                                <h2 className="font-semibold">Defense request requirements</h2>
+                                <p className="text-sm">
+                                    Comprehensive exam:{' '}
+                                    {props.defenseEligibility.comprehensive_passed
+                                        ? 'Passed (verified)'
+                                        : 'Passed result not verified. Contact your Coordinator.'}
+                                </p>
+                                {Object.entries(props.defenseEligibility.stages).map(([stage, eligibility]) => (
+                                    <p key={stage} className="text-muted-foreground text-sm">
+                                        {stage}: {eligibility.allowed ? 'Available' : eligibility.reason}
+                                    </p>
+                                ))}
+                            </section>
+                        )}
                         {defenseRequirements.length === 0 ? (
                             <div className="text-muted-foreground p-6 text-center text-sm dark:text-zinc-400">
                                 No defense requirements submitted yet.

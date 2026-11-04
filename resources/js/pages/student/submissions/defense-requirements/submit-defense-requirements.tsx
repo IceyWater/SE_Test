@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import type { SharedData } from '@/types';
+import { type DefenseEligibility } from '@/types/defense-eligibility';
 
 import { Stepper } from '@/components/ui/Stepper';
 import {
@@ -28,7 +29,7 @@ type Props = {
 
 export default function SubmitDefenseRequirements({ open, onOpenChange, acceptDefense = true }: Props) {
     // Get logged-in user info from Inertia page props
-    const { props } = usePage<SharedData & { defenseFees: Record<string, number> }>();
+    const { props } = usePage<SharedData & { defenseFees: Record<string, number>; defenseEligibility?: DefenseEligibility }>();
     const user = props?.auth?.user || {};
     const adviser = Array.isArray(user.advisers) && user.advisers.length > 0 ? user.advisers[0] : null;
 
@@ -171,7 +172,7 @@ export default function SubmitDefenseRequirements({ open, onOpenChange, acceptDe
 
     // Validation function based on defense type
     function isStepTwoValid() {
-        if (!data.defense_type) return false;
+        if (!data.defense_type || !props.defenseEligibility?.stages[data.defense_type]?.allowed) return false;
         if (!data.thesis_title.trim()) return false;
         if (!data.manuscript_proposal) return false;
         if (!data.similarity_index) return false;
@@ -303,8 +304,10 @@ export default function SubmitDefenseRequirements({ open, onOpenChange, acceptDe
                                 <button
                                     type="button"
                                     key={option.value}
+                                    disabled={!props.defenseEligibility?.stages[option.value]?.allowed}
+                                    title={props.defenseEligibility?.stages[option.value]?.reason ?? undefined}
                                     onClick={() => setData('defense_type', option.value)}
-                                    className={`cursor-pointer rounded-md border px-4 py-2 text-xs font-medium ${
+                                    className={`cursor-pointer rounded-md border px-4 py-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
                                         data.defense_type === option.value
                                             ? 'border-rose-500 bg-rose-500 text-white'
                                             : 'border-zinc-200 bg-white text-zinc-700'
@@ -315,7 +318,9 @@ export default function SubmitDefenseRequirements({ open, onOpenChange, acceptDe
                                 </button>
                             ))}
                         </div>
-                        <p className="text-muted-foreground text-xs">Select the type of defense you are applying for.</p>
+                        <p className="text-muted-foreground text-xs">
+                            Locked stages require a verified passed comprehensive exam and Done / Passed outcomes for the preceding defense stages.
+                        </p>
                     </div>
                     <Separator />
                     <div>

@@ -9,6 +9,7 @@ use App\Http\Controllers\AdviserStudentProgressController;
 use App\Http\Controllers\Api\ComprehensiveExamEligibilityController;
 use App\Http\Controllers\Api\StudentSearchController;
 use App\Http\Controllers\ComprehensiveExamController;
+use App\Http\Controllers\ComprehensiveExamResultController;
 use App\Http\Controllers\CoordinatorAdviserController;
 use App\Http\Controllers\CoordinatorCompreExamController;
 use App\Http\Controllers\CoordinatorComprePaymentController;
@@ -256,6 +257,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/defense-requirements', [DefenseRequirementController::class, 'index'])->name('defense-requirements.index');
     Route::post('/defense-requests/{defenseRequest}/request-corrections', [DefenseCorrectionController::class, 'requestCorrections'])->name('defense-requests.request-corrections');
     Route::post('/defense-requirements/{defenseRequest}/resubmit', [DefenseCorrectionController::class, 'resubmit'])->name('defense-requirements.resubmit');
+    Route::patch('/academic-progress/{student}/comprehensive-result', [ComprehensiveExamResultController::class, 'update'])->name('academic-progress.comprehensive-result');
     Route::post('/defense-requirements', [DefenseRequirementController::class, 'store'])->name('defense-requirements.store');
     Route::post('/defense-requirements/{id}/unsubmit', [DefenseRequirementController::class, 'unsubmit'])
         ->name('defense-requirements.unsubmit');

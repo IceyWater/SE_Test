@@ -6,12 +6,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { type DefenseEligibility } from '@/types/defense-eligibility';
 import { useForm, usePage } from '@inertiajs/react';
 import { Check, Paperclip, Plus, RefreshCcw } from 'lucide-react';
 import * as React from 'react';
 import { useRef, useState } from 'react';
 
 type PageProps = {
+    defenseEligibility?: DefenseEligibility;
     auth: {
         user: {
             first_name: string;
@@ -42,6 +44,7 @@ type FormValues = {
 export default function DefenseRequestForm() {
     const {
         auth: { user },
+        defenseEligibility,
     } = usePage<PageProps>().props;
     const [showSuccessPanel, setShowSuccessPanel] = useState(false);
     const [open, setOpen] = useState(false);
@@ -264,9 +267,15 @@ export default function DefenseRequestForm() {
                                     <SelectValue placeholder="Select defense type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Proposal">Proposal Defense</SelectItem>
-                                    <SelectItem value="Prefinal">Pre-final Defense</SelectItem>
-                                    <SelectItem value="Final">Final Defense</SelectItem>
+                                    <SelectItem value="Proposal" disabled={!defenseEligibility?.stages.Proposal?.allowed}>
+                                        Proposal Defense
+                                    </SelectItem>
+                                    <SelectItem value="Prefinal" disabled={!defenseEligibility?.stages.Prefinal?.allowed}>
+                                        Pre-final Defense
+                                    </SelectItem>
+                                    <SelectItem value="Final" disabled={!defenseEligibility?.stages.Final?.allowed}>
+                                        Final Defense
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

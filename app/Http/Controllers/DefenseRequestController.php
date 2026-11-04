@@ -17,6 +17,7 @@ use App\Models\Panelist;
 use App\Models\PaymentRate;
 use App\Models\User;
 use App\Services\DefenseAcademicProgress;
+use App\Services\DefenseSubmissionEligibility;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -190,21 +191,13 @@ class DefenseRequestController extends Controller
             ]);
         }
 
-        // Fallback (not the dashboard, separate page)
-        return Inertia::render('student/submissions/defense-requirements/Index', [
-            'defenseRequest' => $defenseRequest,
-            'defenseRequests' => $requirements->map(fn ($r) => [
-                'id' => $r->id,
-                'thesis_title' => $r->thesis_title,
-                'status' => $r->status ?? 'Pending',
-                'workflow_state' => $r->workflow_state,
-                'created_at' => $r->created_at?->toIso8601String(),
-            ]),
-        ]);
+        return app(DefenseRequirementController::class)->index($request);
+
     }
 
     public function store(Request $request)
     {
+        app(DefenseSubmissionEligibility::class)->assertCanSubmit($request->user(), (string) $request->input('defenseType'));
         if (DefenseRequest::where('submitted_by', $request->user()->id)->whereIn('workflow_state', ['adviser-corrections', 'coordinator-corrections'])->exists()) {
             return back()->withErrors(['message' => 'Please resubmit your request returned for corrections before creating a new request.']);
         }

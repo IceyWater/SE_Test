@@ -158,7 +158,9 @@ test('older attachment uses a readable fallback filename instead of its storage 
 });
 
 test('initial student submission records original filenames alongside randomized storage paths', function () {
+    require_once __DIR__.'/../Support/DefenseEligibilityFixtures.php';
     $student = User::factory()->create(['role' => 'Student', 'program' => 'Master of Arts', 'school_id' => 'NAME-TEST']);
+    passedComprehensiveFixture($student);
     $adviser = User::factory()->create(['role' => 'Adviser']);
     $student->advisers()->attach($adviser->id, ['status' => 'accepted']);
     Mail::fake();

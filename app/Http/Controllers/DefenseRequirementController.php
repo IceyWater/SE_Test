@@ -9,6 +9,7 @@ use App\Models\DefenseRequest;
 use App\Models\Notification;
 use App\Models\User;
 use App\Services\DefenseAcademicProgress;
+use App\Services\DefenseSubmissionEligibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -124,6 +125,7 @@ class DefenseRequirementController extends Controller
                 'correction_count' => $defenseRequest->correction_count,
             ] : null,
             'acceptDefense' => $acceptDefense,
+            'defenseEligibility' => app(DefenseSubmissionEligibility::class)->forStudent($user),
             'defenseFees' => config('student_defense_fees.'.ProgramLevel::getLevel($user->program), []),
             'auth' => [
                 'user' => [
@@ -174,6 +176,7 @@ class DefenseRequirementController extends Controller
 
     public function store(Request $request)
     {
+        app(DefenseSubmissionEligibility::class)->assertCanSubmit($request->user(), (string) $request->input('defense_type'));
         if (DefenseRequest::where('submitted_by', $request->user()->id)->whereIn('workflow_state', ['adviser-corrections', 'coordinator-corrections'])->exists()) {
             return back()->withErrors(['message' => 'Please resubmit your request returned for corrections before creating a new request.']);
         }
