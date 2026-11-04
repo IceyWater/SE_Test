@@ -8,6 +8,7 @@ use App\Mail\DefenseRequestAssignedToCoordinator;
 use App\Mail\DefenseRequestRejected;
 use App\Mail\DefenseRequestSubmitted;
 use App\Models\AaPaymentVerification;
+use App\Models\DefenseAcademicOutcome;
 use App\Models\DefenseRequest;
 use App\Models\GeneratedDocument;
 use App\Models\HonorariumDisbursement;
@@ -15,6 +16,7 @@ use App\Models\Notification;
 use App\Models\Panelist;
 use App\Models\PaymentRate;
 use App\Models\User;
+use App\Services\DefenseAcademicProgress;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -70,7 +72,7 @@ class DefenseRequestController extends Controller
             }
 
             $rows = $query
-                ->orderByRaw("FIELD(workflow_state,'adviser-approved','coordinator-review','coordinator-approved','panels-assigned','scheduled','completed','coordinator-rejected')")
+                ->orderByRaw("CASE workflow_state WHEN 'adviser-approved' THEN 1 WHEN 'coordinator-review' THEN 2 WHEN 'coordinator-approved' THEN 3 WHEN 'panels-assigned' THEN 4 WHEN 'scheduled' THEN 5 WHEN 'completed' THEN 6 WHEN 'coordinator-rejected' THEN 7 ELSE 0 END")
                 ->orderBy('adviser_reviewed_at', 'desc')
                 ->limit(300)
                 ->get([
@@ -522,7 +524,7 @@ class DefenseRequestController extends Controller
         if (! $user) {
             abort(401);
         }
-        if (! in_array($user->role, ['Coordinator', 'Administrative Assistant', 'Dean'])) {
+        if ($user->role !== 'Coordinator') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -662,19 +664,24 @@ class DefenseRequestController extends Controller
             abort_unless((int) $defenseRequest->submitted_by === (int) $user->id, 403);
         }
 
+        $outcomeService = app(DefenseAcademicProgress::class);
+        $outcome = DefenseAcademicOutcome::where('defense_request_id', $defenseRequest->id)->first();
+        $studentState = $outcomeService->studentWorkflowState($defenseRequest, $outcome);
+
         return response()->json([
             'id' => $defenseRequest->id,
             'thesis_title' => $defenseRequest->thesis_title,
             'school_id' => $defenseRequest->school_id,
             'status' => $defenseRequest->status,
-            'workflow_state' => $defenseRequest->workflow_state,
+            'workflow_state' => $user->role === 'Student' ? $studentState : $defenseRequest->workflow_state,
+            'academic_outcome' => $outcomeService->view($defenseRequest, $outcome),
             'workflow_history' => $defenseRequest->workflow_history ?? [],
             'correction_notes' => $defenseRequest->correction_notes,
             'correction_stage' => $defenseRequest->correction_stage,
             'correction_requested_by' => $defenseRequest->correction_requested_by,
             'correction_requested_at' => $defenseRequest->correction_requested_at,
             'correction_count' => $defenseRequest->correction_count,
-            'workflow_state_display' => $defenseRequest->workflow_state_display ?? null,
+            'workflow_state_display' => $user->role === 'Student' ? $studentState : ($defenseRequest->workflow_state_display ?? null),
             'adviser_comments' => $defenseRequest->adviser_comments,
             'coordinator_comments' => $defenseRequest->coordinator_comments,
             'defense_chairperson' => $defenseRequest->panel_display['defense_chairperson'],
@@ -711,7 +718,7 @@ class DefenseRequestController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        $coordinatorRoles = ['Coordinator', 'Administrative Assistant', 'Dean'];
+        $coordinatorRoles = ['Coordinator'];
         if (! in_array($user->role, $coordinatorRoles)) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
@@ -726,13 +733,24 @@ class DefenseRequestController extends Controller
 
         $target = $data['status'];
         $originalState = $defenseRequest->workflow_state;
+        // Preserve later workflow steps, while repairing a legacy Pending approval field.
+        $preserveApprovedState = $target === 'Approved' && in_array($originalState, ['coordinator-approved', 'panels-assigned', 'scheduled', 'completed'], true);
+        if ($preserveApprovedState && $defenseRequest->coordinator_status === 'Approved'
+            && in_array($defenseRequest->status, ['Approved', 'Completed'], true)) {
+            return response()->json([
+                'ok' => true, 'request' => $defenseRequest,
+                'workflow_history' => $defenseRequest->workflow_history,
+                'workflow_state' => $originalState, 'status' => $defenseRequest->status,
+                'coordinator_status' => $defenseRequest->coordinator_status,
+            ]);
+        }
 
         try {
             // --- Update coordinator_status and workflow_state ---
             if ($target === 'Approved') {
                 $defenseRequest->coordinator_status = 'Approved';
-                $defenseRequest->workflow_state = 'coordinator-approved';
-                $defenseRequest->status = 'Approved';
+                $defenseRequest->workflow_state = $preserveApprovedState ? $originalState : 'coordinator-approved';
+                $defenseRequest->status = $originalState === 'completed' ? 'Completed' : 'Approved';
             } elseif ($target === 'Rejected') {
                 $defenseRequest->coordinator_status = 'Rejected';
                 $defenseRequest->workflow_state = 'coordinator-rejected';
@@ -789,10 +807,12 @@ class DefenseRequestController extends Controller
         if (! $user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
-        $coordinatorRoles = ['Coordinator', 'Administrative Assistant', 'Dean'];
+        $coordinatorRoles = ['Coordinator'];
         if (! in_array($user->role, $coordinatorRoles)) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
+
+        $this->assertCanCoordinate($defenseRequest);
 
         $data = $request->validate([
             'priority' => 'required|in:Low,Medium,High',
@@ -816,7 +836,7 @@ class DefenseRequestController extends Controller
         if (! $user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
-        $coordinatorRoles = ['Coordinator', 'Administrative Assistant', 'Dean'];
+        $coordinatorRoles = ['Coordinator'];
         if (! in_array($user->role, $coordinatorRoles)) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
@@ -828,6 +848,8 @@ class DefenseRequestController extends Controller
         ]);
 
         $updated = [];
+        abort_if(DefenseRequest::whereIn('id', $data['ids'])->where(fn ($q) => $q->whereNull('coordinator_user_id')->orWhere('coordinator_user_id', '!=', $user->id))->exists(), 403);
+
         DB::beginTransaction();
         try {
             foreach ($data['ids'] as $id) {
@@ -863,7 +885,7 @@ class DefenseRequestController extends Controller
         if (! $user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
-        $coordinatorRoles = ['Coordinator', 'Administrative Assistant', 'Dean'];
+        $coordinatorRoles = ['Coordinator'];
         if (! in_array($user->role, $coordinatorRoles)) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
@@ -873,6 +895,8 @@ class DefenseRequestController extends Controller
             'ids.*' => 'integer|exists:defense_requests,id',
             'priority' => 'required|in:Low,Medium,High',
         ]);
+
+        abort_if(DefenseRequest::whereIn('id', $data['ids'])->where(fn ($q) => $q->whereNull('coordinator_user_id')->orWhere('coordinator_user_id', '!=', $user->id))->exists(), 403);
 
         DB::beginTransaction();
         try {
@@ -926,7 +950,7 @@ class DefenseRequestController extends Controller
         }
 
         $rows = $query
-            ->orderByRaw("FIELD(workflow_state,'adviser-approved','coordinator-review','coordinator-approved','panels-assigned','scheduled','completed','coordinator-rejected')")
+            ->orderByRaw("CASE workflow_state WHEN 'adviser-approved' THEN 1 WHEN 'coordinator-review' THEN 2 WHEN 'coordinator-approved' THEN 3 WHEN 'panels-assigned' THEN 4 WHEN 'scheduled' THEN 5 WHEN 'completed' THEN 6 WHEN 'coordinator-rejected' THEN 7 ELSE 0 END")
             ->orderBy('adviser_reviewed_at', 'desc')
             ->limit(300)
             ->get([
@@ -1062,13 +1086,9 @@ class DefenseRequestController extends Controller
         $rows = $q->orderBy('scheduled_date')
             ->orderBy('scheduled_time')
             ->limit(500)
-            ->get([
-                'id', 'thesis_title', 'defense_type', 'status', 'workflow_state',
-                'program', 'school_id', 'first_name', 'last_name',
-                'scheduled_date', 'scheduled_time', 'scheduled_end_time',
-                'defense_mode', 'defense_venue',
-            ])->map(function ($r) {
+            ->get()->map(function ($r) {
                 return [
+                    'session_status' => app(DefenseAcademicProgress::class)->sessionStatus($r),
                     'id' => $r->id,
                     'thesis_title' => $r->thesis_title,
                     'defense_type' => $r->defense_type,
@@ -1613,6 +1633,12 @@ class DefenseRequestController extends Controller
         ]);
     }
 
+    private function assertCanCoordinate(DefenseRequest $defenseRequest): void
+    {
+        $user = Auth::user();
+        abort_unless($user?->role === 'Coordinator' && (int) $defenseRequest->coordinator_user_id === (int) $user->id, 403);
+    }
+
     private function assertCanRead(DefenseRequest $defenseRequest): void
     {
         $user = Auth::user();
@@ -1665,13 +1691,13 @@ class DefenseRequestController extends Controller
 
     public function bulkDelete(Request $request)
     {
-        abort_unless(in_array($request->user()->role, ['Coordinator', 'Administrative Assistant', 'Dean', 'Super Admin'], true), 403);
+        abort_unless($request->user()->role === 'Coordinator', 403);
         $data = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'required|integer|distinct|exists:defense_requests,id']);
 
         return DB::transaction(function () use ($data) {
             $rows = DefenseRequest::whereIn('id', $data['ids'])->lockForUpdate()->get();
             foreach ($rows as $row) {
-                $this->assertCanRead($row);
+                $this->assertCanCoordinate($row);
                 abort_unless(in_array($row->status, ['Cancelled', 'Rejected'], true), 422, 'Only cancelled or rejected requests can be removed.');
                 abort_if($row->honorariumPayments()->exists() || HonorariumDisbursement::where('defense_request_id', $row->id)->exists(), 422, 'Requests with financial records must be retained.');
             }
@@ -1681,6 +1707,18 @@ class DefenseRequestController extends Controller
 
             return response()->json(['ok' => true, 'deleted_count' => $rows->count()]);
         });
+    }
+
+    public function downloadReceipt(DefenseRequest $defenseRequest, string $filename)
+    {
+        abort_unless($defenseRequest->proof_of_payment, 404);
+        abort_unless($filename === ($defenseRequest->attachment_names['proof_of_payment'] ?? null), 404);
+        if (! in_array(strtolower(trim((string) Auth::user()?->role)), ['finance', 'finance office', 'finance officer'], true)) {
+            $this->assertCanRead($defenseRequest);
+        }
+        $path = ltrim(preg_replace('#^/?storage/#', '', (string) $defenseRequest->proof_of_payment), '/');
+
+        return $this->downloadAttachment(basename($path), dirname($path));
     }
 
     public function downloadAttachment(string $filename, string $directory = 'defense-attachments')
@@ -1694,7 +1732,14 @@ class DefenseRequestController extends Controller
             }
         });
         $row = $query->firstOrFail();
-        $this->assertCanRead($row);
+        $financeRole = in_array(strtolower(trim((string) Auth::user()?->role)), ['finance', 'finance office', 'finance officer'], true);
+        if ($financeRole) {
+            // Finance may inspect receipts, but this must not grant access to the whole defense record.
+            $receiptPath = ltrim(preg_replace('#^/?storage/#', '', (string) $row->proof_of_payment), '/');
+            abort_unless($receiptPath === $path, 403);
+        } else {
+            $this->assertCanRead($row);
+        }
         $disk = Storage::disk($directory === 'defense-attachments' ? 'local' : 'public');
         abort_unless($disk->exists($path), 404, 'This attachment is missing from this installation.');
         $displayName = basename($path);

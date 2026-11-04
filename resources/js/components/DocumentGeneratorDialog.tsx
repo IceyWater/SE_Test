@@ -16,6 +16,7 @@ type DocumentTemplate = {
     id: number;
     name: string;
     code: string;
+    file_type: string;
     fields: TemplateField[];
 };
 
@@ -41,7 +42,7 @@ export function DocumentGeneratorDialog({ open, onOpenChange, defenseRequest, tr
         if (open || asPage) {
             fetch('/api/document-templates')
                 .then((r) => r.json())
-                .then(setTemplates);
+                .then((items: DocumentTemplate[]) => setTemplates(items.filter((item) => item.file_type === 'pdf')));
         }
     }, [open, asPage]);
 

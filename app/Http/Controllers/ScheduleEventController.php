@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\DefenseRequest;
 use App\Models\Event;
+use App\Services\DefenseAcademicProgress;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -72,6 +73,7 @@ class ScheduleEventController extends Controller
                 'color' => '#16a34a',
                 'origin' => 'defense',
                 'data' => [
+                    'session_status' => app(DefenseAcademicProgress::class)->sessionStatus($d),
                     'defense_id' => $d->id,
                     'student' => $d->student_display_name ?? $d->user?->name,
                     'workflow_state' => $d->workflow_state,

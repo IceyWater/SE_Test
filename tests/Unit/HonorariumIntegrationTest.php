@@ -65,6 +65,10 @@ beforeEach(function () {
         $t->json('workflow_history')->nullable();
         $t->timestamps();
     });
+    Schema::create('defense_academic_outcomes', function (Blueprint $t) {
+        $t->id();
+        $t->unsignedBigInteger('defense_request_id');
+    });
     (require glob(database_path('migrations/*create_notifications_table.php'))[0])->up();
     (require database_path('migrations/2026_10_23_000003_add_notification_event_tracking.php'))->up();
     foreach (['2026_10_10_000001_create_finance_honorarium_submissions_table.php', '2026_10_17_000001_create_finance_document_submissions_table.php', '2026_10_17_000002_create_honorarium_activities_table.php'] as $m) {
@@ -83,7 +87,7 @@ beforeEach(function () {
 });
 afterEach(function () {
     $this->travelBack();
-    foreach (['defense_service_records', 'honorarium_disbursements', 'defense_schedule_mutex', 'honorarium_activities', 'finance_document_submissions', 'finance_honorarium_submissions', 'notifications', 'honorarium_payments', 'defense_requests', 'payment_rates', 'panelists', 'advisers', 'users'] as $t) {
+    foreach (['defense_academic_outcomes', 'defense_service_records', 'honorarium_disbursements', 'defense_schedule_mutex', 'honorarium_activities', 'finance_document_submissions', 'finance_honorarium_submissions', 'notifications', 'honorarium_payments', 'defense_requests', 'payment_rates', 'panelists', 'advisers', 'users'] as $t) {
         Schema::dropIfExists($t);
     }
 });
@@ -312,3 +316,59 @@ it('uses the correct program level for honorarium rates', function ($program, $e
     ['Ph.D. in Information Technology', 'Doctorate'],
     ['DBA', 'Doctorate'],
 ]);
+
+it('labels archived defenses consistently without expanding role visibility', function ($role, $expected) {
+    User::find(2)->update(['role' => $role]);
+    integratedDefense(['adviser_user_id' => 2, 'coordinator_user_id' => 2]);
+    integratedDefense(['adviser_user_id' => 2, 'coordinator_user_id' => 2, 'workflow_state' => 'adviser-rejected']);
+    integratedDefense(['adviser_user_id' => 99, 'coordinator_user_id' => 99, 'defense_chairperson' => null]);
+    foreach (['/honorarium-workspace', '/honorarium-documents'] as $url) {
+        $this->actingAs(User::find(2))->get($url)->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->has('items', $expected)
+            ->where('items', fn ($items) => collect($items)->where('archived', true)->count() === 1));
+    }
+    expect(DefenseRequest::count())->toBe(3);
+})->with([
+    ['Administrative Assistant', 3], ['AA', 3], ['Finance', 3], ['Dean', 3], ['Super Admin', 3],
+    ['Coordinator', 2], ['Adviser', 2], ['Faculty', 2], ['Panelist', 2],
+]);
+
+it('blocks archived receipt processing even when an old workflow still says scheduled', function ($state, $status) {
+    $d = integratedDefense();
+    $doc = sendIntegratedReceipt($d);
+    $d->update(['workflow_state' => $state, 'status' => $status]);
+    $priorStatus = $doc->fresh()->status;
+    $this->actingAs(User::find(3))->postJson('/honorarium-documents/finance/'.$doc->id.'/review', ['status' => 'verified'])->assertUnprocessable();
+    $this->actingAs(User::find(2))->postJson('/honorarium-documents/'.$d->id.'/submit-one')->assertUnprocessable();
+    $this->get('/honorarium-documents')->assertInertia(fn (Assert $p) => $p->where('items.0.archived', true)->where('items.0.can_send', false));
+    $this->travel(1)->days();
+    expect(app(FinanceDocumentWorkflowService::class)->unlockDueDocuments())->toBe(0);
+    expect($doc->fresh()->status)->toBe($priorStatus);
+})->with([
+    ['adviser-rejected', 'Rejected'], ['coordinator-rejected', 'Rejected'], ['cancelled', 'Cancelled'],
+    ['scheduled', 'rejected'], ['scheduled', 'CANCELED'],
+]);
+
+it('keeps a Finance-rejected receipt active for correction', function () {
+    $d = integratedDefense();
+    $doc = sendIntegratedReceipt($d);
+    $this->actingAs(User::find(3))->postJson('/honorarium-documents/finance/'.$doc->id.'/review', ['status' => 'rejected', 'finance_notes' => 'Unreadable receipt'])->assertOk();
+    $this->actingAs(User::find(2))->get('/honorarium-workspace')->assertInertia(fn (Assert $p) => $p
+        ->where('items.0.archived', false)->where('items.0.finance_status', 'rejected'));
+    $this->get('/honorarium-documents')->assertInertia(fn (Assert $p) => $p
+        ->where('items.0.archived', false)->where('items.0.can_send', true));
+    $this->postJson('/honorarium-documents/'.$d->id.'/submit-one')->assertOk();
+});
+
+it('preserves payment history for archived defenses and prevents further payments', function () {
+    $d = verifiedLedgerDefense();
+    $this->actingAs(User::find(2))->postJson('/honorarium-ledger/'.$d->id.'/prepare', ['school_year' => '2026-2027', 'semester' => '1st'])->assertOk();
+    $row = HonorariumDisbursement::first();
+    $d->update(['workflow_state' => 'cancelled', 'status' => 'Cancelled']);
+    foreach ([2, 3, 4, 5] as $userId) {
+        $this->actingAs(User::find($userId))->get('/honorarium-ledger')->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('records.0.archived', true)->has('requests', 0));
+    }
+    $this->actingAs(User::find(3))->patchJson('/honorarium-ledger/'.$row->id, ['status' => 'approved'])->assertUnprocessable();
+    expect(HonorariumDisbursement::count())->toBe(2);
+});

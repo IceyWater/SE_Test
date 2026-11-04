@@ -31,6 +31,9 @@ class GeneratedDocumentController extends Controller
         $templates = DocumentTemplate::all();
         $out = [];
         foreach ($templates as $tpl) {
+            if ($tpl->file_type !== 'pdf') {
+                continue;
+            }
             $out[] = $gen->generate($tpl, $defenseRequest);
         }
 

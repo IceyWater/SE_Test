@@ -53,6 +53,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 type DefenseEvent = {
+    session_status?: string;
     id: number;
     thesis_title: string;
     date_of_defense: string;
@@ -484,13 +485,27 @@ export default function SchedulePage({ canManage }: { canManage: boolean; userRo
     };
     const handleDayLeave = () => setDayCursor({ v: false, y: 0 });
 
-    // Defense requests
+    // Refresh outcome labels and scheduled-time status while the calendar is open.
     useEffect(() => {
-        setLoading(true);
-        fetch('/defense-requests/calendar')
-            .then((r) => r.json())
-            .then((data: DefenseEvent[]) => setRawEvents(data || []))
-            .finally(() => setLoading(false));
+        let active = true;
+        async function load() {
+            try {
+                const response = await fetch('/defense-requests/calendar');
+                if (!response.ok) return;
+                const data: DefenseEvent[] = await response.json();
+                if (active) setRawEvents(data || []);
+            } catch {
+                // Keep the last loaded calendar if a background refresh fails.
+            } finally {
+                if (active) setLoading(false);
+            }
+        }
+        void load();
+        const timer = setInterval(() => void load(), 60000);
+        return () => {
+            active = false;
+            clearInterval(timer);
+        };
     }, []);
 
     // Non-defense events for month range
@@ -1206,6 +1221,8 @@ export default function SchedulePage({ canManage }: { canManage: boolean; userRo
 
                                                   {ev.defense && (
                                                       <>
+                                                          <dt className="text-muted-foreground font-medium">Status</dt>
+                                                          <dd className="col-span-2 font-medium">{ev.raw.session_status || 'Scheduled'}</dd>
                                                           <dt className="text-muted-foreground font-medium">Student</dt>
                                                           <dd className="col-span-2">{ev.raw.student_name || '—'}</dd>
 

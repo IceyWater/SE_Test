@@ -28,7 +28,7 @@ type Props = {
 
 export default function SubmitDefenseRequirements({ open, onOpenChange, acceptDefense = true }: Props) {
     // Get logged-in user info from Inertia page props
-    const { props } = usePage<SharedData>();
+    const { props } = usePage<SharedData & { defenseFees: Record<string, number> }>();
     const user = props?.auth?.user || {};
     const adviser = Array.isArray(user.advisers) && user.advisers.length > 0 ? user.advisers[0] : null;
 
@@ -81,6 +81,11 @@ export default function SubmitDefenseRequirements({ open, onOpenChange, acceptDe
         const name = adviser ? [adviser.first_name, adviser.middle_name, adviser.last_name].filter(Boolean).join(' ') : '';
         setData((current) => ({ ...current, adviser: name, adviser_id: adviser?.id ?? null }));
     }, [adviser, setData]);
+
+    const expectedAmount = props.defenseFees?.[data.defense_type];
+    React.useEffect(() => {
+        setData('amount', expectedAmount == null ? '' : String(expectedAmount));
+    }, [expectedAmount, setData]);
 
     const [,] = useState(false);
     const [currentStep, setCurrentStep] = useState(0);
@@ -470,17 +475,20 @@ export default function SubmitDefenseRequirements({ open, onOpenChange, acceptDe
                                 <div className="flex items-center gap-2">
                                     <span className="text-lg font-semibold text-gray-700">₱</span>
                                     <Input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={data.amount}
-                                        onChange={(e) => setData('amount', e.target.value)}
-                                        placeholder="Enter paid amount"
+                                        type="text"
+                                        readOnly
+                                        aria-label="Required defense fee"
+                                        value={
+                                            data.amount
+                                                ? Number(data.amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                                : ''
+                                        }
+                                        placeholder="Select defense type"
                                         className="h-8 w-40 text-sm"
                                     />
                                 </div>
                                 <p className="text-muted-foreground mt-1 text-xs">
-                                    Please enter the accurate paid amount reflected on the uploaded receipt.
+                                    Please ensure that the submitted proof of payment matches the amount reflected above.
                                 </p>
                             </div>
                             <div>

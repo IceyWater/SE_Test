@@ -141,7 +141,7 @@ class ManuscriptFeatureRegressionTest extends TestCase
         $adviser->advisedStudents()->attach($student->id, ['status' => 'accepted', 'requested_by' => $coordinator->id]);
         $this->actingAs($student);
 
-        return ['first_name' => 'Audit', 'last_name' => 'Student', 'school_id' => 'AUDIT-STUDENT', 'program' => 'Master of Arts', 'thesis_title' => 'Synthetic audit request', 'defense_type' => 'Proposal', 'adviser' => $adviser->display_name, 'adviser_id' => $adviser->id, 'reference_no' => 'AUDIT-001', 'amount' => 100];
+        return ['first_name' => 'Audit', 'last_name' => 'Student', 'school_id' => 'AUDIT-STUDENT', 'program' => 'Master of Arts', 'thesis_title' => 'Synthetic audit request', 'defense_type' => 'Proposal', 'adviser' => $adviser->display_name, 'adviser_id' => $adviser->id, 'reference_no' => 'AUDIT-001', 'amount' => 11250];
     }
 
     public function test_submission_rejects_missing_required_document_files(): void

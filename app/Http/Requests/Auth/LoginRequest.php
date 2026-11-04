@@ -71,7 +71,11 @@ class LoginRequest extends FormRequest
         }
 
         // Explicit demo accounts use stored passwords, never school services.
-        if ((app()->environment(['local', 'testing']) || config('demo.hosted_enabled')) && array_key_exists(strtolower($identifier), (config('demo.accounts', []) + config('demo.finance_accounts', [])))) {
+        $demoAccounts = config('demo.accounts', []) + config('demo.finance_accounts', []);
+        if (app()->environment(['local', 'testing'])) {
+            $demoAccounts += config('demo.local_student_accounts', []);
+        }
+        if ((app()->environment(['local', 'testing']) || config('demo.hosted_enabled')) && array_key_exists(strtolower($identifier), $demoAccounts)) {
             $demo = User::where('email', strtolower($identifier))->where('is_demo_account', true)->first();
             if (! $demo || ! Hash::check($password, $demo->password)) {
                 RateLimiter::hit($this->throttleKey());
@@ -87,7 +91,7 @@ class LoginRequest extends FormRequest
         $isNumeric = preg_match('/^[0-9]{6,}$/', $identifier);
         $mappedNumeric = null;
 
-        if (! $isNumeric && preg_match('/_(\d{6,})$/', $identifier, $m)) {
+        if (! $isNumeric && preg_match('/_(\d{6,})(?:@uic\.edu\.ph)?$/i', $identifier, $m)) {
             $mappedNumeric = $m[1];
         }
 

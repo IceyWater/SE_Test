@@ -161,7 +161,7 @@ export default function Index({ records, filters }: IndexProps) {
                                                 All Years
                                             </CommandItem>
 
-                                            {generateYearRange(2020, 2025).map((year) => (
+                                            {generateYearRange(2020).map((year) => (
                                                 <CommandItem
                                                     key={year}
                                                     onSelect={() => {
@@ -223,6 +223,11 @@ export default function Index({ records, filters }: IndexProps) {
                 </div>
 
                 {/* Table */}
+                {records.data.some((record) => record.student_id?.startsWith('DEMO-RECORD-')) && (
+                    <p className="mb-3 rounded-md border p-3 text-sm" role="note">
+                        Records labeled DEMO are fictional samples for testing. They do not confirm enrollment, defense results, or payment.
+                    </p>
+                )}
                 <div className="border-border overflow-x-auto rounded-md border bg-white p-2 dark:bg-[#121212]">
                     <Table className="min-w-full text-sm">
                         <TableHeader>
@@ -252,8 +257,8 @@ export default function Index({ records, filters }: IndexProps) {
                                             </div>
                                         </TableCell>
                                         <TableCell className="px-1 py-2 text-center">{record.program}</TableCell>
-                                        <TableCell className="px-1 py-2 text-center">{record.or_number}</TableCell>
-                                        <TableCell className="px-1 py-2 text-center">{record.payment_date}</TableCell>
+                                        <TableCell className="px-1 py-2 text-center">{record.or_number || 'Not recorded'}</TableCell>
+                                        <TableCell className="px-1 py-2 text-center">{record.payment_date || 'Not recorded'}</TableCell>
                                         <TableCell className="px-1 py-2 text-center">
                                             <Button
                                                 variant="outline"

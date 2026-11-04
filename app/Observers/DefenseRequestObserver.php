@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\DefenseRequest;
+use App\Services\AaReceiptQueue;
 use App\Services\DefenseActivityNotifications;
 use App\Services\DefenseConflictService;
 use App\Services\HonorariumAccess;
@@ -10,6 +11,11 @@ use App\Services\HonorariumLedgerService;
 
 class DefenseRequestObserver
 {
+    public function saved(DefenseRequest $request): void
+    {
+        app(AaReceiptQueue::class)->ensure($request);
+    }
+
     public function created(DefenseRequest $request): void
     {
         $service = app(DefenseActivityNotifications::class);

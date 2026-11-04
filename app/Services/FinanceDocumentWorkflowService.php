@@ -31,6 +31,10 @@ class FinanceDocumentWorkflowService
                             return;
                         }
 
+                        if (app(HonorariumAccess::class)->isArchived($locked->defenseRequest)) {
+                            return;
+                        }
+
                         $locked->update(['status' => 'ready']);
                         $requestId = $locked->defense_request_id;
                         $studentName = $locked->defenseRequest?->student?->full_name

@@ -1,6 +1,6 @@
 'use client';
 
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { endOfDay, format, isWithinInterval, startOfDay } from 'date-fns';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Toaster, toast } from 'sonner';
@@ -84,6 +84,8 @@ function PaginationBar({ page, totalPages, onPageChange }: { page: number; total
 }
 
 function ShowAllRequestsInner({ defenseRequests: initial, onStatusChange }: ShowAllRequestsProps) {
+    const { auth } = usePage<{ auth: { user: { role: string } } }>().props;
+    const canManage = auth.user.role === 'Coordinator';
     const [singleConfirm, setSingleConfirm] = useState<{ open: boolean; id: number | null; action: 'approve' | 'reject' | 'retrieve' | null }>({
         open: false,
         id: null,
@@ -539,53 +541,57 @@ function ShowAllRequestsInner({ defenseRequests: initial, onStatusChange }: Show
                     <div className="border-border animate-in fade-in slide-in-from-bottom-2 dark:bg-muted dark:text-muted-foreground dark:border-border fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-lg border bg-white px-4 py-1 text-xs shadow-lg md:bottom-6">
                         <span className="min-w-[70px] text-center font-semibold">{selected.length} selected</span>
                         <div className="flex gap-1">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="flex h-7 w-auto items-center gap-1 px-2 py-1 text-xs"
-                                onClick={() => openConfirmBulk('approve')}
-                                aria-label="Approve"
-                                disabled={isLoading}
-                            >
-                                <CheckCircle size={13} className="text-green-500" />
-                                <span className="hidden sm:inline">{isLoading ? 'Updating...' : 'Approve'}</span>
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="flex h-7 w-auto items-center gap-1 px-2 py-1 text-xs"
-                                onClick={() => openConfirmBulk('reject')}
-                                aria-label="Reject"
-                                disabled={isLoading}
-                            >
-                                <XCircle size={13} className="text-red-500" />
-                                <span className="hidden sm:inline">{isLoading ? 'Updating...' : 'Reject'}</span>
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="flex h-7 w-auto items-center gap-1 px-2 py-1 text-xs"
-                                onClick={() => openConfirmBulk('retrieve')}
-                                aria-label="Retrieve"
-                                disabled={isLoading}
-                            >
-                                <CircleArrowLeft size={13} className="text-blue-500" />
-                                <span className="hidden sm:inline">{isLoading ? 'Updating...' : 'Retrieve'}</span>
-                            </Button>
-                            {/* Link button replaces Delete */}
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="flex h-7 w-auto items-center gap-1 px-2 py-1 text-xs"
-                                onClick={() => {
-                                    /* your link logic here */
-                                }}
-                                aria-label="Link"
-                                disabled={isLoading}
-                            >
-                                <Settings2 size={13} className="text-blue-500" />
-                                <span className="hidden sm:inline">Link</span>
-                            </Button>
+                            {canManage && (
+                                <>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="flex h-7 w-auto items-center gap-1 px-2 py-1 text-xs"
+                                        onClick={() => openConfirmBulk('approve')}
+                                        aria-label="Approve"
+                                        disabled={isLoading}
+                                    >
+                                        <CheckCircle size={13} className="text-green-500" />
+                                        <span className="hidden sm:inline">{isLoading ? 'Updating...' : 'Approve'}</span>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="flex h-7 w-auto items-center gap-1 px-2 py-1 text-xs"
+                                        onClick={() => openConfirmBulk('reject')}
+                                        aria-label="Reject"
+                                        disabled={isLoading}
+                                    >
+                                        <XCircle size={13} className="text-red-500" />
+                                        <span className="hidden sm:inline">{isLoading ? 'Updating...' : 'Reject'}</span>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="flex h-7 w-auto items-center gap-1 px-2 py-1 text-xs"
+                                        onClick={() => openConfirmBulk('retrieve')}
+                                        aria-label="Retrieve"
+                                        disabled={isLoading}
+                                    >
+                                        <CircleArrowLeft size={13} className="text-blue-500" />
+                                        <span className="hidden sm:inline">{isLoading ? 'Updating...' : 'Retrieve'}</span>
+                                    </Button>
+                                    {/* Link button replaces Delete */}
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="flex h-7 w-auto items-center gap-1 px-2 py-1 text-xs"
+                                        onClick={() => {
+                                            /* your link logic here */
+                                        }}
+                                        aria-label="Link"
+                                        disabled={isLoading}
+                                    >
+                                        <Settings2 size={13} className="text-blue-500" />
+                                        <span className="hidden sm:inline">Link</span>
+                                    </Button>
+                                </>
+                            )}
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -636,7 +642,7 @@ function ShowAllRequestsInner({ defenseRequests: initial, onStatusChange }: Show
                         onRowReject={(id: number) => openConfirmSingle(id, 'reject')}
                         onRowRetrieve={(id: number) => openConfirmSingle(id, 'retrieve')}
                         highlightMissingDateMode={false}
-                        hideActions={false}
+                        hideActions={!canManage}
                         hideSelect={false}
                     />
                 </div>

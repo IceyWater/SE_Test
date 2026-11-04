@@ -17,7 +17,7 @@ const SuccessPrompt: React.FC<SuccessPromptProps> = ({ message, onClose }) => {
                     <div className="flex flex-col items-center text-center">
                         <CheckCircle2 className="mb-4 h-16 w-16 text-green-500" />
                         <AlertDialogTitle className="text-xl">Success!</AlertDialogTitle>
-                        <p className="mt-2 text-gray-700">{message}</p>
+                        <p className="text-muted-foreground mt-2">{message}</p>
                     </div>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="sm:justify-center">

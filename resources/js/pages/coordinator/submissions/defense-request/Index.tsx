@@ -61,7 +61,7 @@ export default function DefenseRequestIndex() {
     const { props } = usePage<PageProps>();
     const { auth, defenseRequests: initialRequests } = props;
     const role = auth.user.role;
-    const isCoordinator = role === 'Coordinator';
+    const canView = ['Coordinator', 'Administrative Assistant', 'Dean', 'Super Admin'].includes(role);
     const [tab, setTab] = useState('requests');
 
     const [defenseRequests, setDefenseRequests] = useState<DefenseRequestSummary[]>(initialRequests || []);
@@ -77,13 +77,13 @@ export default function DefenseRequestIndex() {
                 <Tabs value={tab} onValueChange={setTab} className="w-full max-w-full flex-1">
                     <TabsContent value="requests" className="flex w-full max-w-full flex-1 flex-col">
                         <div className="flex min-h-0 w-full max-w-full flex-1 flex-col overflow-auto">
-                            {isCoordinator ? (
+                            {canView ? (
                                 <ShowAllRequests defenseRequests={defenseRequests} onStatusChange={handleStatusChange} />
                             ) : (
                                 <div className="rounded-xl border border-gray-200">
                                     <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-4 text-center">
                                         <h2 className="text-lg font-semibold text-gray-700">Access Restricted</h2>
-                                        <p className="text-sm text-gray-500">This section is only accessible to Coordinators.</p>
+                                        <p className="text-sm text-gray-500">This account cannot view defense requests.</p>
                                     </div>
                                 </div>
                             )}

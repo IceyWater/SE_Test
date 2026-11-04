@@ -59,6 +59,7 @@ class StudentProgressService
             $outcomeCurrent = $current && app(DefenseAcademicProgress::class)->current($current, $outcome);
 
             return [$student->id => [
+                'research_type' => app(ProgramResearchType::class)->forProgram($student->program),
                 'stage' => ($outcomeCurrent ? $outcome?->next_stage : null) ?: $this->stage($current?->defense_type),
                 'status' => $current ? $this->status($current, in_array($current->id, $held, true)) : 'No defense request',
                 'enrollment_year' => $record?->enrollment_year, 'completion_year' => $record?->completion_year,
@@ -85,7 +86,8 @@ class StudentProgressService
 
             return [
                 'outcome' => app(DefenseAcademicProgress::class)->view($row, $outcomes->get($row->id)),
-                'can_record_outcome' => $adviser->role === 'Coordinator' && (int) $row->coordinator_user_id === (int) $adviser->id && in_array($row->workflow_state, ['scheduled', 'completed'], true),
+                'can_record_outcome' => $adviser->role === 'Coordinator' && (int) $row->coordinator_user_id === (int) $adviser->id && app(DefenseAcademicProgress::class)->outcomeLockReason($row) === null,
+                'outcome_lock_reason' => app(DefenseAcademicProgress::class)->outcomeLockReason($row),
                 'id' => $row->id, 'title' => $row->thesis_title, 'stage' => $this->stage($row->defense_type),
                 'status' => $this->status($row, $service !== null), 'submitted_at' => $row->submitted_at?->toIso8601String() ?? $row->created_at?->toIso8601String(),
                 'date' => $row->scheduled_date?->format('Y-m-d'), 'start' => $row->scheduled_time, 'end' => $row->scheduled_end_time,
@@ -99,6 +101,7 @@ class StudentProgressService
         })->values();
 
         return [
+            'research_type' => app(ProgramResearchType::class)->forProgram($student->program),
             'student' => ['id' => $student->id, 'name' => $student->name, 'school_id' => $student->school_id ?: $student->student_number,
                 'email' => $student->email, 'program' => $student->program],
             'stage' => ($current && app(DefenseAcademicProgress::class)->current($current, $outcomes->get($current->id)) ? $outcomes->get($current->id)?->next_stage : null) ?: $this->stage($current?->defense_type),

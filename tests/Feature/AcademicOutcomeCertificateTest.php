@@ -164,3 +164,90 @@ it('keeps a prior missed defense discoverable after a successful revision', func
     $this->put($this->url, array_replace($this->payload, ['version' => 1, 'reason' => 'Repeat session held and result verified']))->assertRedirect();
     $this->get('/academic-progress')->assertInertia(fn (Assert $p) => $p->where('students.0.progress.missed_defenses', 1));
 });
+
+it('reflects the current academic outcome on the student defense page without certifying service', function () {
+    $this->actingAs($this->coordinator)->put($this->url, $this->payload)->assertRedirect();
+    $this->actingAs($this->student)->get('/defense-requirements')->assertOk()->assertInertia(fn (Assert $p) => $p
+        ->where('defenseRequirements.0.workflow_state', 'completed')
+        ->where('defenseRequirements.0.academic_outcome.result', 'passed')
+        ->where('defenseRequest.workflow_state', 'completed')
+        ->where('defenseRequest.academic_outcome.current', true));
+    for ($refresh = 0; $refresh < 3; $refresh++) {
+        $this->getJson('/api/defense-request/'.$this->dr->id)->assertOk()
+            ->assertJsonPath('workflow_state', 'completed')
+            ->assertJsonPath('academic_outcome.current', true)
+            ->assertJsonPath('academic_outcome.result', 'passed');
+    }
+    expect($this->dr->fresh()->workflow_state)->toBe('scheduled');
+    $this->assertDatabaseCount('defense_service_records', 0);
+    DefenseRequest::withoutEvents(fn () => $this->dr->update(['scheduled_end_time' => '11:00']));
+    $this->get('/defense-requirements')->assertInertia(fn (Assert $p) => $p
+        ->where('defenseRequest.workflow_state', 'scheduled')
+        ->where('defenseRequest.academic_outcome.current', false));
+    $this->getJson('/api/defense-request/'.$this->dr->id)->assertOk()
+        ->assertJsonPath('workflow_state', 'scheduled')->assertJsonPath('academic_outcome.current', false);
+});
+
+it('shows program research type to authorized readers without inventing current enrollment', function () {
+    $this->student->update(['program' => 'Master in Information Technology']);
+    foreach ([$this->coordinator, $this->adviser, $this->dean] as $reader) {
+        $this->actingAs($reader)->get('/academic-progress/'.$this->student->id)->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('progress.research_type.label', 'Capstone')
+            ->where('progress.research_type.subject_options', ['Capstone 1', 'Capstone 2'])
+            ->where('progress.record', null));
+        $this->get('/academic-progress')->assertInertia(fn (Assert $p) => $p
+            ->where('students.0.progress.research_type.label', 'Capstone'));
+    }
+    $this->assertDatabaseCount('student_progress_records', 0);
+    $this->actingAs($this->coordinator)->put($this->url, array_replace($this->payload, ['subject' => 'Capstone 1']))->assertSessionHasNoErrors();
+    expect(DefenseAcademicOutcome::firstOrFail()->subject)->toBe('Capstone 1');
+});
+
+it('locks upcoming and ongoing outcomes on the page and server in Philippine time', function ($clock, $message) {
+    $this->travelTo(Carbon::parse($clock, 'Asia/Manila'));
+    $this->actingAs($this->coordinator)->get('/academic-progress/'.$this->student->id)->assertOk()
+        ->assertInertia(fn (Assert $p) => $p->where('progress.defenses.0.can_record_outcome', false)
+            ->where('progress.defenses.0.outcome_lock_reason', fn ($value) => str_contains($value, $message)));
+    foreach (['done', 'did-not-defend', 'not-yet-done'] as $completion) {
+        $payload = array_replace($this->payload, ['completion' => $completion]);
+        if ($completion !== 'done') {
+            $payload = array_replace($payload, ['result' => 'not-recorded', 'completed_on' => null, 'next_stage' => null]);
+        }
+        $this->putJson($this->url, $payload)->assertUnprocessable()->assertJsonValidationErrors('defense');
+    }
+    $this->assertDatabaseCount('defense_academic_outcomes', 0);
+})->with([
+    ['2026-10-30 08:59:59', 'upcoming'],
+    ['2026-10-30 09:00:00', 'ongoing'],
+    ['2026-10-30 09:59:59', 'ongoing'],
+]);
+
+it('unlocks outcomes at the saved session end without completing the defense automatically', function () {
+    $this->travelTo(Carbon::parse('2026-10-30 10:00:00', 'Asia/Manila'));
+    $this->actingAs($this->coordinator)->get('/academic-progress/'.$this->student->id)->assertOk()
+        ->assertInertia(fn (Assert $p) => $p->where('progress.defenses.0.can_record_outcome', true)->where('progress.defenses.0.outcome_lock_reason', null));
+    $this->assertDatabaseCount('defense_academic_outcomes', 0);
+    $this->put($this->url, $this->payload)->assertRedirect()->assertSessionHasNoErrors();
+    expect(DefenseAcademicOutcome::first()->completion)->toBe('done');
+});
+
+it('shows a finished revision outcome in calendar feeds and register without confirming service', function () {
+    $this->actingAs($this->coordinator)->put($this->url, array_replace($this->payload, ['result' => 'for-revision', 'next_stage' => null]))->assertRedirect()->assertSessionHasNoErrors();
+    $this->getJson('/defense-requests/calendar')->assertOk()->assertJsonFragment(['session_status' => 'Finished / For Revision']);
+    $this->actingAs($this->student)->getJson('/api/calendar/events?from=2026-10-01&to=2026-10-31')->assertOk()->assertJsonFragment(['session_status' => 'Finished / For Revision']);
+    $this->actingAs($this->coordinator)->get('/defense-register?from=2026-10-01&to=2026-10-31')->assertOk()
+        ->assertInertia(fn (Assert $p) => $p->where('items.0.session_status', 'Finished / For Revision')->where('items.0.service_status', 'pending'));
+    $this->assertDatabaseCount('defense_service_records', 0);
+    expect(app(DefenseAcademicProgress::class)->eligible($this->dr->fresh()))->toBeFalse();
+});
+
+it('distinguishes upcoming ongoing and ended sessions without inventing academic completion', function ($clock, $label) {
+    $this->travelTo(Carbon::parse($clock, 'Asia/Manila'));
+    expect(app(DefenseAcademicProgress::class)->sessionStatus($this->dr))->toBe($label);
+    $this->assertDatabaseCount('defense_academic_outcomes', 0);
+})->with([
+    ['2026-10-30 08:59:59', 'Upcoming'],
+    ['2026-10-30 09:00:00', 'Ongoing (Scheduled Time)'],
+    ['2026-10-30 09:59:59', 'Ongoing (Scheduled Time)'],
+    ['2026-10-30 10:00:00', 'Session Ended / Outcome Awaiting Confirmation'],
+]);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DefenseRequest;
+use App\Models\DocumentTemplate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -53,6 +54,7 @@ class StudentDocumentController extends Controller
 
         return inertia('student/documents/Index', [
             'files' => $files,
+            'templates' => DocumentTemplate::orderBy('name')->get()->map(fn ($template) => ['id' => $template->id, 'name' => $template->name, 'file_type' => $template->file_type, 'download_url' => $template->download_url]),
             'auth' => [
                 'user' => [
                     'id' => $user->id,

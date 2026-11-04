@@ -1,3 +1,4 @@
+import HonorariumRecordFilter from '@/components/honorarium-record-filter';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,7 @@ import { useState } from 'react';
 
 type Entry = { action: string; at: string; actor_name: string; notes?: string; payment_reference?: string };
 type Payment = {
+    archived: boolean;
     id: number;
     recipient_name: string;
     recipient_role: string;
@@ -31,6 +33,9 @@ const labels: Record<string, string> = {
 const money = (value: string | number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(value));
 export default function HonorariumLedger() {
     const { records, requests, canPrepare, canRecord, today } = usePage<Props>().props;
+    const [archived, setArchived] = useState(false);
+    const active = records.filter((item) => !item.archived);
+    const categoryItems = records.filter((item) => item.archived === archived);
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState('');
     const [semester, setSemester] = useState('');
@@ -44,7 +49,7 @@ export default function HonorariumLedger() {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
-    const visible = records.filter(
+    const visible = categoryItems.filter(
         (r) =>
             (!status || r.status === status) &&
             (!semester || r.semester === semester) &&
@@ -134,12 +139,18 @@ export default function HonorariumLedger() {
                         <div key={s} className="rounded-lg border p-4">
                             <p className="text-sm">{labels[s]}</p>
                             <p className="text-xl font-semibold">
-                                {money(records.filter((r) => r.status === s).reduce((total, r) => total + Number(r.amount), 0))}
+                                {money(active.filter((r) => r.status === s).reduce((total, r) => total + Number(r.amount), 0))}
                             </p>
                         </div>
                     ))}
                 </div>
-                {canPrepare && (
+                <HonorariumRecordFilter
+                    archived={archived}
+                    onChange={setArchived}
+                    activeCount={active.length}
+                    archivedCount={records.length - active.length}
+                />
+                {!archived && canPrepare && (
                     <form
                         className="space-y-3 rounded-lg border p-4"
                         onSubmit={(e) => {
@@ -245,7 +256,7 @@ export default function HonorariumLedger() {
                                 </p>
                                 {row.payment_reference && <p className="text-sm">Reference: {row.payment_reference}</p>}
                             </div>
-                            {canRecord && next(row) && !row.requires_review && (
+                            {!row.archived && canRecord && next(row) && !row.requires_review && (
                                 <Button
                                     disabled={busy}
                                     onClick={() => {

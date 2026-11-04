@@ -44,10 +44,18 @@ class HonorariumAccess
         });
     }
 
+    public function isArchived(DefenseRequest $request): bool
+    {
+        $closed = ['adviser-rejected', 'coordinator-rejected', 'rejected', 'cancelled', 'canceled'];
+
+        return in_array(strtolower(trim((string) $request->workflow_state)), $closed, true)
+            || in_array(strtolower(trim((string) $request->status)), $closed, true);
+    }
+
     public function assertReady(DefenseRequest $request): void
     {
         abort_unless(in_array($request->workflow_state, ['coordinator-approved', 'panels-assigned', 'scheduled', 'completed'], true)
-            && ! in_array($request->status, ['Cancelled', 'Rejected'], true), 422, 'The defense request must be approved before sending documents to Finance.');
+            && ! $this->isArchived($request), 422, 'The defense request must be approved before sending documents to Finance.');
         abort_unless($request->proof_of_payment, 422, 'A student payment receipt is required.');
     }
 
@@ -62,13 +70,17 @@ class HonorariumAccess
         })->filter()->values()->all();
     }
 
-    public function receiptUrl(?string $path): ?string
+    public function receiptUrl(?string $path, ?DefenseRequest $defense = null): ?string
     {
         if (! $path) {
             return null;
         }
         if (str_starts_with($path, 'https://') || str_starts_with($path, 'http://')) {
             return $path;
+        }
+
+        if ($defense && isset($defense->attachment_names['proof_of_payment'])) {
+            return '/defense-receipts/'.$defense->id.'/'.rawurlencode($defense->attachment_names['proof_of_payment']);
         }
 
         return '/storage/'.ltrim(preg_replace('#^/?storage/#', '', $path), '/');

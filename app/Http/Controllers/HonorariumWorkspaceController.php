@@ -26,11 +26,12 @@ class HonorariumWorkspaceController extends Controller
             $status = $documents->isEmpty() ? 'not_submitted' : ($documents->contains('status', 'rejected') ? 'rejected' : ($documents->count() === 2 && $documents->every(fn ($d) => $d->status === 'verified') ? 'verified' : 'submitted'));
 
             return [
+                'archived' => $access->isArchived($r),
                 'id' => $r->id, 'student_name' => $r->student?->full_name ?: trim($r->first_name.' '.$r->last_name),
                 'student_number' => $r->student?->school_id ?: $r->school_id, 'program' => $r->program,
                 'defense_type' => $r->defense_type, 'workflow_state' => $r->workflow_state,
                 'scheduled_date' => $r->scheduled_date?->format('Y-m-d'), 'scheduled_time' => $r->scheduled_time,
-                'receipt_url' => $access->receiptUrl($r->proof_of_payment), 'panel_names' => $access->panelNames($r),
+                'receipt_url' => $access->receiptUrl($r->proof_of_payment, $r), 'panel_names' => $access->panelNames($r),
                 'finance_status' => $status, 'finance_notes' => $documents->where('status', 'rejected')->first()?->finance_notes,
                 'submitted_at' => $documents->max('submitted_at')?->toIso8601String(), 'finance_submission_id' => null,
             ];

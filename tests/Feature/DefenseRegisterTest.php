@@ -290,3 +290,33 @@ test('service confirmation does not guess a missing session end time', function 
     registerClassify($defense, $users, $payload);
     $this->postJson('/defense-register/'.$defense->id.'/confirm-service', $payload)->assertUnprocessable()->assertJsonValidationErrors('defense');
 });
+
+test('repeated approval preserves assigned scheduled and completed defenses', function () {
+    [$defense, $users] = registerFixture(['scheduled_date' => '2026-11-03', 'coordinator_status' => 'Approved', 'workflow_history' => []]);
+    foreach (['panels-assigned', 'scheduled', 'completed'] as $state) {
+        $defense->forceFill(['workflow_state' => $state])->saveQuietly();
+        $this->actingAs($users['coordinator'])->patchJson('/defense-requests/'.$defense->id.'/status', ['status' => 'Approved'])
+            ->assertOk()->assertJsonPath('workflow_state', $state);
+        expect($defense->fresh()->workflow_state)->toBe($state)->and($defense->fresh()->workflow_history)->toBe([]);
+        if ($state !== 'panels-assigned') {
+            $this->get('/defense-register?from=2026-11-01&to=2026-11-30')->assertOk()->assertInertia(fn (Assert $page) => $page->where('items.0.id', $defense->id));
+        }
+    }
+});
+
+test('approval repairs legacy pending approval without erasing a saved schedule or completion', function () {
+    [$defense, $users] = registerFixture(['workflow_history' => []]);
+    foreach (['panels-assigned', 'scheduled', 'completed'] as $state) {
+        $defense->refresh()->forceFill(['workflow_state' => $state, 'coordinator_status' => 'Pending', 'status' => 'Pending', 'workflow_history' => []])->saveQuietly();
+        $before = $defense->fresh()->only(['scheduled_date', 'scheduled_time', 'scheduled_end_time', 'defense_venue', 'defense_chairperson']);
+        $this->actingAs($users['coordinator'])->patchJson('/defense-requests/'.$defense->id.'/status', ['status' => 'Approved'])
+            ->assertOk()->assertJsonPath('coordinator_status', 'Approved')->assertJsonPath('workflow_state', $state);
+        $updated = $defense->fresh();
+        expect($updated->coordinator_status)->toBe('Approved')
+            ->and($updated->status)->toBe($state === 'completed' ? 'Completed' : 'Approved')
+            ->and($updated->only(array_keys($before)))->toEqual($before)
+            ->and(count($updated->workflow_history))->toBe(1);
+        $this->patchJson('/defense-requests/'.$defense->id.'/status', ['status' => 'Approved'])->assertOk();
+        expect(count($defense->fresh()->workflow_history))->toBe(1);
+    }
+});

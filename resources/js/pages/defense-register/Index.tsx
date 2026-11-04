@@ -29,6 +29,7 @@ type Item = {
     adviser?: string;
     participants: Person[];
     service_status: string;
+    session_status: string;
     completed_on?: string;
     has_record: boolean;
     can_confirm: boolean;
@@ -37,7 +38,7 @@ type Item = {
 };
 type Props = { items: Item[]; from: string; to: string; today: string };
 const labels: Record<string, string> = {
-    pending: 'Awaiting confirmation',
+    pending: 'Attendance / service awaiting confirmation',
     confirmed: 'Service confirmed',
     'needs-reconfirmation': 'Information changed: confirm again',
 };
@@ -205,11 +206,19 @@ export default function DefenseRegister() {
                                 <tr key={item.id} className="border-t align-top">
                                     <td className="min-w-36 p-3">
                                         <p>{item.date}</p>
+                                        <p className="text-primary my-1 text-sm font-medium">{item.session_status}</p>
                                         <p>
                                             {item.start}–{item.end || 'End unspecified'}
                                         </p>
                                         <p className="text-muted-foreground mt-1">
-                                            {item.mode || 'Mode unspecified'}
+                                            {(
+                                                { 'face-to-face': 'Face-to-Face', online: 'Online', onsite: 'Onsite', hybrid: 'Hybrid' } as Record<
+                                                    string,
+                                                    string
+                                                >
+                                            )[item.mode?.trim().toLowerCase() ?? ''] ||
+                                                item.mode ||
+                                                'Mode unspecified'}
                                             <br />
                                             {item.venue || 'Venue unspecified'}
                                         </p>

@@ -10,12 +10,16 @@ use App\Models\UserSignature;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use setasign\Fpdi\Fpdi;
 
 class DocumentGenerator
 {
     public function generate(DocumentTemplate $tpl, DefenseRequest $req, array $overrides = []): GeneratedDocument
     {
+        if ($tpl->file_type !== 'pdf') {
+            throw ValidationException::withMessages(['template_id' => 'Word templates are for download and editing. Select a PDF template for automatic generation.']);
+        }
         $payload = $this->payload($req);
 
         // Apply overrides (key-value pairs)

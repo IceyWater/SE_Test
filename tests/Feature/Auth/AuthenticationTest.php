@@ -45,3 +45,13 @@ test('users can logout', function () {
     $this->assertGuest();
     $response->assertRedirect('/');
 });
+
+it('routes a full UIC student email to student portal authentication', function () {
+    $this->mock(LegacyPortalClient::class, function ($mock) {
+        $mock->shouldReceive('login')->once()->with('240000000631', 'portal-password')->andThrow(new RuntimeException('Fixture rejects password'));
+        $mock->shouldNotReceive('loginCoordinator');
+    });
+    $this->post('/login', ['identifier' => 'lfuentes_240000000631@uic.edu.ph', 'password' => 'portal-password'])
+        ->assertSessionHasErrors('identifier');
+    $this->assertGuest();
+});

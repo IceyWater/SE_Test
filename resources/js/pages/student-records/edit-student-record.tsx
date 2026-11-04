@@ -1,3 +1,6 @@
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { useForm } from '@inertiajs/react';
 import React, { useEffect, useState } from 'react';
 import SuccessPrompt from './success-prompt';
@@ -39,8 +42,8 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({ isOpen, onClose, re
         middle_name: record.middle_name ?? '',
         last_name: record.last_name,
         program: record.program,
-        or_number: record.or_number,
-        payment_date: record.payment_date,
+        or_number: record.or_number ?? '',
+        payment_date: record.payment_date?.slice(0, 10) ?? '',
     });
 
     const [showPrompt, setShowPrompt] = useState(false);
@@ -52,8 +55,8 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({ isOpen, onClose, re
             middle_name: record.middle_name ?? '',
             last_name: record.last_name,
             program: record.program,
-            or_number: record.or_number,
-            payment_date: record.payment_date,
+            or_number: record.or_number ?? '',
+            payment_date: record.payment_date?.slice(0, 10) ?? '',
         });
     }, [record, reset, setData]);
 
@@ -73,91 +76,64 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({ isOpen, onClose, re
 
     return (
         <>
-            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-                <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-md">
-                    <h2 className="mb-4 text-center text-xl font-semibold text-gray-800">Edit Student Record</h2>
+            <Dialog
+                open={isOpen && !showPrompt}
+                onOpenChange={(open) => {
+                    if (!open && !processing) onClose();
+                }}
+            >
+                <DialogContent className="text-foreground max-h-[90vh] overflow-y-auto sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Edit Student Record</DialogTitle>
+                        <DialogDescription>
+                            Update the student�s details. Leave receipt information blank if no payment has been recorded.
+                        </DialogDescription>
+                    </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* First Name */}
-                        <input
-                            type="text"
-                            name="first_name"
-                            value={data.first_name}
-                            onChange={(e) => setData('first_name', e.target.value)}
-                            className="w-full rounded border px-3 py-2"
-                            placeholder="First Name"
-                        />
-                        {errors.first_name && <div className="text-xs text-red-500">{errors.first_name}</div>}
-
-                        {/* Middle Name */}
-                        <input
-                            type="text"
-                            name="middle_name"
-                            value={data.middle_name}
-                            onChange={(e) => setData('middle_name', e.target.value)}
-                            className="w-full rounded border px-3 py-2"
-                            placeholder="Middle Name"
-                        />
-                        {errors.middle_name && <div className="text-xs text-red-500">{errors.middle_name}</div>}
-
-                        {/* Last Name */}
-                        <input
-                            type="text"
-                            name="last_name"
-                            value={data.last_name}
-                            onChange={(e) => setData('last_name', e.target.value)}
-                            className="w-full rounded border px-3 py-2"
-                            placeholder="Last Name"
-                        />
-                        {errors.last_name && <div className="text-xs text-red-500">{errors.last_name}</div>}
-
-                        {/* Program */}
-                        <input
-                            type="text"
-                            name="program"
-                            value={data.program}
-                            onChange={(e) => setData('program', e.target.value)}
-                            className="w-full rounded border px-3 py-2"
-                            placeholder="Program"
-                        />
-                        {errors.program && <div className="text-xs text-red-500">{errors.program}</div>}
-
-                        {/* O.R. Number */}
-                        <input
-                            type="text"
-                            name="or_number"
-                            value={data.or_number}
-                            onChange={(e) => setData('or_number', e.target.value)}
-                            className="w-full rounded border px-3 py-2"
-                            placeholder="O.R. Number"
-                        />
-                        {errors.or_number && <div className="text-xs text-red-500">{errors.or_number}</div>}
-
-                        {/* Payment Date */}
-                        <input
-                            type="date"
-                            name="payment_date"
-                            value={data.payment_date}
-                            onChange={(e) => setData('payment_date', e.target.value)}
-                            className="w-full rounded border px-3 py-2"
-                        />
-                        {errors.payment_date && <div className="text-xs text-red-500">{errors.payment_date}</div>}
-
-                        {/* Buttons */}
-                        <div className="flex justify-end space-x-2">
-                            <button type="button" onClick={onClose} className="rounded bg-gray-300 px-4 py-2 hover:bg-gray-400">
+                        {(
+                            [
+                                ['first_name', 'First name', 'text', true],
+                                ['middle_name', 'Middle name (optional)', 'text', false],
+                                ['last_name', 'Last name', 'text', true],
+                                ['program', 'Program', 'text', true],
+                                ['or_number', 'O.R. number (optional)', 'text', false],
+                                ['payment_date', 'Payment date (optional)', 'date', false],
+                            ] as const
+                        ).map(([field, label, type, required]) => (
+                            <div key={field} className="space-y-1.5">
+                                <label htmlFor={`student-record-${field}`} className="text-sm font-medium">
+                                    {label}
+                                </label>
+                                <Input
+                                    id={`student-record-${field}`}
+                                    name={field}
+                                    type={type}
+                                    required={required}
+                                    value={data[field]}
+                                    onChange={(event) => setData(field, event.target.value)}
+                                    disabled={processing}
+                                    aria-invalid={!!errors[field]}
+                                    aria-describedby={errors[field] ? `student-record-${field}-error` : undefined}
+                                    className="text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                />
+                                {errors[field] && (
+                                    <p id={`student-record-${field}-error`} role="alert" className="text-destructive text-sm">
+                                        {errors[field]}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                        <div className="flex justify-end gap-2 border-t pt-4">
+                            <Button type="button" variant="outline" onClick={onClose} disabled={processing}>
                                 Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="rounded bg-pink-600 px-4 py-2 text-white hover:bg-pink-700 disabled:bg-pink-300"
-                            >
-                                {processing ? 'Saving...' : 'Save'}
-                            </button>
+                            </Button>
+                            <Button type="submit" disabled={processing}>
+                                {processing ? 'Saving�' : 'Save'}
+                            </Button>
                         </div>
                     </form>
-                </div>
-            </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Success Prompt */}
             {showPrompt && wasSuccessful && <SuccessPrompt message="Student record successfully updated." onClose={closePrompt} />}

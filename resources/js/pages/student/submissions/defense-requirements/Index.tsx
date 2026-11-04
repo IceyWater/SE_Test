@@ -773,28 +773,16 @@ export default function DefenseRequestIndex() {
                                                                 </div>
                                                             </div>
 
-                                                            {/* Completed callout */}
-                                                            {wf === 'completed' && (
-                                                                <div className="mt-4 rounded-md border border-green-200 bg-green-50 p-3 dark:bg-green-900/30">
-                                                                    <div className="mb-1 text-xs font-bold text-green-700">
-                                                                        Congratulations, your defense has been successfully completed!
-                                                                    </div>
-                                                                    <div className="text-xs text-zinc-700 dark:text-zinc-200">
-                                                                        <b>Request for Oral Defense Certificate</b>
-                                                                        <br />
-                                                                        Please fill out this form:
-                                                                        <br />
-                                                                        <a
-                                                                            href="https://docs.google.com/forms/d/e/1FAIpQLScIFYf8Z6L8q_N2qVEdS4koTJ7jv4HOFnhit-4LKXmOH--Ukg/viewform?usp=send_form"
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            className="break-all text-blue-700 underline"
-                                                                        >
-                                                                            https://docs.google.com/forms/d/e/1FAIpQLScIFYf8Z6L8q_N2qVEdS4koTJ7jv4HOFnhit-4LKXmOH--Ukg/viewform?usp=send_form
+                                                            {merged.academic_outcome?.current &&
+                                                                merged.academic_outcome.completion === 'done' &&
+                                                                merged.academic_outcome.result === 'passed' && (
+                                                                    <div className="mt-4 rounded-md border p-3 text-sm">
+                                                                        Your defense is done and passed.{' '}
+                                                                        <a href="/certificates" className="underline">
+                                                                            Request for Certificate
                                                                         </a>
                                                                     </div>
-                                                                </div>
-                                                            )}
+                                                                )}
                                                         </div>
                                                     </div>
                                                 </CollapsibleContent>

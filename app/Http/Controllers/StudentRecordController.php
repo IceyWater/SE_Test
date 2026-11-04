@@ -61,8 +61,8 @@ class StudentRecordController extends Controller
             'course_section' => 'nullable|string|max:255',
             'birthdate' => 'nullable|date',
             'academic_status' => 'nullable|string|max:255',
-            'or_number' => 'required|string|max:255',
-            'payment_date' => 'required|date',
+            'or_number' => 'nullable|string|max:255',
+            'payment_date' => 'nullable|date',
         ]);
 
         $studentRecord->update($data);

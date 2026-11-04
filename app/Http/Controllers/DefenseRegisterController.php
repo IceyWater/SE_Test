@@ -46,6 +46,7 @@ class DefenseRegisterController extends Controller
             $saved = collect($record?->participants ?? [])->keyBy('recipient_key');
 
             return [
+                'session_status' => app(DefenseAcademicProgress::class)->sessionStatus($dr),
                 'academic_outcome' => app(DefenseAcademicProgress::class)->view($dr, $academic->get($dr->id)),
                 'id' => $dr->id, 'student' => $dr->student?->full_name ?: trim($dr->first_name.' '.$dr->last_name),
                 'school_id' => $dr->school_id, 'program' => $dr->program, 'title' => $dr->thesis_title,

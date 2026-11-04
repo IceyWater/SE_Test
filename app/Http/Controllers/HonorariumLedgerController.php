@@ -17,9 +17,10 @@ class HonorariumLedgerController extends Controller
         $user = $request->user();
         $ids = $access->scope(DefenseRequest::query(), $user)->pluck('id');
         $staff = $access->canSubmit($user) || $access->canReview($user);
-        $rows = HonorariumDisbursement::with('defenseRequest:id,thesis_title,program,workflow_state')->whereIn('defense_request_id', $ids)->when(! $staff && $access->role($user) !== 'coordinator', fn ($q) => $q->whereRaw('LOWER(recipient_email) = ?', [strtolower($user->email)]))->latest('id')->limit(1000)->get();
+        $rows = HonorariumDisbursement::with('defenseRequest:id,thesis_title,program,workflow_state,status')->whereIn('defense_request_id', $ids)->when(! $staff && $access->role($user) !== 'coordinator', fn ($q) => $q->whereRaw('LOWER(recipient_email) = ?', [strtolower($user->email)]))->latest('id')->limit(1000)->get();
+        $rows->each(fn ($row) => $row->setAttribute('archived', $access->isArchived($row->defenseRequest)));
 
-        return Inertia::render('honorarium/ledger/Index', ['records' => $rows, 'requests' => $access->canSubmit($user) ? DefenseRequest::whereIn('id', $ids)->whereIn('workflow_state', ['coordinator-approved', 'panels-assigned', 'scheduled', 'completed'])->get(['id', 'thesis_title']) : [], 'canPrepare' => $access->canSubmit($user), 'canRecord' => $access->canReview($user), 'today' => now('Asia/Manila')->toDateString()]);
+        return Inertia::render('honorarium/ledger/Index', ['records' => $rows, 'requests' => $access->canSubmit($user) ? DefenseRequest::whereIn('id', $ids)->whereIn('workflow_state', ['coordinator-approved', 'panels-assigned', 'scheduled', 'completed'])->get(['id', 'thesis_title', 'workflow_state', 'status'])->reject(fn ($dr) => $access->isArchived($dr))->values() : [], 'canPrepare' => $access->canSubmit($user), 'canRecord' => $access->canReview($user), 'today' => now('Asia/Manila')->toDateString()]);
     }
 
     public function prepare(Request $request, DefenseRequest $defenseRequest, HonorariumAccess $access, HonorariumLedgerService $ledger)

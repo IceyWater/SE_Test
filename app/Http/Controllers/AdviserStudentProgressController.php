@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\StudentProgressRecord;
 use App\Models\User;
 use App\Services\AcademicProgressAccess;
+use App\Services\DefenseAcademicProgress;
 use App\Services\StudentProgressService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -42,7 +44,7 @@ class AdviserStudentProgressController extends Controller
             'completion_year' => 'nullable|integer|min:1900|max:'.$year,
             'semester' => 'nullable|string|max:150', 'subjects' => 'present|array|max:50',
             'classification' => 'nullable|in:new,continuing', 'school_year' => ['nullable', 'regex:/^\d{4}-\d{4}$/'],
-            'subjects.*.research_subject' => 'nullable|in:Thesis 1,Thesis 2,Dissertation 1,Dissertation 2',
+            'subjects.*.research_subject' => ['nullable', Rule::in(DefenseAcademicProgress::SUBJECTS)],
             'subjects.*.started_on' => 'nullable|date_format:Y-m-d|before_or_equal:'.now('Asia/Manila')->toDateString(),
             'subjects.*.code' => 'nullable|string|max:40', 'subjects.*.title' => 'required|string|max:200',
             'record_reference' => 'required|string|min:5|max:1500', 'verified_against_school_records' => 'required|accepted',

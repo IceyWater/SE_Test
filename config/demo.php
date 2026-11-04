@@ -3,6 +3,13 @@
 return [
     'hosted_enabled' => filter_var(env('HOSTED_DEMO_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
     'finance_accounts' => ['finance@uic.edu.ph' => ['role' => 'Finance']],
+    // Local-only profiles for exercising different research tracks; not provisioned on hosted deployments.
+    'local_student_accounts' => [
+        'doctorate@uic.edu.ph' => ['role' => 'Student', 'first_name' => 'Demo', 'last_name' => 'Doctorate Student', 'school_id' => 'DEMO-DBM', 'program' => 'Doctor in Business Management'],
+        'masterit@uic.edu.ph' => ['role' => 'Student', 'first_name' => 'Demo', 'last_name' => 'IT Student', 'school_id' => 'DEMO-MIT', 'program' => 'Master in Information Technology'],
+        'masterpharmacy@uic.edu.ph' => ['role' => 'Student', 'first_name' => 'Demo', 'last_name' => 'Pharmacy Student', 'school_id' => 'DEMO-MSPH', 'program' => 'Master of Science in Pharmacy'],
+        'mastermba@uic.edu.ph' => ['role' => 'Student', 'first_name' => 'Demo', 'last_name' => 'MBA Student', 'school_id' => 'DEMO-MBA-NT', 'program' => 'Master in Business Administration (Non-Thesis)'],
+    ],
     'accounts' => [
         'student@uic.edu.ph' => ['role' => 'Student', 'first_name' => 'Demo', 'last_name' => 'Student', 'school_id' => 'DEMO-STUDENT'],
         'adviser@uic.edu.ph' => ['role' => 'Adviser', 'first_name' => 'Demo', 'last_name' => 'Adviser', 'school_id' => 'DEMO-ADVISER'],

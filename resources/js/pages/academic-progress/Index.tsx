@@ -7,6 +7,7 @@ type Student = {
     name: string;
     program: string | null;
     progress: {
+        research_type: { label: string; determined: boolean };
         classification: string | null;
         missed_defenses: number;
         stage: string | null;
@@ -16,6 +17,9 @@ type Student = {
         semester: string | null;
     };
 };
+const progressLabel = (value: string | null, fallback = 'Not recorded') =>
+    value ? value.replace(/[-_]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()) : fallback;
+
 export default function AcademicProgress({ students }: { students: Student[] }) {
     const [search, setSearch] = useState('');
     const [classification, setClassification] = useState('');
@@ -54,6 +58,7 @@ export default function AcademicProgress({ students }: { students: Student[] }) 
                                 {[
                                     'Student',
                                     'Program',
+                                    'Research type',
                                     'Classification',
                                     'Defense stage',
                                     'Completion / result',
@@ -72,17 +77,18 @@ export default function AcademicProgress({ students }: { students: Student[] }) 
                                 <tr className="border-b" key={s.id}>
                                     <td className="p-3">{s.name}</td>
                                     <td className="p-3">{s.program}</td>
+                                    <td className="p-3">{s.progress.research_type.label}</td>
                                     <td className="p-3">
-                                        {s.progress.classification || 'Not recorded'}
+                                        {progressLabel(s.progress.classification)}
                                         {s.progress.missed_defenses > 0 && (
                                             <p className="text-muted-foreground text-xs">
                                                 Previously did not defend: {s.progress.missed_defenses} request(s)
                                             </p>
                                         )}
                                     </td>
-                                    <td className="p-3">{s.progress.stage || 'Not started'}</td>
+                                    <td className="p-3">{progressLabel(s.progress.stage, 'Not started')}</td>
                                     <td className="p-3">
-                                        {s.progress.completion || 'Not recorded'} / {s.progress.result || 'Not recorded'}
+                                        {progressLabel(s.progress.completion)} / {progressLabel(s.progress.result)}
                                     </td>
                                     <td className="p-3">{s.progress.enrollment_year || 'Not available'}</td>
                                     <td className="p-3">{s.progress.semester || 'Not available'}</td>

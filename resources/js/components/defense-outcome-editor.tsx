@@ -18,11 +18,25 @@ export function DefenseOutcomeEditor({
     stage,
     outcome,
     canEdit,
+    lockReason,
+    subjectOptions = [
+        'Thesis 1',
+        'Thesis 2',
+        'Dissertation 1',
+        'Dissertation 2',
+        'Capstone 1',
+        'Capstone 2',
+        'Capstone',
+        'Business Plan',
+        'Integrating Course',
+    ],
 }: {
     id: number;
     stage: string | null;
     outcome: AcademicOutcome | null;
     canEdit: boolean;
+    lockReason?: string | null;
+    subjectOptions?: string[];
 }) {
     const form = useForm({
         version: outcome?.version ?? 0,
@@ -49,7 +63,12 @@ export function DefenseOutcomeEditor({
             {outcome?.completed_on && <p className="text-sm">Defense completed: {outcome.completed_on}</p>}
             {outcome?.reason && <p className="text-sm whitespace-pre-wrap">Notes / reason: {outcome.reason}</p>}
             {outcome?.next_stage && <p className="text-sm">Coordinator-recorded next stage: {outcome.next_stage}</p>}
-            {canEdit && (
+            {lockReason && (
+                <p role="status" className="text-sm text-amber-700 dark:text-amber-300">
+                    {lockReason}
+                </p>
+            )}
+            {canEdit && !lockReason && (
                 <details>
                     <summary className="cursor-pointer text-sm underline">Record or revise outcome</summary>
                     <form
@@ -113,7 +132,7 @@ export function DefenseOutcomeEditor({
                                     onChange={(e) => form.setData('subject', e.target.value)}
                                 >
                                     <option value="">Choose subject</option>
-                                    {['Thesis 1', 'Thesis 2', 'Dissertation 1', 'Dissertation 2'].map((s) => (
+                                    {[...new Set([...subjectOptions, ...(outcome?.subject ? [outcome.subject] : [])])].map((s) => (
                                         <option key={s}>{s}</option>
                                     ))}
                                 </select>

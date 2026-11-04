@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\DefenseRequest;
 use App\Models\DocumentTemplate;
+use App\Models\GeneratedDocument;
 use App\Services\DocumentGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -30,29 +31,81 @@ class DocumentTemplateController extends Controller
         return response()->json($template);
     }
 
+    public function download(DocumentTemplate $template)
+    {
+        abort_unless(auth()->check(), 401);
+        $path = ltrim(preg_replace('#^/?storage/#', '', $template->file_path), '/');
+        abort_unless(str_starts_with($path, 'templates/') && ! in_array('..', explode('/', $path), true), 404);
+        $disk = Storage::disk('public');
+        abort_unless(in_array($template->file_type, ['pdf', 'doc', 'docx'], true) && $disk->exists($path), 404, 'The template file is missing. Ask the Dean to upload it again.');
+        $types = ['pdf' => 'application/pdf', 'doc' => 'application/msword', 'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+
+        return $disk->download($path, (\Str::slug($template->name) ?: 'template').'.'.$template->file_type, [
+            'Content-Type' => $types[$template->file_type], 'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
+    public function preview(DocumentTemplate $template)
+    {
+        $this->authorizeManagement();
+        abort_unless($template->file_type === 'pdf', 422, 'Word templates can be downloaded and edited. Field mapping is available for PDFs only.');
+        $path = ltrim(preg_replace('#^/?storage/#', '', $template->file_path), '/');
+        abort_unless(str_starts_with($path, 'templates/') && ! in_array('..', explode('/', $path), true), 404);
+        $disk = Storage::disk('public');
+        abort_unless($disk->exists($path), 404, 'The template PDF is missing. Upload the template again.');
+
+        return $disk->response($path, 'template.pdf', [
+            'Content-Type' => 'application/pdf', 'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+        ], 'inline');
+    }
+
     public function store(Request $r)
     {
         $this->authorizeManagement();
         Log::info('DocumentTemplateController@store called', ['user_id' => $r->user()->id]);
         $data = $r->validate([
             'name' => 'required|string',
-            'file' => 'required|file|mimes:pdf|max:10240',
+            'file' => 'required|file|mimes:pdf,doc,docx|extensions:pdf,doc,docx|max:10240',
         ]);
-        try {
-            $parser = new Fpdi;
-            $pageCount = $parser->setSourceFile($r->file('file')->getRealPath());
-        } catch (\Throwable $error) {
-            throw ValidationException::withMessages(['file' => 'Upload a readable, unencrypted PDF template.']);
+        $extension = strtolower($r->file('file')->getClientOriginalExtension());
+        if ($extension === 'docx') {
+            $zip = new \ZipArchive;
+            $valid = $zip->open($r->file('file')->getRealPath()) === true;
+            if ($valid) {
+                $valid = $zip->locateName('[Content_Types].xml') !== false && $zip->locateName('word/document.xml') !== false;
+                $zip->close();
+            }
+            if (! $valid) {
+                throw ValidationException::withMessages(['file' => 'Upload a valid Word (.docx) document. Renaming another file does not convert it to Word.']);
+            }
+        }
+        if ($extension === 'doc' && file_get_contents($r->file('file')->getRealPath(), false, null, 0, 8) !== hex2bin('d0cf11e0a1b11ae1')) {
+            throw ValidationException::withMessages(['file' => 'Upload a valid Word (.doc) document, or save it as .docx.']);
+        }
+        $pageCount = 0;
+        if (strtolower($r->file('file')->getClientOriginalExtension()) === 'pdf') {
+            try {
+                $parser = new Fpdi;
+                $pageCount = $parser->setSourceFile($r->file('file')->getRealPath());
+            } catch (\Throwable $error) {
+                throw ValidationException::withMessages(['file' => 'Upload a readable, unencrypted PDF template.']);
+            }
         }
         $code = \Str::slug($data['name']).'-'.uniqid();
-        $path = $r->file('file')->store('templates', 'public');
-        $tpl = DocumentTemplate::create([
-            'name' => $data['name'],
-            'code' => $code,
-            'file_path' => $path,
-            'page_count' => $pageCount,
-            'created_by' => $r->user()->id,
-        ]);
+        $path = $r->file('file')->storeAs('templates', \Str::uuid().'.'.$extension, 'public');
+        try {
+            $tpl = DocumentTemplate::create([
+                'name' => $data['name'],
+                'code' => $code,
+                'file_path' => $path,
+                'page_count' => $pageCount,
+                'created_by' => $r->user()->id,
+            ]);
+        } catch (\Throwable $error) {
+            Storage::disk('public')->delete($path);
+            throw $error;
+        }
 
         return response()->json($tpl);
     }
@@ -60,6 +113,9 @@ class DocumentTemplateController extends Controller
     public function updateFields(Request $request, DocumentTemplate $template)
     {
         $this->authorizeManagement();
+        if ($template->file_type !== 'pdf') {
+            throw ValidationException::withMessages(['template' => 'Field mapping is available for PDF templates only. Download the Word template to edit it.']);
+        }
         $data = $request->validate([
             'fields' => 'present|array|max:300',
             'fields.*.key' => 'required|string|max:120|regex:/^[a-zA-Z0-9_.]+$/',
@@ -85,6 +141,9 @@ class DocumentTemplateController extends Controller
     public function destroy(DocumentTemplate $template)
     {
         $this->authorizeManagement();
+        if (GeneratedDocument::where('document_template_id', $template->id)->exists()) {
+            throw ValidationException::withMessages(['template' => 'This template has generated documents and cannot be deleted because they must remain accessible.']);
+        }
         Storage::disk('public')->delete($template->file_path);
         $template->delete();
 

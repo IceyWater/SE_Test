@@ -18,6 +18,7 @@ type FileAttachment = {
 
 type PageProps = {
     files: FileAttachment[];
+    templates: { id: number; name: string; file_type: string; download_url: string }[];
     auth: { user: { id: number; first_name: string; last_name: string; school_id: string } };
 };
 
@@ -28,7 +29,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function StudentDocumentsIndex() {
     const { props } = usePage<PageProps>();
-    const { files } = props;
+    const { files, templates = [] } = props;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -52,6 +53,28 @@ export default function StudentDocumentsIndex() {
                     </div>
                     {/* <div className="p-4">Toolbar/Filters row (optional)</div> */}
                 </div>
+                <section className="bg-card mb-6 rounded-lg border p-5">
+                    <h2 className="font-semibold">Downloadable templates</h2>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                        Download a blank form. Word files can be edited in Word or WPS; PDFs require a PDF editor or can be printed.
+                    </p>
+                    {templates.length ? (
+                        <ul className="mt-4 space-y-3">
+                            {templates.map((template) => (
+                                <li key={template.id} className="flex flex-wrap items-center justify-between gap-3 rounded border p-3">
+                                    <span>
+                                        {template.name} <span className="text-muted-foreground text-xs uppercase">({template.file_type})</span>
+                                    </span>
+                                    <a className="rounded border px-3 py-2 text-sm underline" href={template.download_url}>
+                                        Download {template.file_type.toUpperCase()}
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-muted-foreground mt-3 text-sm">No templates have been uploaded yet.</p>
+                    )}
+                </section>
                 {/* Cards grid OUTSIDE the header */}
                 <ShowAllDocuments files={files} />
             </div>

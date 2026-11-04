@@ -30,10 +30,11 @@ class FinanceDocumentWorkflowController extends Controller
             $byType = $docs->get($r->id, collect())->keyBy('document_type');
 
             return [
+                'archived' => $access->isArchived($r),
                 'id' => $r->id, 'student_name' => $r->student?->full_name ?: trim($r->first_name.' '.$r->last_name),
                 'student_number' => $r->student?->school_id ?: $r->school_id, 'program' => $r->program, 'defense_type' => $r->defense_type,
-                'workflow_state' => $r->workflow_state, 'receipt_url' => $access->receiptUrl($r->proof_of_payment), 'panel_names' => $access->panelNames($r),
-                'can_send' => in_array($r->workflow_state, ['coordinator-approved', 'panels-assigned', 'scheduled', 'completed'], true) && ! in_array($r->status, ['Cancelled', 'Rejected'], true),
+                'workflow_state' => $r->workflow_state, 'receipt_url' => $access->receiptUrl($r->proof_of_payment, $r), 'panel_names' => $access->panelNames($r),
+                'can_send' => in_array($r->workflow_state, ['coordinator-approved', 'panels-assigned', 'scheduled', 'completed'], true) && ! $access->isArchived($r),
                 'document1' => $byType->get('payment_receipt') ? $this->documentData($byType->get('payment_receipt')) : ['id' => null, 'status' => 'ready', 'ready_on' => $today],
                 'document2' => $byType->get('panel_breakdown') ? $this->documentData($byType->get('panel_breakdown')) : ['id' => null, 'status' => 'not_created'],
             ];

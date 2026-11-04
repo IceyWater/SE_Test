@@ -39,6 +39,9 @@ class DefenseAcademicOutcomeController extends Controller
             if (! in_array($dr->workflow_state, ['scheduled', 'completed']) || in_array(strtolower($dr->status ?? ''), ['cancelled', 'rejected'])) {
                 throw ValidationException::withMessages(['defense' => 'Record outcomes for an active scheduled defense.']);
             }
+            if ($lockReason = $service->outcomeLockReason($dr)) {
+                throw ValidationException::withMessages(['defense' => $lockReason]);
+            }
             if ($data['completion'] !== 'not-yet-done') {
                 $end = $dr->scheduled_date && $dr->scheduled_end_time ? CarbonImmutable::parse($dr->scheduled_date->format('Y-m-d').' '.$dr->scheduled_end_time, 'Asia/Manila') : null;
                 if (! $end || $end->isFuture() || (! empty($data['completed_on']) && $data['completed_on'] < $dr->scheduled_date->format('Y-m-d'))) {

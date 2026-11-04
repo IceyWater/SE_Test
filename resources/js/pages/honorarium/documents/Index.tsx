@@ -1,3 +1,4 @@
+import HonorariumRecordFilter from '@/components/honorarium-record-filter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +18,7 @@ type Doc = {
     payload?: { panel_names?: string[]; panel_details?: { name: string; role: string; affiliation: string }[] } | null;
 };
 type Item = {
+    archived: boolean;
     can_send: boolean;
     id: number;
     student_name: string;
@@ -62,6 +64,9 @@ const docName = (type: 'one' | 'two') => (type === 'one' ? 'Document 1 · Paymen
 export default function FinanceDocumentsPage() {
     const { errors = {}, role, canSubmit, canReview, items = [], activities = [], today, flash } = usePage<Props>().props;
     const [tab, setTab] = useState<'documents' | 'calendar'>('documents');
+    const [archived, setArchived] = useState(false);
+    const active = items.filter((item) => !item.archived);
+    const categoryItems = items.filter((item) => item.archived === archived);
     const [notes, setNotes] = useState<Record<number, string>>({});
     const [month, setMonth] = useState(`${today.slice(0, 7)}-01`);
     const [selectedDate, setSelectedDate] = useState(today);
@@ -163,7 +168,7 @@ export default function FinanceDocumentsPage() {
                                 Send Document 2
                             </Button>
                         )}
-                    {canReview && doc.id && doc.status === 'submitted' && (
+                    {!item.archived && canReview && doc.id && doc.status === 'submitted' && (
                         <>
                             <Button disabled={busy} onClick={() => review(doc, 'verified')} className="gap-1">
                                 <CheckCircle2 className="size-4" />
@@ -177,7 +182,7 @@ export default function FinanceDocumentsPage() {
                     )}
                 </div>
             </div>
-            {canReview && doc.id && doc.status === 'submitted' && (
+            {!item.archived && canReview && doc.id && doc.status === 'submitted' && (
                 <Textarea
                     className="mt-3"
                     value={notes[doc.id] ?? ''}
@@ -227,16 +232,22 @@ export default function FinanceDocumentsPage() {
                         AA Activity Calendar
                     </Button>
                 </div>
+                <HonorariumRecordFilter
+                    archived={archived}
+                    onChange={setArchived}
+                    activeCount={active.length}
+                    archivedCount={items.length - active.length}
+                />
                 {tab === 'documents' && (
                     <div className="space-y-4">
-                        {items.length === 0 && (
+                        {categoryItems.length === 0 && (
                             <Card>
                                 <CardContent className="text-muted-foreground p-8 text-center text-sm">
                                     No defense requests with payment receipts were found.
                                 </CardContent>
                             </Card>
                         )}
-                        {items.map((item) => (
+                        {categoryItems.map((item) => (
                             <Card key={item.id}>
                                 <CardHeader>
                                     <CardTitle className="text-lg">
@@ -247,6 +258,7 @@ export default function FinanceDocumentsPage() {
                                     </p>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
+                                    {item.archived && <Badge variant="outline">Archived · {item.workflow_state}</Badge>}
                                     {documentCard(item, item.document1, 'one')}
                                     {documentCard(item, item.document2, 'two')}
                                     <p className="text-muted-foreground text-xs">

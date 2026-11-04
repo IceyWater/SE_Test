@@ -42,6 +42,7 @@ type AcademicRecord = {
 type Defense = {
     outcome: AcademicOutcome | null;
     can_record_outcome: boolean;
+    outcome_lock_reason: string | null;
     id: number;
     title: string;
     stage: string | null;
@@ -55,6 +56,7 @@ type Defense = {
     history: { event: string; at: string | null }[];
 };
 type Progress = {
+    research_type: { label: string; determined: boolean; subject_options: string[]; source_url: string };
     student: { id: number; name: string; school_id: string | null; email: string; program: string | null };
     stage: string | null;
     status: string;
@@ -143,6 +145,11 @@ export default function StudentProgressPage({ progress, canEdit = false }: { pro
                         {student.school_id || 'School ID not available'} · {student.email}
                     </p>
                     <p className="text-muted-foreground text-sm">{student.program || 'Program not available'}</p>
+                    <p className="text-sm font-medium">Research type: {progress.research_type.label}</p>
+                    <p className="text-muted-foreground text-xs">
+                        Based on the program curriculum. Current subject and enrollment dates still require school-record confirmation.
+                        {!progress.research_type.determined && ' Confirm the student’s program and thesis/non-thesis track.'}
+                    </p>
                 </header>
                 {saved && (
                     <p role="status" className="rounded-lg border border-green-600 p-3 text-sm text-green-700 dark:text-green-300">
@@ -339,7 +346,12 @@ export default function StudentProgressPage({ progress, canEdit = false }: { pro
                                             }
                                         >
                                             <option value="">Other subject</option>
-                                            {['Thesis 1', 'Thesis 2', 'Dissertation 1', 'Dissertation 2'].map((s) => (
+                                            {[
+                                                ...new Set([
+                                                    ...progress.research_type.subject_options,
+                                                    ...(subject.research_subject ? [subject.research_subject] : []),
+                                                ]),
+                                            ].map((s) => (
                                                 <option key={s}>{s}</option>
                                             ))}
                                         </select>
@@ -485,8 +497,10 @@ export default function StudentProgressPage({ progress, canEdit = false }: { pro
                                         key={`${defense.id}-${defense.outcome?.version ?? 0}`}
                                         id={defense.id}
                                         stage={defense.stage}
+                                        subjectOptions={progress.research_type.subject_options}
                                         outcome={defense.outcome}
                                         canEdit={defense.can_record_outcome}
+                                        lockReason={canEdit ? defense.outcome_lock_reason : null}
                                     />
                                     {defense.history.length > 0 && (
                                         <ol className="space-y-2 border-l pl-4 text-sm">

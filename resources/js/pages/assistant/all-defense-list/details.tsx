@@ -6,11 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import type { DefenseAttachments, WorkflowHistoryEntry } from '@/types/workflows';
+import { defenseHistoryDescription, defenseHistoryLabel } from '@/utils/defense-history';
 import { Head, router } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { ArrowLeft, CheckCircle, CircleArrowLeft, Clock, FileText, Send, Signature, User, UserCheck, Users, XCircle } from 'lucide-react';
+import { ArrowLeft, CircleArrowLeft, Clock, FileText, Send, Signature, User, UserCheck, Users, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import PaymentValidationSection from './payment-validation';
 
 type DefenseRequestDetails = {
@@ -201,29 +201,6 @@ export default function Details({ id, defenseRequest: initialDefenseRequest }: P
         return '';
     }
 
-    // Mark as Completed handler
-    async function handleMarkCompleted() {
-        if (!details) return;
-        try {
-            const res = await fetch(`/defense-requests/${details.id}/status`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-                },
-                body: JSON.stringify({ status: 'Completed' }),
-            });
-            if (res.ok) {
-                setDetails({ ...details, status: 'Completed', workflow_state: 'completed' });
-                toast.success('Marked as Completed');
-            } else {
-                toast.error('Failed to mark as completed');
-            }
-        } catch {
-            toast.error('Error marking as completed');
-        }
-    }
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={details?.thesis_title || `Defense Request #${details?.id ?? ''}`} />
@@ -244,9 +221,20 @@ export default function Details({ id, defenseRequest: initialDefenseRequest }: P
                     </div>
                     {/* Only show if not completed */}
                     {details?.status !== 'Completed' && tab === 'details' && (
-                        <Button size="sm" variant="outline" onClick={handleMarkCompleted} className="gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            Mark as Completed
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                                router.visit(
+                                    details?.scheduled_date
+                                        ? `/defense-register?from=${details.scheduled_date}&to=${details.scheduled_date}`
+                                        : '/defense-register',
+                                )
+                            }
+                            className="gap-2"
+                        >
+                            <UserCheck className="h-4 w-4 text-green-600" />
+                            View Service Confirmation
                         </Button>
                     )}
                 </div>
@@ -463,11 +451,16 @@ export default function Details({ id, defenseRequest: initialDefenseRequest }: P
                                                     )}
                                                 </div>
                                                 <div className="pb-4">
-                                                    <div className="text-xs font-semibold">{step.label}</div>
+                                                    <div className="text-xs font-semibold">{defenseHistoryLabel(item, step.label)}</div>
                                                     <div className="text-muted-foreground text-[11px]">
                                                         {userName && <span>{userName}</span>}
                                                         {created && <span> &middot; {formatReadableDate(created)}</span>}
                                                     </div>
+                                                    {defenseHistoryDescription(item) && (
+                                                        <p className="text-muted-foreground mt-1 text-xs break-words whitespace-pre-wrap">
+                                                            {defenseHistoryDescription(item)}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                         );

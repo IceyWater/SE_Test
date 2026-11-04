@@ -13,7 +13,7 @@ type Schedule = {
     allDay?: boolean;
     origin?: string;
     description?: string;
-    data?: { status?: string; workflow_state?: string };
+    data?: { session_status?: string; status?: string; workflow_state?: string };
 };
 
 export function scheduleOnDay(item: Schedule, day: Date): boolean {
@@ -73,6 +73,11 @@ export default function StudentSchedulesWidget({ onTodayCount }: { onTodayCount?
         void load();
         return () => controller.abort();
     }, [monthKey, onTodayCount, retry]);
+
+    useEffect(() => {
+        const timer = setInterval(() => setRetry((value) => value + 1), 60000);
+        return () => clearInterval(timer);
+    }, []);
 
     const dayEvents = useMemo(
         () => events.filter((item) => scheduleOnDay(item, selected)).sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title)),
@@ -141,6 +146,7 @@ export default function StudentSchedulesWidget({ onTodayCount }: { onTodayCount?
                             {dayEvents.map((item) => (
                                 <li key={item.id} className="border-border rounded-lg border p-4">
                                     <p className="font-medium break-words">{item.title}</p>
+                                    {item.data?.session_status && <p className="text-primary mt-1 text-sm font-medium">{item.data.session_status}</p>}
                                     <p className="text-muted-foreground mt-2 flex items-center gap-2 text-xs">
                                         <Clock className="h-3.5 w-3.5" />
                                         {time(item)}

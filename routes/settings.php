@@ -41,6 +41,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/settings/documents/{template}/edit', function (DocumentTemplate $template) {
         abort_unless(in_array(Auth::user()->role, ['Dean', 'Super Admin']), 403);
+        abort_unless($template->file_type === 'pdf', 422, 'Download the Word template to edit it. Field mapping requires a PDF.');
 
         return Inertia::render('settings/documents/TemplateEditor', [
             'templateId' => $template->id,

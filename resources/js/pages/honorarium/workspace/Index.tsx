@@ -1,3 +1,4 @@
+import HonorariumRecordFilter from '@/components/honorarium-record-filter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,9 +8,10 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { CalendarDays, CheckCircle2, CircleDollarSign, FileCheck2, FileText, Search, Send, ShieldCheck, XCircle } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 type Item = {
+    archived: boolean;
     id: number;
     student_name: string;
     student_number?: string | null;
@@ -48,16 +50,13 @@ const breadcrumbs: BreadcrumbItem[] = [{ title: 'Honorarium Tracking', href: '/h
 export default function HonorariumWorkspace() {
     const { canManageDocuments, role, canSubmitToFinance, canVerifyFinance, items = [], rates = [], flash } = usePage<Props>().props;
     const [tab, setTab] = useState<'workflow' | 'schedule' | 'rates' | 'records'>('workflow');
+    const [archived, setArchived] = useState(false);
+    const active = items.filter((item) => !item.archived);
+    const categoryItems = items.filter((item) => item.archived === archived);
     const [search, setSearch] = useState('');
     const [notes, setNotes] = useState<Record<number, string>>({});
-    const filtered = useMemo(
-        () =>
-            items.filter((item) =>
-                `${item.student_name} ${item.student_number ?? ''} ${item.program ?? ''} ${item.defense_type}`
-                    .toLowerCase()
-                    .includes(search.toLowerCase()),
-            ),
-        [items, search],
+    const filtered = categoryItems.filter((item) =>
+        `${item.student_name} ${item.student_number ?? ''} ${item.program ?? ''} ${item.defense_type}`.toLowerCase().includes(search.toLowerCase()),
     );
     const submit = (item: Item) => router.post(`/honorarium-workspace/${item.id}/submit-to-finance`, {}, { preserveScroll: true });
     const financeReview = (item: Item, status: 'verified' | 'rejected') => {
@@ -103,10 +102,10 @@ export default function HonorariumWorkspace() {
                 )}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {[
-                        { label: 'Tracked defenses', value: items.length, icon: FileText },
-                        { label: 'Awaiting Finance', value: items.filter((x) => x.finance_status === 'submitted').length, icon: FileCheck2 },
-                        { label: 'Verified', value: items.filter((x) => x.finance_status === 'verified').length, icon: CheckCircle2 },
-                        { label: 'Receipts available', value: items.filter((x) => x.receipt_url).length, icon: ShieldCheck },
+                        { label: 'Tracked defenses', value: active.length, icon: FileText },
+                        { label: 'Awaiting Finance', value: active.filter((x) => x.finance_status === 'submitted').length, icon: FileCheck2 },
+                        { label: 'Verified', value: active.filter((x) => x.finance_status === 'verified').length, icon: CheckCircle2 },
+                        { label: 'Receipts available', value: active.filter((x) => x.receipt_url).length, icon: ShieldCheck },
                     ].map((metric) => (
                         <Card key={metric.label}>
                             <CardContent className="flex items-center justify-between p-5">
@@ -134,6 +133,12 @@ export default function HonorariumWorkspace() {
                         </Button>
                     ))}
                 </div>
+                <HonorariumRecordFilter
+                    archived={archived}
+                    onChange={setArchived}
+                    activeCount={active.length}
+                    archivedCount={items.length - active.length}
+                />
                 {tab === 'workflow' && (
                     <Card>
                         <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -199,7 +204,7 @@ export default function HonorariumWorkspace() {
                                                 ) : (
                                                     <span className="text-muted-foreground text-sm">No receipt uploaded</span>
                                                 )}
-                                                {canSubmitToFinance && item.receipt_url && (
+                                                {!item.archived && canSubmitToFinance && item.receipt_url && (
                                                     <Button onClick={() => submit(item)} className="gap-2">
                                                         <Send className="size-4" />
                                                         {item.finance_status === 'not_submitted' ? 'Send to Finance' : 'Resend to Finance'}
@@ -207,7 +212,7 @@ export default function HonorariumWorkspace() {
                                                 )}
                                             </div>
                                         </div>
-                                        {canVerifyFinance && item.finance_submission_id && item.finance_status === 'submitted' && (
+                                        {!item.archived && canVerifyFinance && item.finance_submission_id && item.finance_status === 'submitted' && (
                                             <div className="mt-4 border-t pt-4">
                                                 <label className="mb-2 block text-sm font-medium">Review notes (required for rejection)</label>
                                                 <Textarea
@@ -255,7 +260,7 @@ export default function HonorariumWorkspace() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {items
+                                        {categoryItems
                                             .filter((i) => i.scheduled_date)
                                             .sort((a, b) => (a.scheduled_date ?? '').localeCompare(b.scheduled_date ?? ''))
                                             .map((i) => (
@@ -269,7 +274,7 @@ export default function HonorariumWorkspace() {
                                             ))}
                                     </tbody>
                                 </table>
-                                {!items.some((i) => i.scheduled_date) && (
+                                {!categoryItems.some((i) => i.scheduled_date) && (
                                     <p className="text-muted-foreground p-6 text-center text-sm">No scheduled defenses with receipt records yet.</p>
                                 )}
                             </div>
@@ -338,7 +343,7 @@ export default function HonorariumWorkspace() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {items.map((i) => (
+                                        {categoryItems.map((i) => (
                                             <tr className="border-b last:border-0" key={i.id}>
                                                 <td className="p-3">#{i.id}</td>
                                                 <td className="p-3">{i.student_name}</td>

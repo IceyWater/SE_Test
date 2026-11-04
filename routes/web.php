@@ -47,9 +47,8 @@ use App\Mail\AdviserInvitation;
 use App\Models\AaPaymentVerification;
 use App\Models\DefenseRequest;
 use App\Models\DocumentTemplate;
-use App\Models\Panelist;
-use App\Models\PaymentRate;
 use App\Models\User;
+use App\Services\HonorariumAccess;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -147,6 +146,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/settings/documents/{template}/edit', function (DocumentTemplate $template) {
         abort_unless(in_array(Auth::user()->role, ['Dean', 'Super Admin']), 403);
+        abort_unless($template->file_type === 'pdf', 422, 'Download the Word template to edit it. Field mapping requires a PDF.');
 
         return Inertia::render('settings/documents/TemplateEditor', [
             'templateId' => $template->id,
@@ -325,6 +325,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/defense-requests/pending', [DefenseRequestController::class, 'pending'])->name('defense-requests.pending');
     Route::get('/api/defense-requests/count', [DefenseRequestController::class, 'count'])->name('api.defense-requests.count');
     Route::get('/api/defense-request/{defenseRequest}', [DefenseRequestController::class, 'apiShow'])->name('api.defense-request.show');
+
+    Route::get('/defense-receipts/{defenseRequest}/{filename}', [DefenseRequestController::class, 'downloadReceipt'])->name('defense-receipts.show');
 
     Route::get('/storage/defense_requirements/{filename}', [DefenseRequestController::class, 'downloadAttachment'])
         ->defaults('directory', 'defense_requirements')->name('defense-requirements.attachment');
@@ -523,6 +525,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('adviser.defense-requests');
 
     Route::get('/api/document-templates', [DocumentTemplateController::class, 'index']);
+    Route::get('/api/document-templates/{template}/download', [DocumentTemplateController::class, 'download'])->name('document-templates.download');
+    Route::get('/api/document-templates/{template}/preview', [DocumentTemplateController::class, 'preview'])->name('document-templates.preview');
     Route::get('/api/document-templates/{template}', [DocumentTemplateController::class, 'show']);
     Route::post('/api/document-templates', [DocumentTemplateController::class, 'store']);
     Route::put('/api/document-templates/{template}/fields', [DocumentTemplateController::class, 'updateFields']);
@@ -727,39 +731,12 @@ Route::get('/assistant/all-defense-list/{id}/details', function ($id) {
     }
     $defenseRequest = DefenseRequest::findOrFail($id);
 
-    // Get program level using helper
     $programLevel = ProgramLevel::getLevel($defenseRequest->program);
-
-    // Sum all rates for this program level and defense type
-    $expectedTotal = PaymentRate::where('program_level', $programLevel)
-        ->where('defense_type', $defenseRequest->defense_type)
-        ->sum('amount');
-
-    // Define vars to avoid "unassigned variable" errors
-    $coordinator = null;
-    $aa_verification_status = null;
-    $aa_verification_id = null;
-
-    // Compose panelists list (same as before)
-    $panelistFields = [
-        $defenseRequest->defense_chairperson,
-        $defenseRequest->defense_panelist1,
-        $defenseRequest->defense_panelist2,
-        $defenseRequest->defense_panelist3,
-        $defenseRequest->defense_panelist4,
-    ];
-    $panelists = collect($panelistFields)
-        ->filter()
-        ->map(function ($panelistIdOrName) {
-            if (is_numeric($panelistIdOrName)) {
-                $p = Panelist::find($panelistIdOrName);
-                if ($p) {
-                    return ['id' => $p->id, 'name' => $p->name];
-                }
-            }
-
-            return ['id' => null, 'name' => $panelistIdOrName];
-        })->values()->all();
+    $expectedTotal = config('student_defense_fees.'.$programLevel.'.'.$defenseRequest->defense_type);
+    $coordinator = $defenseRequest->coordinator?->name;
+    $verification = AaPaymentVerification::where('defense_request_id', $defenseRequest->id)->first();
+    $aa_verification_status = $verification?->status;
+    $aa_verification_id = $verification?->id;
 
     return Inertia::render('assistant/all-defense-list/details', [
         'defenseRequest' => [
@@ -774,6 +751,14 @@ Route::get('/assistant/all-defense-list/{id}/details', function ($id) {
             'priority' => $defenseRequest->priority,
             'workflow_state' => $defenseRequest->workflow_state,
             'status' => $defenseRequest->status,
+            'scheduled_time' => $defenseRequest->scheduled_time,
+            'scheduled_end_time' => $defenseRequest->scheduled_end_time,
+            'defense_venue' => $defenseRequest->defense_venue,
+            'scheduling_notes' => $defenseRequest->scheduling_notes,
+            'workflow_history' => $defenseRequest->workflow_history ?? [],
+            'attachments' => collect(array_keys(DefenseRequest::ATTACHMENT_LABELS))->mapWithKeys(fn ($field) => [$field => $defenseRequest->{$field} ? app(HonorariumAccess::class)->receiptUrl($defenseRequest->{$field}) : null])->all(),
+            'defense_adviser' => $defenseRequest->defense_adviser,
+            ...$defenseRequest->panel_display,
             'scheduled_date' => $defenseRequest->scheduled_date?->format('Y-m-d'),
             'date_of_defense' => $defenseRequest->scheduled_date
                 ? $defenseRequest->scheduled_date->format('Y-m-d')
@@ -856,13 +841,8 @@ Route::get('/assistant/all-defense-list/data', function () {
             'coordinator_user_id',
         ])
         ->map(function ($r) {
-            $expectedTotal = 0;
-            if ($r->program && $r->defense_type) {
-                $programLevel = ProgramLevel::getLevel($r->program);
-                $expectedTotal = PaymentRate::where('program_level', $programLevel)
-                    ->where('defense_type', $r->defense_type)
-                    ->sum('amount');
-            }
+            $programLevel = ProgramLevel::getLevel($r->program);
+            $expectedTotal = config('student_defense_fees.'.$programLevel.'.'.$r->defense_type);
 
             $coordinator = null;
             if ($r->coordinator_user_id) {
@@ -905,7 +885,8 @@ Route::get('/assistant/all-defense-list/data', function () {
                 'reference_no' => $r->reference_no ?? null,
                 'coordinator' => $coordinator,
                 'aa_verification_status' => $aa_verification_status,
-                'aa_verification_id' => $aa_verification_id, // <-- ADD THIS
+                'aa_verification_id' => $aa_verification_id,
+                'can_verify' => $aaVerification && (auth()->user()->role !== 'Administrative Assistant' || ! $aaVerification->assigned_to || (int) $aaVerification->assigned_to === (int) auth()->id()),
             ];
         });
 

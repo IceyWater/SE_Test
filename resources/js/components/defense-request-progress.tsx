@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { defenseHistoryDescription, defenseHistoryLabel } from '@/utils/defense-history';
 import { router } from '@inertiajs/react';
 import { Check, Clock, RotateCcw } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -15,6 +16,14 @@ type HistoryEntry = {
 };
 
 export type DefenseProgressFields = {
+    academic_outcome?: {
+        completion: string;
+        result: string;
+        subject: string;
+        completed_on?: string | null;
+        reason?: string | null;
+        current: boolean;
+    } | null;
     workflow_history?: HistoryEntry[] | null;
     correction_notes?: string | null;
     correction_requested_by?: number | null;
@@ -205,6 +214,26 @@ export function DefenseRequestProgress({ request }: { request: ProgressRequest }
                     </ol>
                 )}
             </div>
+            {request.academic_outcome && (
+                <section className="space-y-1 rounded-lg border p-4 text-sm" aria-label="Academic defense outcome">
+                    <h3 className="font-semibold">Academic defense outcome</h3>
+                    {request.academic_outcome.current ? (
+                        <>
+                            <p>
+                                Completion: {readable(request.academic_outcome.completion)} · Result: {readable(request.academic_outcome.result)}
+                            </p>
+                            <p>Research subject: {request.academic_outcome.subject}</p>
+                            {request.academic_outcome.completed_on && <p>Completed on: {request.academic_outcome.completed_on}</p>}
+                            {request.academic_outcome.reason && (
+                                <p className="whitespace-pre-wrap">Notes / reason: {request.academic_outcome.reason}</p>
+                            )}
+                            <p className="text-muted-foreground">This outcome applies to this defense only and does not confirm graduation.</p>
+                        </>
+                    ) : (
+                        <p>Defense information changed. The Coordinator must reconfirm the academic outcome.</p>
+                    )}
+                </section>
+            )}
             {success && (
                 <p
                     role="status"
@@ -307,17 +336,13 @@ export function DefenseRequestProgress({ request }: { request: ProgressRequest }
                     <ol className="mt-3 space-y-4 border-l pl-4">
                         {[...history].reverse().map((entry, index) => (
                             <li key={`${entry.timestamp}-${index}`} className="text-sm">
-                                <p className="font-medium">
-                                    {entry.action === 'resubmitted'
-                                        ? 'Corrections resubmitted'
-                                        : readable(entry.to_state || entry.action || 'Request updated')}
-                                </p>
+                                <p className="font-medium">{defenseHistoryLabel(entry)}</p>
                                 <p className="text-muted-foreground mt-0.5 text-xs">
                                     {entry.user_name ? `${entry.user_name} · ` : ''}
                                     {entry.timestamp ? `${dateLabel(entry.timestamp)} (PH)` : 'Date not recorded'}
                                 </p>
-                                {(entry.comment || entry.student_response) && (
-                                    <p className="mt-1 break-words whitespace-pre-wrap">{entry.comment || entry.student_response}</p>
+                                {defenseHistoryDescription(entry) && (
+                                    <p className="mt-1 break-words whitespace-pre-wrap">{defenseHistoryDescription(entry)}</p>
                                 )}
                             </li>
                         ))}

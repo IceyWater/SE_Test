@@ -3,14 +3,17 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { csrfHeaders } from '@/lib/csrf';
 import { getProgramAbbreviation } from '@/utils/program-abbreviations';
 import { router } from '@inertiajs/react';
 import { CircleCheck, X } from 'lucide-react'; // <-- Add CircleCheck
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 export type DefenseRequestSummary = {
     id: number;
     aa_verification_id?: number | null;
+    can_verify?: boolean;
     first_name: string;
     middle_name: string | null;
     last_name: string;
@@ -278,7 +281,15 @@ export default function TableAllDefenseList({
                                                     if (r.aa_verification_id)
                                                         setConfirmDialog({ open: true, ids: [r.aa_verification_id], action: 'verified' });
                                                 }}
-                                                disabled={r.aa_verification_status === 'verified'}
+                                                aria-label="Verify receipt"
+                                                title={
+                                                    r.can_verify === false
+                                                        ? 'Receipt is unavailable or assigned to another assistant'
+                                                        : r.aa_verification_id
+                                                          ? 'Verify receipt'
+                                                          : 'Receipt is not in the verification queue yet'
+                                                }
+                                                disabled={!r.aa_verification_id || r.can_verify === false || r.aa_verification_status === 'verified'}
                                             >
                                                 <CircleCheck className="h-4 w-4 text-emerald-600" />
                                             </Button>
@@ -291,7 +302,15 @@ export default function TableAllDefenseList({
                                                     if (r.aa_verification_id)
                                                         setConfirmDialog({ open: true, ids: [r.aa_verification_id], action: 'rejected' });
                                                 }}
-                                                disabled={r.aa_verification_status === 'rejected'}
+                                                aria-label="Reject receipt"
+                                                title={
+                                                    r.can_verify === false
+                                                        ? 'Receipt is unavailable or assigned to another assistant'
+                                                        : r.aa_verification_id
+                                                          ? 'Reject receipt'
+                                                          : 'Receipt is not in the verification queue yet'
+                                                }
+                                                disabled={!r.aa_verification_id || r.can_verify === false || r.aa_verification_status === 'rejected'}
                                             >
                                                 <X className="h-4 w-4 text-red-600" />
                                             </Button>
@@ -330,41 +349,36 @@ export default function TableAllDefenseList({
                             disabled={isLoading}
                             onClick={async () => {
                                 setIsLoading(true);
-                                let res;
-                                if (confirmDialog.ids.length === 1) {
-                                    res = await fetch(`/aa/payment-verifications/${confirmDialog.ids[0]}/status`, {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
+                                try {
+                                    const res = await fetch(
+                                        confirmDialog.ids.length === 1
+                                            ? `/aa/payment-verifications/${confirmDialog.ids[0]}/status`
+                                            : '/aa/payment-verifications/bulk-update',
+                                        {
+                                            method: 'POST',
+                                            headers: csrfHeaders(true),
+                                            body: JSON.stringify({ verification_ids: confirmDialog.ids, status: confirmDialog.action }),
                                         },
-                                        body: JSON.stringify({ status: confirmDialog.action }),
-                                    });
-                                } else {
-                                    res = await fetch(`/aa/payment-verifications/bulk-update`, {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-                                        },
-                                        body: JSON.stringify({
-                                            verification_ids: confirmDialog.ids,
-                                            status: confirmDialog.action,
-                                        }),
-                                    });
-                                }
-                                setIsLoading(false);
-                                setConfirmDialog({ open: false, ids: [], action: null });
-                                if (res.ok && setPaged) {
-                                    setPaged((prev) =>
-                                        prev.map((row) =>
-                                            confirmDialog.ids.includes(row.aa_verification_id ?? -1)
-                                                ? ({ ...row, aa_verification_status: confirmDialog.action } as DefenseRequestSummary)
-                                                : row,
-                                        ),
                                     );
-                                } else {
-                                    alert('Failed to update status. Please try again.');
+                                    setIsLoading(false);
+                                    setConfirmDialog({ open: false, ids: [], action: null });
+                                    if (res.ok && setPaged) {
+                                        setPaged((prev) =>
+                                            prev.map((row) =>
+                                                confirmDialog.ids.includes(row.aa_verification_id ?? -1)
+                                                    ? ({ ...row, aa_verification_status: confirmDialog.action } as DefenseRequestSummary)
+                                                    : row,
+                                            ),
+                                        );
+                                        toast.success('Receipt status updated.');
+                                    } else {
+                                        const error = await res.json().catch(() => ({}));
+                                        toast.error(error.message || 'Could not update the receipt. Refresh the page and try again.');
+                                    }
+                                } catch {
+                                    toast.error('Could not reach the server. Please try again.');
+                                } finally {
+                                    setIsLoading(false);
                                 }
                             }}
                         >

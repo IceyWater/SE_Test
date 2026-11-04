@@ -2,6 +2,7 @@
 
 use App\Models\DefenseRequest;
 use App\Models\User;
+use App\Services\HonorariumAccess;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -164,7 +165,7 @@ test('initial student submission records original filenames alongside randomized
     $data = ['first_name' => $student->first_name, 'last_name' => $student->last_name,
         'school_id' => $student->school_id, 'program' => $student->program, 'thesis_title' => 'Original names fixture',
         'adviser_id' => $adviser->id, 'adviser' => $adviser->name, 'defense_type' => 'Proposal',
-        'amount' => 100, 'reference_no' => 'TEST-OR-NAMES'];
+        'amount' => 11250, 'reference_no' => 'TEST-OR-NAMES'];
     foreach (['manuscript_proposal', 'similarity_index', 'proof_of_payment', 'avisee_adviser_attachment'] as $field) {
         $data[$field] = UploadedFile::fake()->createWithContent($field.' Original.pdf', "%PDF-1.4\nInitial name fixture");
     }
@@ -173,4 +174,44 @@ test('initial student submission records original filenames alongside randomized
     expect($row->attachment_original_names['manuscript_proposal'])->toBe('manuscript_proposal Original.pdf');
     $this->get('/student/documents')->assertInertia(fn ($page) => $page
         ->where('files.0.filename', 'manuscript_proposal Original.pdf'));
+});
+
+test('finance can view receipts without gaining access to manuscripts or full defense records', function ($role) {
+    [$row] = attachmentFixture();
+    $row->update(['manuscript_proposal' => 'defense_requirements/manuscript.pdf']);
+    Storage::disk('public')->put('defense_requirements/manuscript.pdf', "%PDF-1.4\nPrivate manuscript");
+    $finance = User::factory()->create(['role' => $role]);
+    $this->actingAs($finance)->get('/storage/defense_requirements/receipt.pdf')->assertOk()
+        ->assertHeader('Content-Type', 'application/pdf')->assertHeader('X-Content-Type-Options', 'nosniff');
+    $this->get('/storage/defense_requirements/manuscript.pdf')->assertForbidden();
+    $this->getJson('/api/defense-request/'.$row->id)->assertForbidden();
+})->with(['Finance', 'Finance Office', 'Finance Officer']);
+
+test('finance receipt viewing supports legacy prefixes and Word downloads', function () {
+    [$row] = attachmentFixture();
+    $finance = User::factory()->create(['role' => 'Finance']);
+    $row->update(['proof_of_payment' => '/storage/defense_requirements/receipt.pdf']);
+    $this->actingAs($finance)->get('/storage/defense_requirements/receipt.pdf')->assertOk();
+    Storage::disk('public')->put('defense_requirements/receipt.docx', 'Word receipt fixture');
+    $row->update(['proof_of_payment' => 'defense_requirements/receipt.docx', 'attachment_original_names' => ['proof_of_payment' => 'Payment Receipt.docx']]);
+    $this->get('/storage/defense_requirements/receipt.docx')->assertOk()->assertDownload('Payment Receipt.docx');
+});
+
+test('finance receipt links use the original filename and retain file permissions', function () {
+    [$row, $student] = attachmentFixture();
+    $row->update(['attachment_original_names' => ['proof_of_payment' => 'Official Receipt - Defense.pdf']]);
+    $url = app(HonorariumAccess::class)->receiptUrl($row->proof_of_payment, $row);
+    expect($url)->toBe('/defense-receipts/'.$row->id.'/Official%20Receipt%20-%20Defense.pdf');
+    $this->actingAs(User::factory()->create(['role' => 'Finance']))->get($url)->assertOk()
+        ->assertHeader('Content-Disposition', 'inline; filename="Official Receipt - Defense.pdf"');
+    $this->actingAs($student)->get($url)->assertOk();
+    $this->actingAs(User::factory()->create(['role' => 'Student']))->get($url)->assertForbidden();
+    $this->actingAs(User::factory()->create(['role' => 'Finance']))->get('/defense-receipts/'.$row->id.'/wrong.pdf')->assertNotFound();
+});
+
+test('legacy receipts without saved original names get meaningful filenames', function () {
+    [$row] = attachmentFixture();
+    $url = app(HonorariumAccess::class)->receiptUrl($row->proof_of_payment, $row);
+    expect($url)->toContain('Proof%20of%20Payment%20-%20Attachment%20test.pdf');
+    $this->actingAs(User::factory()->create(['role' => 'Finance']))->get($url)->assertOk();
 });

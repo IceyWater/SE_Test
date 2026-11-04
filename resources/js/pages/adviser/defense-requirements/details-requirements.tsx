@@ -1,4 +1,5 @@
 import type { DocumentTemplateOption, WorkflowHistoryEntry } from '@/types/workflows';
+import { defenseHistoryDescription, defenseHistoryLabel } from '@/utils/defense-history';
 
 import { CorrectionsNotice, isAwaitingCorrections, RequestCorrectionsButton, type CorrectionDetails } from '@/components/defense-request-corrections';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -1016,15 +1017,15 @@ function LoadedDetailsRequirementsPage(rawProps: PageProps) {
                                                     )}
                                                 </div>
                                                 <div className="pb-4">
-                                                    <div className="text-xs font-semibold">{step.label}</div>
+                                                    <div className="text-xs font-semibold">{defenseHistoryLabel(item, step.label)}</div>
                                                     <div className="text-muted-foreground text-[11px]">
                                                         {item.user_name && <span>{item.user_name}</span>}
                                                         {item.timestamp && <span> &middot; {formatReadableDate(item.timestamp)}</span>}
                                                     </div>
 
-                                                    {(item.comment || item.notes) && (
+                                                    {defenseHistoryDescription(item) && (
                                                         <div className="text-muted-foreground mt-1 text-xs whitespace-pre-wrap">
-                                                            {item.comment || item.notes}
+                                                            {defenseHistoryDescription(item)}
                                                         </div>
                                                     )}
                                                 </div>

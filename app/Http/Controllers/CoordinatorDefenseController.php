@@ -332,7 +332,7 @@ class CoordinatorDefenseController extends Controller
             return response()->json(['error' => 'Wait for the student to resubmit corrections before continuing this request.'], 422);
         }
 
-        $this->authorizeRole();
+        abort_unless(Auth::user()?->role === 'Coordinator' && (int) $defenseRequest->coordinator_user_id === (int) Auth::id(), 403);
 
         // Allow approval if adviser-approved OR coordinator-review OR still submitted legacy
         if (! in_array($defenseRequest->workflow_state, ['adviser-approved', 'coordinator-review', 'submitted', null])) {
@@ -749,7 +749,7 @@ class CoordinatorDefenseController extends Controller
             return response()->json(['error' => 'Wait for the student to resubmit corrections before reviewing this request.'], 422);
         }
 
-        $this->authorizeRole();
+        abort_unless(Auth::user()?->role === 'Coordinator' && (int) $defenseRequest->coordinator_user_id === (int) Auth::id(), 403);
 
         $validated = $request->validate([
             'status' => 'required|in:Pending,Approved,Rejected',

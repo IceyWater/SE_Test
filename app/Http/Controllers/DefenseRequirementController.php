@@ -2,15 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ProgramLevel;
 use App\Mail\DefenseRequestSubmitted;
+use App\Models\DefenseAcademicOutcome;
 use App\Models\DefenseRequest;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\DefenseAcademicProgress;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 
 class DefenseRequirementController extends Controller
 {
@@ -19,12 +23,14 @@ class DefenseRequirementController extends Controller
         $user = Auth::user();
         $requirements = DefenseRequest::where('submitted_by', Auth::id())->orderByDesc('created_at')->get();
         $defenseRequest = $requirements->first();
+        $outcomeService = app(DefenseAcademicProgress::class);
+        $outcomes = DefenseAcademicOutcome::whereIn('defense_request_id', $requirements->modelKeys())->get()->keyBy('defense_request_id');
 
         $acceptDefense = DB::table('settings')->where('key', 'accept_defense')->value('value');
         $acceptDefense = $acceptDefense === null ? true : $acceptDefense === '1';
 
         return inertia('student/submissions/defense-requirements/Index', [
-            'defenseRequirements' => $requirements->map(function ($r) {
+            'defenseRequirements' => $requirements->map(function ($r) use ($outcomeService, $outcomes) {
                 return [
                     'id' => $r->id,
                     'attachment_names' => $r->attachment_names,
@@ -36,7 +42,8 @@ class DefenseRequirementController extends Controller
                     'thesis_title' => $r->thesis_title,
                     'adviser' => $r->defense_adviser ?: '—',
                     'status' => $r->status ?? 'Pending',
-                    'workflow_state' => $r->workflow_state,
+                    'workflow_state' => $outcomeService->studentWorkflowState($r, $outcomes->get($r->id)),
+                    'academic_outcome' => $outcomeService->view($r, $outcomes->get($r->id)),
                     'workflow_history' => $r->workflow_history ?? [],
                     'correction_notes' => $r->correction_notes,
                     'correction_stage' => $r->correction_stage,
@@ -77,8 +84,9 @@ class DefenseRequirementController extends Controller
                 'thesis_title' => $defenseRequest->thesis_title,
                 'defense_type' => $defenseRequest->defense_type,
                 'status' => $defenseRequest->status,
-                'workflow_state' => $defenseRequest->workflow_state,
-                'workflow_state_display' => $defenseRequest->workflow_state, // keep for UI
+                'workflow_state' => $outcomeService->studentWorkflowState($defenseRequest, $outcomes->get($defenseRequest->id)),
+                'academic_outcome' => $outcomeService->view($defenseRequest, $outcomes->get($defenseRequest->id)),
+                'workflow_state_display' => $outcomeService->studentWorkflowState($defenseRequest, $outcomes->get($defenseRequest->id)), // keep for UI
                 // panelists / committee
                 'defense_chairperson' => $defenseRequest->panel_display['defense_chairperson'],
                 'defense_panelist1' => $defenseRequest->panel_display['defense_panelist1'],
@@ -116,6 +124,7 @@ class DefenseRequirementController extends Controller
                 'correction_count' => $defenseRequest->correction_count,
             ] : null,
             'acceptDefense' => $acceptDefense,
+            'defenseFees' => config('student_defense_fees.'.ProgramLevel::getLevel($user->program), []),
             'auth' => [
                 'user' => [
                     'id' => $user->id,
@@ -205,6 +214,9 @@ class DefenseRequirementController extends Controller
         $maxFileSize = config('upload.max_file_size_kb', 204800);
         $allowedMimes = implode(',', config('upload.allowed_extensions', ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png']));
 
+        $feeLevel = ProgramLevel::getLevel($request->user()->program ?: $request->input('program'));
+        $expectedAmount = config('student_defense_fees.'.$feeLevel.'.'.$request->input('defense_type'));
+
         $data = $request->validate([
             'first_name' => 'required|string',
             'middle_name' => 'nullable|string',
@@ -221,8 +233,8 @@ class DefenseRequirementController extends Controller
             'manuscript_proposal' => "required|file|mimes:pdf,doc,docx|max:{$maxFileSize}",
             'similarity_index' => "required|file|mimes:{$allowedMimes}|max:{$maxFileSize}",
             'avisee_adviser_attachment' => "required_if:defense_type,Proposal|nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:{$maxFileSize}",
-            'amount' => 'required|numeric|min:0', // <-- Add this line
-        ]);
+            'amount' => ['required', 'numeric', Rule::in([$expectedAmount])],
+        ], ['amount.in' => 'The payment amount must match the scheduled fee for your program and defense type. Refresh the form and check your receipt.']);
 
         foreach (['rec_endorsement', 'proof_of_payment', 'manuscript_proposal', 'similarity_index', 'avisee_adviser_attachment'] as $f) {
             if ($request->hasFile($f)) {

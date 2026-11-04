@@ -2,6 +2,7 @@ import { DefenseDateControl, DefenseTimeControl } from '@/components/defense-sch
 import { csrfHeaders } from '@/lib/csrf';
 import { errorMessage } from '@/lib/error-message';
 import type { RequestActionResponse, WorkflowHistoryEntry } from '@/types/workflows';
+import { defenseHistoryDescription, defenseHistoryLabel } from '@/utils/defense-history';
 
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
@@ -443,7 +444,7 @@ function LoadedDefenseRequestDetailsPage(rawProps: PageProps) {
         return new Set([...values, ...identities]);
     }, [panels, panelMembers]);
 
-    const canEdit = ['Coordinator', 'Administrative Assistant', 'Dean'].includes(userRole);
+    const canEdit = userRole === 'Coordinator';
 
     async function fetchWithSession(url: string, options: RequestInit) {
         return fetch(url, { ...options, credentials: 'same-origin', headers: { ...options.headers, ...csrfHeaders(true) } });
@@ -639,6 +640,7 @@ function LoadedDefenseRequestDetailsPage(rawProps: PageProps) {
                         status: data.status || r.status,
                     }));
                 }
+                router.reload({ only: ['defenseRequest'] });
                 toast.success(`Coordinator status set to ${newStatus}`);
             } else {
                 toast.error(data?.error || `Failed to update status (${res.status})`);
@@ -1356,7 +1358,7 @@ function LoadedDefenseRequestDetailsPage(rawProps: PageProps) {
                             <div className="relative flex flex-col gap-0">
                                 {Array.isArray(request.workflow_history) && request.workflow_history.length > 0 ? (
                                     request.workflow_history.map((item, idx: number) => {
-                                        const { event, desc, created, userName } = resolveHistoryFields(item);
+                                        const { event, created, userName } = resolveHistoryFields(item);
                                         const stepKey = getStepForEvent(event);
                                         const step = workflowSteps.find((s) => s.key === stepKey) || {
                                             label:
@@ -1381,14 +1383,14 @@ function LoadedDefenseRequestDetailsPage(rawProps: PageProps) {
                                                     )}
                                                 </div>
                                                 <div className="pb-4">
-                                                    <div className="text-xs font-semibold">{step.label}</div>
+                                                    <div className="text-xs font-semibold">{defenseHistoryLabel(item, step.label)}</div>
                                                     <div className="text-muted-foreground text-[11px]">
                                                         {userName && <span>{userName}</span>}
                                                         {created && <span> &middot; {formatReadableDate(created)}</span>}
                                                     </div>
-                                                    {(item.comment || desc) && (
+                                                    {defenseHistoryDescription(item) && (
                                                         <p className="text-muted-foreground mt-1 text-xs whitespace-pre-wrap">
-                                                            {item.comment || desc}
+                                                            {defenseHistoryDescription(item)}
                                                         </p>
                                                     )}
                                                 </div>

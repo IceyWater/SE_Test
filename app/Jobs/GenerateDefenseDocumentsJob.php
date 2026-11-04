@@ -26,6 +26,9 @@ class GenerateDefenseDocumentsJob implements ShouldQueue
             $q->whereNull('defense_type')->orWhere('defense_type', $req->defense_type);
         })->get();
         foreach ($templates as $tpl) {
+            if ($tpl->file_type !== 'pdf') {
+                continue;
+            }
             $gen->generate($tpl, $req);
         }
     }
