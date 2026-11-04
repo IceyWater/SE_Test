@@ -372,3 +372,19 @@ it('preserves payment history for archived defenses and prevents further payment
     $this->actingAs(User::find(3))->patchJson('/honorarium-ledger/'.$row->id, ['status' => 'approved'])->assertUnprocessable();
     expect(HonorariumDisbursement::count())->toBe(2);
 });
+
+it('exposes real ledger terms and progress without exposing recipient amounts in tracking', function () {
+    $defense = verifiedLedgerDefense();
+    $this->actingAs(User::find(2))->postJson('/honorarium-ledger/'.$defense->id.'/prepare', ['school_year' => '2026-2027', 'semester' => '2nd'])->assertOk();
+    $this->get('/honorarium-workspace')->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->has('items', 1)->where('items.0.periods', [['school_year' => '2026-2027', 'semester' => '2nd']])
+        ->where('items.0.progress.percent', 63)->where('items.0.progress.label', 'Next: All payments approved')
+        ->missing('items.0.amount')->missing('items.0.payments'));
+    $this->actingAs(User::find(6))->get('/honorarium-workspace')->assertOk()->assertInertia(fn (Assert $page) => $page->has('items', 0));
+});
+
+it('leaves the tracking term unrecorded until payments have an actual recorded term', function () {
+    integratedDefense();
+    $this->actingAs(User::find(2))->get('/honorarium-workspace')->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->has('items', 1)->has('items.0.periods', 0)->where('items.0.progress.percent', 0));
+});

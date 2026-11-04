@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { csrfHeaders } from '@/lib/csrf';
+import { summarizeHonorarium } from '@/utils/honorarium-report';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -39,6 +40,9 @@ export default function HonorariumLedger() {
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState('');
     const [semester, setSemester] = useState('');
+    const [program, setProgram] = useState('');
+    const [schoolYear, setSchoolYear] = useState('');
+    const [faculty, setFaculty] = useState('');
     const [requestId, setRequestId] = useState('');
     const [year, setYear] = useState(`${today.slice(0, 4)}-${Number(today.slice(0, 4)) + 1}`);
     const [term, setTerm] = useState('1st');
@@ -53,6 +57,9 @@ export default function HonorariumLedger() {
         (r) =>
             (!status || r.status === status) &&
             (!semester || r.semester === semester) &&
+            (!program || r.defense_request.program === program) &&
+            (!schoolYear || r.school_year === schoolYear) &&
+            (!faculty || r.recipient_name === faculty) &&
             `${r.recipient_name} ${r.school_year} ${r.defense_request.thesis_title}`.toLowerCase().includes(search.toLowerCase()),
     );
     const next = (row: Payment) =>
@@ -86,13 +93,49 @@ export default function HonorariumLedger() {
             setBusy(false);
         }
     }
+    const summaries = summarizeHonorarium(visible);
+    function exportSummary() {
+        const cell = (value: string) => '"' + (/^[=+\-@]/.test(value) ? "'" + value : value).replaceAll('"', '""') + '"';
+        const rows = [
+            [
+                'Program',
+                'School Year',
+                'Semester',
+                'Recipient records',
+                'Awaiting Finance approval',
+                'Approved',
+                'Disbursed',
+                'Claimed',
+                'Requires review',
+                'Voided',
+            ],
+            ...summaries.map((group) => [
+                group.program,
+                group.year,
+                group.semester,
+                String(group.records),
+                ...[group.prepared, group.approved, group.disbursed, group.claimed, group.review, group.voided].map((cents) =>
+                    (cents / 100).toFixed(2),
+                ),
+            ]),
+        ];
+        const url = URL.createObjectURL(
+            new Blob(['\uFEFF' + rows.map((row) => row.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8;' }),
+        );
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'honorarium-program-semester-summary.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+    }
     function exportCsv() {
         const cell = (value: string) => '"' + (/^[=+\-@]/.test(value) ? "'" + value : value).replaceAll('"', '""') + '"';
         const lines = [
-            ['Recipient', 'Role', 'Defense', 'School Year', 'Semester', 'Amount', 'Status', 'Reference'],
+            ['Recipient', 'Role', 'Program', 'Defense', 'School Year', 'Semester', 'Amount', 'Status', 'Reference'],
             ...visible.map((r) => [
                 r.recipient_name,
                 r.recipient_role,
+                r.defense_request.program,
                 r.defense_request.thesis_title,
                 r.school_year,
                 r.semester,
@@ -234,10 +277,110 @@ export default function HonorariumLedger() {
                             <option key={t}>{t}</option>
                         ))}
                     </select>
+                    {[
+                        {
+                            label: 'Program',
+                            plural: 'programs',
+                            value: program,
+                            change: setProgram,
+                            options: [...new Set(categoryItems.map((row) => row.defense_request.program).filter(Boolean))],
+                        },
+                        {
+                            label: 'School year',
+                            plural: 'school years',
+                            value: schoolYear,
+                            change: setSchoolYear,
+                            options: [...new Set(categoryItems.map((row) => row.school_year))],
+                        },
+                        {
+                            label: 'Faculty',
+                            plural: 'faculty',
+                            value: faculty,
+                            change: setFaculty,
+                            options: [...new Set(categoryItems.map((row) => row.recipient_name))],
+                        },
+                    ].map((filter) => (
+                        <select
+                            key={filter.label}
+                            aria-label={`Filter by ${filter.label.toLowerCase()}`}
+                            className="bg-background rounded border p-2"
+                            value={filter.value}
+                            onChange={(event) => filter.change(event.target.value)}
+                        >
+                            <option value="">All {filter.plural}</option>
+                            {filter.options.sort().map((value) => (
+                                <option key={value}>{value}</option>
+                            ))}
+                        </select>
+                    ))}
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            setSearch('');
+                            setStatus('');
+                            setSemester('');
+                            setProgram('');
+                            setSchoolYear('');
+                            setFaculty('');
+                        }}
+                    >
+                        Reset filters
+                    </Button>
+                    <Button variant="outline" onClick={exportSummary}>
+                        Export program / semester summary
+                    </Button>
                     <Button variant="outline" onClick={exportCsv}>
                         Export displayed records
                     </Button>
                 </div>
+                <section className="space-y-3 rounded-lg border p-4" aria-label="Program and semester report">
+                    <h2 className="font-semibold">Program honorarium by semester</h2>
+                    <p className="text-muted-foreground text-sm">
+                        Uses the filtered Honorarium Payments ledger (up to 1,000 recent recipient records). Each recipient record is counted
+                        separately. Review and voided amounts are separate from current payment statuses; these columns are not cumulative payments.
+                    </p>
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[1000px] text-left text-sm">
+                            <thead>
+                                <tr className="border-b">
+                                    {[
+                                        'Program',
+                                        'School year',
+                                        'Semester',
+                                        'Recipient records',
+                                        'Awaiting approval',
+                                        'Approved',
+                                        'Disbursed',
+                                        'Claimed',
+                                        'Requires review',
+                                        'Voided',
+                                    ].map((label) => (
+                                        <th className="p-2" key={label}>
+                                            {label}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {summaries.map((group) => (
+                                    <tr className="border-b" key={JSON.stringify([group.program, group.year, group.semester])}>
+                                        <td className="p-2">{group.program}</td>
+                                        <td className="p-2">{group.year}</td>
+                                        <td className="p-2">{group.semester}</td>
+                                        <td className="p-2">{group.records}</td>
+                                        {[group.prepared, group.approved, group.disbursed, group.claimed, group.review, group.voided].map(
+                                            (cents, index) => (
+                                                <td className="p-2" key={index}>
+                                                    {money(cents / 100)}
+                                                </td>
+                                            ),
+                                        )}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
                 {!visible.length && (
                     <p className="text-muted-foreground rounded border border-dashed p-8 text-center">No matching honorarium records.</p>
                 )}

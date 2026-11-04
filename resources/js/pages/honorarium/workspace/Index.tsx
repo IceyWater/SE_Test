@@ -3,15 +3,18 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { CalendarDays, CheckCircle2, CircleDollarSign, FileCheck2, FileText, Search, Send, ShieldCheck, XCircle } from 'lucide-react';
-import { useState } from 'react';
+import { CalendarDays, CircleDollarSign, FileCheck2, FileText } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 type Item = {
     archived: boolean;
+    faculty: string[];
+    periods: { school_year: string; semester: string }[];
+    requested_at?: string | null;
+    progress: { percent: number; label: string; steps: { label: string; done: boolean }[] };
     id: number;
     student_name: string;
     student_number?: string | null;
@@ -48,29 +51,78 @@ const statusLabel: Record<string, string> = {
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Honorarium Tracking', href: '/honorarium-workspace' }];
 
 export default function HonorariumWorkspace() {
-    const { canManageDocuments, role, canSubmitToFinance, canVerifyFinance, items = [], rates = [], flash } = usePage<Props>().props;
+    const { canManageDocuments, role, items = [], rates = [], flash } = usePage<Props>().props;
     const [tab, setTab] = useState<'workflow' | 'schedule' | 'rates' | 'records'>('workflow');
     const [archived, setArchived] = useState(false);
     const active = items.filter((item) => !item.archived);
     const categoryItems = items.filter((item) => item.archived === archived);
     const [search, setSearch] = useState('');
-    const [notes, setNotes] = useState<Record<number, string>>({});
-    const filtered = categoryItems.filter((item) =>
-        `${item.student_name} ${item.student_number ?? ''} ${item.program ?? ''} ${item.defense_type}`.toLowerCase().includes(search.toLowerCase()),
+    const [faculty, setFaculty] = useState('');
+    const [semester, setSemester] = useState('');
+    const [year, setYear] = useState('');
+    const [status, setStatus] = useState('');
+    const [program, setProgram] = useState('');
+    const facultyOptions = [...new Set(categoryItems.flatMap((item) => item.faculty))].sort();
+    const yearOptions = [...new Set(categoryItems.flatMap((item) => item.periods.map((period) => period.school_year)))].sort().reverse();
+    const programOptions = [...new Set(categoryItems.map((item) => item.program).filter(Boolean))] as string[];
+    const filtered = categoryItems.filter(
+        (item) =>
+            `${item.student_name} ${item.student_number ?? ''} ${item.program ?? ''} ${item.defense_type} ${item.faculty.join(' ')}`
+                .toLowerCase()
+                .includes(search.toLowerCase()) &&
+            (!faculty || item.faculty.includes(faculty)) &&
+            (!program || item.program === program) &&
+            ((!semester && !year) ||
+                item.periods.some((period) => (!semester || period.semester === semester) && (!year || period.school_year === year))) &&
+            (!status || (status === 'receipts' ? !!item.receipt_url : item.finance_status === status)),
     );
-    const submit = (item: Item) => router.post(`/honorarium-workspace/${item.id}/submit-to-finance`, {}, { preserveScroll: true });
-    const financeReview = (item: Item, status: 'verified' | 'rejected') => {
-        if (!item.finance_submission_id) return;
-        if (status === 'rejected' && !notes[item.id]?.trim()) {
-            window.alert('Please enter a reason before rejecting.');
-            return;
-        }
-        router.post(
-            `/honorarium-workspace/finance/${item.finance_submission_id}/status`,
-            { status, finance_notes: notes[item.id] ?? '' },
-            { preserveScroll: true },
+    useEffect(() => {
+        const timer = window.setInterval(() => {
+            if (document.visibilityState === 'visible') router.reload({ only: ['items'] });
+        }, 60000);
+        return () => window.clearInterval(timer);
+    }, []);
+    const displayDate = (value?: string | null) =>
+        value ? new Date(value).toLocaleString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' }) : 'Not sent';
+    function exportTracking() {
+        const cell = (value: string) => '"' + (/^[=+\-@]/.test(value) ? "'" + value : value).replaceAll('"', '""') + '"';
+        const rows = [
+            [
+                'Request',
+                'Student',
+                'Program',
+                'Defense',
+                'Faculty',
+                'School year / semester',
+                'Defense submitted (PH)',
+                'Latest Finance handoff (PH)',
+                'Finance status',
+                'Progress',
+                'Next action',
+            ],
+            ...filtered.map((item) => [
+                String(item.id),
+                item.student_name,
+                item.program ?? '',
+                item.defense_type,
+                item.faculty.join('; '),
+                item.periods.map((period) => `${period.school_year} / ${period.semester}`).join('; ') || 'Not recorded',
+                displayDate(item.requested_at),
+                displayDate(item.submitted_at),
+                statusLabel[item.finance_status],
+                `${item.progress.percent}%`,
+                item.progress.label,
+            ]),
+        ];
+        const url = URL.createObjectURL(
+            new Blob(['\uFEFF' + rows.map((row) => row.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8;' }),
         );
-    };
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'honorarium-tracking.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+    }
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Honorarium Tracking" />
@@ -100,24 +152,6 @@ export default function HonorariumWorkspace() {
                         {flash.success}
                     </div>
                 )}
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {[
-                        { label: 'Tracked defenses', value: active.length, icon: FileText },
-                        { label: 'Awaiting Finance', value: active.filter((x) => x.finance_status === 'submitted').length, icon: FileCheck2 },
-                        { label: 'Verified', value: active.filter((x) => x.finance_status === 'verified').length, icon: CheckCircle2 },
-                        { label: 'Receipts available', value: active.filter((x) => x.receipt_url).length, icon: ShieldCheck },
-                    ].map((metric) => (
-                        <Card key={metric.label}>
-                            <CardContent className="flex items-center justify-between p-5">
-                                <div>
-                                    <p className="text-muted-foreground text-sm">{metric.label}</p>
-                                    <p className="mt-1 text-2xl font-semibold">{metric.value}</p>
-                                </div>
-                                <metric.icon className="text-muted-foreground size-5" />
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
                 <div className="flex flex-wrap gap-2 border-b pb-3">
                     {(
                         [
@@ -139,102 +173,195 @@ export default function HonorariumWorkspace() {
                     activeCount={active.length}
                     archivedCount={items.length - active.length}
                 />
+                {tab !== 'rates' && (
+                    <section aria-label="Tracking filters" className="space-y-3 rounded-lg border p-4">
+                        <div className="flex flex-wrap gap-3">
+                            <Input
+                                aria-label="Search tracking records"
+                                className="max-w-sm"
+                                placeholder="Search student, program, or faculty"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                            <select
+                                aria-label="Filter by faculty"
+                                className="bg-background rounded border p-2"
+                                value={faculty}
+                                onChange={(e) => setFaculty(e.target.value)}
+                            >
+                                <option value="">All faculty</option>
+                                {facultyOptions.map((name) => (
+                                    <option key={name}>{name}</option>
+                                ))}
+                            </select>
+                            <select
+                                aria-label="Filter by program"
+                                className="bg-background rounded border p-2"
+                                value={program}
+                                onChange={(e) => setProgram(e.target.value)}
+                            >
+                                <option value="">All programs</option>
+                                {programOptions.sort().map((name) => (
+                                    <option key={name}>{name}</option>
+                                ))}
+                            </select>
+                            <select
+                                aria-label="Filter by school year"
+                                className="bg-background rounded border p-2"
+                                value={year}
+                                onChange={(e) => setYear(e.target.value)}
+                            >
+                                <option value="">All school years</option>
+                                {yearOptions.map((name) => (
+                                    <option key={name}>{name}</option>
+                                ))}
+                            </select>
+                            <select
+                                aria-label="Filter by semester"
+                                className="bg-background rounded border p-2"
+                                value={semester}
+                                onChange={(e) => setSemester(e.target.value)}
+                            >
+                                <option value="">All semesters</option>
+                                {['1st', '2nd', 'Summer'].map((name) => (
+                                    <option key={name}>{name}</option>
+                                ))}
+                            </select>
+                            <select
+                                aria-label="Filter by Finance status"
+                                className="bg-background rounded border p-2"
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value)}
+                            >
+                                <option value="">All Finance statuses</option>
+                                {Object.entries(statusLabel).map(([value, label]) => (
+                                    <option key={value} value={value}>
+                                        {label}
+                                    </option>
+                                ))}
+                                <option value="receipts">Receipts available</option>
+                            </select>
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setSearch('');
+                                    setFaculty('');
+                                    setProgram('');
+                                    setSemester('');
+                                    setYear('');
+                                    setStatus('');
+                                }}
+                            >
+                                Reset filters
+                            </Button>
+                            <Button variant="outline" onClick={exportTracking}>
+                                Export filtered CSV
+                            </Button>
+                        </div>
+                        <p className="text-muted-foreground text-sm">
+                            {filtered.length} matching records from up to 500 recent requests. School year and semester come from prepared payment
+                            records; unrecorded terms are not guessed. Updates refresh every minute while this page is visible.
+                        </p>
+                    </section>
+                )}
                 {tab === 'workflow' && (
                     <Card>
-                        <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <CardTitle>Receipt and honorarium workflow</CardTitle>
-                                <p className="text-muted-foreground text-sm">
-                                    AA sends the student's receipt and panel list to Finance; Finance can review but cannot edit the submission.
-                                </p>
-                            </div>
-                            <div className="relative w-full sm:max-w-xs">
-                                <Search className="text-muted-foreground absolute top-2.5 left-3 size-4" />
-                                <Input
-                                    className="pl-9"
-                                    placeholder="Search student or program"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                />
-                            </div>
+                        <CardHeader>
+                            <CardTitle>Receipt and honorarium workflow</CardTitle>
+                            <p className="text-muted-foreground text-sm">
+                                Progress includes Finance verification and all current recipient payments. Open Finance Documents for review actions.
+                            </p>
                         </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {filtered.length === 0 && (
-                                    <p className="text-muted-foreground rounded-lg border border-dashed p-8 text-center text-sm">
-                                        No matching receipt-backed defense records found.
-                                    </p>
-                                )}
-                                {filtered.map((item) => (
-                                    <div key={item.id} className="rounded-xl border p-4">
-                                        <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <h3 className="font-semibold">{item.student_name}</h3>
-                                                    <Badge variant="outline">Request #{item.id}</Badge>
-                                                    <Badge variant={item.finance_status === 'verified' ? 'default' : 'secondary'}>
-                                                        {statusLabel[item.finance_status] ?? item.finance_status}
-                                                    </Badge>
+                        <CardContent className="overflow-x-auto">
+                            <table className="w-full min-w-[1050px] text-left text-sm">
+                                <thead>
+                                    <tr className="bg-muted border-b">
+                                        {[
+                                            'Student / request',
+                                            'Program / defense',
+                                            'Faculty',
+                                            'Defense submitted / Finance handoff (PH)',
+                                            'Finance status',
+                                            'Honorarium progress',
+                                            'Receipt',
+                                        ].map((label) => (
+                                            <th key={label} className="p-3">
+                                                {label}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filtered.map((item) => (
+                                        <tr key={item.id} className="border-b align-top last:border-0">
+                                            <td className="p-3">
+                                                <p className="font-medium">{item.student_name}</p>
+                                                <p className="text-muted-foreground">
+                                                    #{item.id} · {item.student_number}
+                                                </p>
+                                            </td>
+                                            <td className="p-3">
+                                                {item.program}
+                                                <p className="text-muted-foreground">{item.defense_type}</p>
+                                                <p className="text-muted-foreground">
+                                                    {item.periods.map((period) => `${period.school_year} / ${period.semester}`).join(', ') ||
+                                                        'Term not recorded'}
+                                                </p>
+                                            </td>
+                                            <td className="max-w-56 p-3">{item.faculty.join(', ') || 'Not assigned'}</td>
+                                            <td className="p-3">
+                                                <p>Defense submitted: {displayDate(item.requested_at)}</p>
+                                                <p className="text-muted-foreground">Latest handoff: {displayDate(item.submitted_at)}</p>
+                                            </td>
+                                            <td className="p-3">
+                                                <Badge variant="secondary">{statusLabel[item.finance_status]}</Badge>
+                                                {item.finance_notes && <p className="mt-2">{item.finance_notes}</p>}
+                                            </td>
+                                            <td className="min-w-60 p-3">
+                                                <p>{item.progress.label}</p>
+                                                <div
+                                                    role="progressbar"
+                                                    aria-label={`Honorarium progress for ${item.student_name}`}
+                                                    aria-valuemin={0}
+                                                    aria-valuemax={100}
+                                                    aria-valuenow={item.progress.percent}
+                                                    className="bg-muted my-2 h-2 overflow-hidden rounded"
+                                                >
+                                                    <div className="bg-primary h-full" style={{ width: `${item.progress.percent}%` }} />
                                                 </div>
-                                                <p className="text-muted-foreground mt-1 text-sm">
-                                                    {[item.student_number, item.program, item.defense_type].filter(Boolean).join(' · ')}
-                                                </p>
-                                                <p className="mt-2 text-sm">
-                                                    <span className="font-medium">Workflow:</span> {item.workflow_state}{' '}
-                                                    {item.scheduled_date ? `· ${item.scheduled_date} ${item.scheduled_time ?? ''}` : ''}
-                                                </p>
-                                                <p className="mt-2 text-sm">
-                                                    <span className="font-medium">Panel:</span>{' '}
-                                                    {item.panel_names?.length ? item.panel_names.join(', ') : 'No panel names recorded'}
-                                                </p>
-                                                {item.finance_notes && (
-                                                    <p className="bg-muted mt-2 rounded-md p-2 text-sm">
-                                                        <span className="font-medium">Finance note:</span> {item.finance_notes}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className="flex flex-wrap gap-2">
+                                                <details>
+                                                    <summary className="cursor-pointer">{item.progress.percent}% · View steps</summary>
+                                                    <ul className="mt-2 space-y-1">
+                                                        {item.progress.steps.map((step) => (
+                                                            <li key={step.label}>
+                                                                {step.done ? '✓' : '○'} {step.label}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </details>
+                                            </td>
+                                            <td className="p-3">
                                                 {item.receipt_url ? (
                                                     <Button variant="outline" asChild>
                                                         <a href={item.receipt_url} target="_blank" rel="noreferrer">
-                                                            <FileText className="mr-2 size-4" />
                                                             View receipt
                                                         </a>
                                                     </Button>
                                                 ) : (
-                                                    <span className="text-muted-foreground text-sm">No receipt uploaded</span>
+                                                    'No receipt'
                                                 )}
-                                                {!item.archived && canSubmitToFinance && item.receipt_url && (
-                                                    <Button onClick={() => submit(item)} className="gap-2">
-                                                        <Send className="size-4" />
-                                                        {item.finance_status === 'not_submitted' ? 'Send to Finance' : 'Resend to Finance'}
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {!item.archived && canVerifyFinance && item.finance_submission_id && item.finance_status === 'submitted' && (
-                                            <div className="mt-4 border-t pt-4">
-                                                <label className="mb-2 block text-sm font-medium">Review notes (required for rejection)</label>
-                                                <Textarea
-                                                    value={notes[item.id] ?? ''}
-                                                    onChange={(e) => setNotes((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                                                    placeholder="Enter verification note or rejection reason"
-                                                />
-                                                <div className="mt-3 flex flex-wrap gap-2">
-                                                    <Button onClick={() => financeReview(item, 'verified')} className="gap-2">
-                                                        <CheckCircle2 className="size-4" />
-                                                        Verify receipt
-                                                    </Button>
-                                                    <Button variant="destructive" onClick={() => financeReview(item, 'rejected')} className="gap-2">
-                                                        <XCircle className="size-4" />
-                                                        Reject with reason
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filtered.length === 0 && (
+                                        <tr>
+                                            <td colSpan={7} className="text-muted-foreground p-8 text-center">
+                                                No matching honorarium records.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </CardContent>
                     </Card>
                 )}
@@ -260,7 +387,7 @@ export default function HonorariumWorkspace() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {categoryItems
+                                        {filtered
                                             .filter((i) => i.scheduled_date)
                                             .sort((a, b) => (a.scheduled_date ?? '').localeCompare(b.scheduled_date ?? ''))
                                             .map((i) => (
@@ -274,7 +401,7 @@ export default function HonorariumWorkspace() {
                                             ))}
                                     </tbody>
                                 </table>
-                                {!categoryItems.some((i) => i.scheduled_date) && (
+                                {!filtered.some((i) => i.scheduled_date) && (
                                     <p className="text-muted-foreground p-6 text-center text-sm">No scheduled defenses with receipt records yet.</p>
                                 )}
                             </div>
@@ -343,7 +470,7 @@ export default function HonorariumWorkspace() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {categoryItems.map((i) => (
+                                        {filtered.map((i) => (
                                             <tr className="border-b last:border-0" key={i.id}>
                                                 <td className="p-3">#{i.id}</td>
                                                 <td className="p-3">{i.student_name}</td>
