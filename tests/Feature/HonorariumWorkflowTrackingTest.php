@@ -37,8 +37,9 @@ function trackedDefenseRequest(array $attributes = []): DefenseRequest
     ], $attributes)));
 }
 
-it('shows defense progress, faculty and semester data, and Dean program totals', function () {
+it('shows defense progress, faculty and semester data, and Dean program totals', function (?string $middleName, string $expectedName) {
     $request = trackedDefenseRequest();
+    $request->adviserUser->update(['first_name' => 'Alex', 'middle_name' => $middleName, 'last_name' => 'Rivera']);
     $dean = User::factory()->create(['role' => 'Dean']);
     FinanceDocumentSubmission::create([
         'defense_request_id' => $request->id,
@@ -67,14 +68,17 @@ it('shows defense progress, faculty and semester data, and Dean program totals',
 
     $this->actingAs($dean)->get('/honorarium-workspace')->assertOk()->assertInertia(fn (Assert $page) => $page
         ->where('canViewReports', true)
-        ->where('items.0.faculty_names.0', $request->adviserUser->name)
+        ->where('items.0.faculty_names.0', $expectedName)
         ->where('items.0.school_year', '2026-2027')
         ->where('items.0.semester', '1st')
         ->where('items.0.progress_stage', 5)
         ->where('items.0.progress_percent', 63)
         ->where('programReports.0.recipients_count', 1)
         ->where('programReports.0.program', 'Master of Arts in Education'));
-});
+})->with([
+    'full middle name' => ['Christine', 'Alex Christine Rivera'],
+    'no middle name' => [null, 'Alex Rivera'],
+]);
 
 it('records manual follow-ups, timestamps them, creates notifications, and emails the selected role', function () {
     $request = trackedDefenseRequest();
