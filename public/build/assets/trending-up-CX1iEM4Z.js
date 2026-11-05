@@ -1,4 +1,8 @@
+<<<<<<<< Updated upstream:public/build/assets/trending-up-CX1iEM4Z.js
 import{c as n}from"./createLucideIcon-DpXoXoOC.js";/**
+========
+import{c as n}from"./createLucideIcon-D3veN5a6.js";/**
+>>>>>>>> Stashed changes:public/build/assets/trending-up-CdjCt47I.js
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.

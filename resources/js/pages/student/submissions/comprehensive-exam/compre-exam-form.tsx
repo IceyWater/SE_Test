@@ -1,27 +1,34 @@
 import HeadingSmall from '@/components/heading-small';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Stepper } from '@/components/ui/Stepper';
 import type { SharedData } from '@/types';
 import { useForm, usePage } from '@inertiajs/react';
-import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Check, Plus } from 'lucide-react';
-import React, { useState } from 'react';
+import { Check, Plus } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 type Props = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onFinish?: () => void;
+    resubmission?: Resubmission | null;
 };
 
-type Subject = { subject: string; date: string; startTime: string; endTime: string };
+type Subject = { subject: string; date?: string | null; startTime?: string | null; endTime?: string | null };
+type Resubmission = {
+    application_id: number;
+    school_year: string;
+    program: string;
+    office_address?: string | null;
+    contact_number?: string | null;
+    telephone_number?: string | null;
+    subjects: Subject[];
+};
 
-export default function CompreExamForm({ open, onOpenChange, onFinish }: Props) {
+export default function CompreExamForm({ open, onOpenChange, onFinish, resubmission }: Props) {
     const { props } = usePage<SharedData>();
     const user = props?.auth?.user || {};
 
@@ -33,16 +40,28 @@ export default function CompreExamForm({ open, onOpenChange, onFinish }: Props) 
         telephoneNo: string;
         subjects: Subject[];
     }>({
-        schoolYear: '',
-        program: user.program || '',
-        officeAddress: '',
-        mobileNo: String(user.mobile_no || user.contact_number || ''),
-        telephoneNo: '',
-        subjects: [{ subject: '', date: '', startTime: '', endTime: '' }],
+        schoolYear: resubmission?.school_year ?? '',
+        program: resubmission?.program ?? user.program ?? '',
+        officeAddress: resubmission?.office_address ?? '',
+        mobileNo: String(resubmission?.contact_number ?? user.mobile_no ?? user.contact_number ?? ''),
+        telephoneNo: resubmission?.telephone_number ?? '',
+        subjects: resubmission?.subjects.map((subject) => ({ ...subject })) ?? [{ subject: '' }],
     });
 
     const [currentStep, setCurrentStep] = useState(0);
     const [showSuccessPanel, setShowSuccessPanel] = useState(false);
+
+    useEffect(() => {
+        if (!resubmission) return;
+        setData({
+            schoolYear: resubmission.school_year,
+            program: resubmission.program,
+            officeAddress: resubmission.office_address ?? '',
+            mobileNo: String(resubmission.contact_number ?? ''),
+            telephoneNo: resubmission.telephone_number ?? '',
+            subjects: resubmission.subjects.map((subject) => ({ ...subject })),
+        });
+    }, [resubmission, setData]);
 
     // Build School Year options 2020-2021 ... 2039-2040
     const schoolYearOptions = React.useMemo(
@@ -64,7 +83,7 @@ export default function CompreExamForm({ open, onOpenChange, onFinish }: Props) 
     }
 
     function addSubjectRow() {
-        setData('subjects', [...data.subjects, { subject: '', date: '', startTime: '', endTime: '' }]);
+        setData('subjects', [...data.subjects, { subject: '' }]);
     }
 
     function removeSubjectRow(index: number) {
@@ -80,7 +99,7 @@ export default function CompreExamForm({ open, onOpenChange, onFinish }: Props) 
     }
 
     function handleSubmit() {
-        post(route('comprehensive-exam.store'), {
+        post(resubmission ? route('comprehensive-exam.resubmit', resubmission.application_id) : route('comprehensive-exam.store'), {
             preserveScroll: true,
             preserveState: true, // keep modal state so we can show success panel
             onSuccess: () => {
@@ -224,7 +243,8 @@ export default function CompreExamForm({ open, onOpenChange, onFinish }: Props) 
                     <HeadingSmall title="Step 3: Examination Schedules" />
                     <div className="mt-4 mb-6">
                         <p className="text-justify text-sm text-gray-600">
-                            Add the subjects and schedules for your comprehensive examination. Each subject must have a specific date and time slot.
+                            Add the subjects you need to take. The Coordinator will assign the exam schedule after your application and payment are
+                            verified.
                         </p>
                     </div>
 
@@ -252,82 +272,17 @@ export default function CompreExamForm({ open, onOpenChange, onFinish }: Props) 
                                     </button>
                                 )}
 
-                                <div className="space-y-6">
-                                    {/* First Row: Subject and Date */}
-                                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                                        {/* Subject Input */}
-                                        <div className="w-full">
-                                            <Label className="text-sm font-medium text-gray-700">
-                                                Subject Name
-                                                <span className="ml-1 text-rose-500">*</span>
-                                            </Label>
-                                            <Input
-                                                value={subj.subject}
-                                                onChange={(e) => updateSubject(idx, 'subject', e.target.value)}
-                                                placeholder="e.g. Advanced Mathematics"
-                                                className="mt-1 w-full transition-colors focus:border-rose-300"
-                                            />
-                                        </div>
-
-                                        {/* Date Picker */}
-                                        <div className="w-full">
-                                            <Label className="text-sm font-medium text-gray-700">
-                                                Exam Date
-                                                <span className="ml-1 text-rose-500">*</span>
-                                            </Label>
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        type="button"
-                                                        className={`mt-1 w-full justify-start text-left transition-colors ${
-                                                            subj.date ? 'text-gray-900' : 'text-gray-500'
-                                                        } hover:border-rose-300 hover:bg-rose-50`}
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {subj.date ? format(new Date(subj.date), 'MMMM d, yyyy') : 'Select date'}
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="pointer-events-auto z-[9999] w-auto p-0" align="start" side="bottom">
-                                                    <Calendar
-                                                        mode="single"
-                                                        selected={subj.date ? new Date(subj.date) : undefined}
-                                                        onSelect={(date) => updateSubject(idx, 'date', date ? format(date, 'yyyy-MM-dd') : '')}
-                                                        initialFocus
-                                                        disabled={(date) => date < new Date()}
-                                                    />
-                                                </PopoverContent>
-                                            </Popover>
-                                        </div>
-                                    </div>
-
-                                    {/* Second Row: Time Inputs */}
-                                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                                        <div>
-                                            <Label className="text-sm font-medium text-gray-700">
-                                                Start Time
-                                                <span className="ml-1 text-rose-500">*</span>
-                                            </Label>
-                                            <Input
-                                                type="time"
-                                                value={subj.startTime || ''}
-                                                onChange={(e) => updateSubject(idx, 'startTime', e.target.value)}
-                                                className="mt-1 w-full transition-colors focus:border-rose-300"
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label className="text-sm font-medium text-gray-700">
-                                                End Time
-                                                <span className="ml-1 text-rose-500">*</span>
-                                            </Label>
-                                            <Input
-                                                type="time"
-                                                value={subj.endTime || ''}
-                                                onChange={(e) => updateSubject(idx, 'endTime', e.target.value)}
-                                                className="mt-1 w-full transition-colors focus:border-rose-300"
-                                            />
-                                        </div>
-                                    </div>
+                                <div className="w-full">
+                                    <Label className="text-sm font-medium text-gray-700">
+                                        Subject Name
+                                        <span className="ml-1 text-rose-500">*</span>
+                                    </Label>
+                                    <Input
+                                        value={subj.subject}
+                                        onChange={(e) => updateSubject(idx, 'subject', e.target.value)}
+                                        placeholder="e.g. Advanced Mathematics"
+                                        className="mt-1 w-full transition-colors focus:border-rose-300"
+                                    />
                                 </div>
                             </div>
                         ))}
@@ -387,15 +342,13 @@ export default function CompreExamForm({ open, onOpenChange, onFinish }: Props) 
                             <Separator />
 
                             <div>
-                                <div className="mb-2 text-lg font-bold text-rose-700">Subjects & Schedules</div>
+                                <div className="mb-2 text-lg font-bold text-rose-700">Subjects</div>
                                 <div className="overflow-x-auto">
                                     <table className="bg-card text-card-foreground min-w-full rounded-lg border border-rose-300">
                                         <thead className="bg-rose-100">
                                             <tr>
                                                 <th className="px-4 py-2 text-left font-semibold text-rose-700">#</th>
                                                 <th className="px-4 py-2 text-left font-semibold text-rose-700">Subject</th>
-                                                <th className="px-4 py-2 text-left font-semibold text-rose-700">Date</th>
-                                                <th className="px-4 py-2 text-left font-semibold text-rose-700">Time</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -403,12 +356,6 @@ export default function CompreExamForm({ open, onOpenChange, onFinish }: Props) 
                                                 <tr key={idx} className="border-t border-rose-200">
                                                     <td className="px-4 py-2 font-bold text-rose-700">{idx + 1}</td>
                                                     <td className="px-4 py-2">{subj.subject || '--'}</td>
-                                                    <td className="px-4 py-2">{subj.date ? format(new Date(subj.date), 'MMMM d, yyyy') : '--'}</td>
-                                                    <td className="px-4 py-2">
-                                                        {subj.startTime && subj.endTime
-                                                            ? `${formatTime12hr(subj.startTime)} - ${formatTime12hr(subj.endTime)}`
-                                                            : '--'}
-                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -426,8 +373,10 @@ export default function CompreExamForm({ open, onOpenChange, onFinish }: Props) 
         <Dialog open={open} onOpenChange={handleDialogChange}>
             <DialogContent className="flex h-[85vh] w-full max-w-3xl flex-col">
                 <DialogHeader>
-                    <DialogTitle>Comprehensive Exam Application</DialogTitle>
-                    <DialogDescription>Fill out all required information</DialogDescription>
+                    <DialogTitle>{resubmission ? 'Resubmit Comprehensive Exam Application' : 'Comprehensive Exam Application'}</DialogTitle>
+                    <DialogDescription>
+                        {resubmission ? 'Update your application corrections before resubmitting for review.' : 'Fill out all required information.'}
+                    </DialogDescription>
                 </DialogHeader>
 
                 {showSuccessPanel ? (
@@ -463,15 +412,4 @@ export default function CompreExamForm({ open, onOpenChange, onFinish }: Props) 
             </DialogContent>
         </Dialog>
     );
-}
-
-// Helper to format 24h -> 12h time
-function formatTime12hr(timeStr?: string) {
-    if (!timeStr) return '--';
-    const [hour, minute] = timeStr.split(':');
-    let h = parseInt(hour, 10);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12;
-    if (h === 0) h = 12;
-    return `${h.toString().padStart(2, '0')}:${minute} ${ampm}`;
 }

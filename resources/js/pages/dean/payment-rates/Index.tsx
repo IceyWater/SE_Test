@@ -305,7 +305,7 @@ export default function PaymentRatesPage({ rates: initialRates }: Props) {
                     <h1 className="mb-1 text-2xl font-bold">Payment Rates</h1>
                     <p className="text-muted-foreground mb-4 text-sm">View and manage payment rates for Masteral and Doctorate programs.</p>
                     <p className="text-muted-foreground text-sm">
-                        External rates are per recipient and excluded from the base subtotal. Actual honoraria depend on assigned roles and confirmed
+                        External rates are per recipient and excluded from the base subtotal. Actual honorarium depend on assigned roles and confirmed
                         service; configuring a rate does not change student charges.
                     </p>
                 </div>

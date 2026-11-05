@@ -1,4 +1,8 @@
+<<<<<<<< Updated upstream:public/build/assets/clipboard-list-3Pq47Zjb.js
 import{c as t}from"./createLucideIcon-DpXoXoOC.js";/**
+========
+import{c as t}from"./createLucideIcon-D3veN5a6.js";/**
+>>>>>>>> Stashed changes:public/build/assets/clipboard-list-Cv1D6c5P.js
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.

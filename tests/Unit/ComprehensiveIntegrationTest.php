@@ -43,12 +43,27 @@ beforeEach(function () {
         (require glob(database_path('migrations/*create_'.$table.'_table.php'))[0])->up();
     }
     (require database_path('migrations/2026_10_24_000002_add_exam_subject_schedule_fields.php'))->up();
+    (require database_path('migrations/2026_11_05_000002_add_comprehensive_exam_workflow.php'))->up();
     foreach (['Student', 'Student', 'Finance'] as $i => $role) {
-        DB::table('users')->insert(['id' => $i + 1, 'first_name' => 'Test', 'last_name' => 'User', 'school_id' => 'COMPRE-'.($i + 1), 'role' => $role, 'email' => 'compre'.($i + 1).'@example.test', 'email_verified_at' => now()]);
+        DB::table('users')->insert(['id' => $i + 1, 'first_name' => 'Test', 'last_name' => 'User', 'school_id' => 'COMPRE-'.($i + 1), 'role' => $role, 'program' => $i < 2 ? 'Master of Arts in Education' : null, 'email' => 'compre'.($i + 1).'@example.test', 'email_verified_at' => now()]);
     }
 });
 afterEach(function () {
-    foreach (['exam_application_subject', 'exam_application', 'notifications', 'defense_requests', 'advisers', 'users'] as $t) {
+    foreach ([
+        'exam_settings',
+        'student_academic_snapshots',
+        'exam_proctors',
+        'exam_schedules',
+        'exam_rooms',
+        'exam_requirement_checks',
+        'exam_application_events',
+        'exam_application_subject',
+        'exam_application',
+        'notifications',
+        'defense_requests',
+        'advisers',
+        'users',
+    ] as $t) {
         Schema::dropIfExists($t);
     }
 });
@@ -78,7 +93,11 @@ it('shows only the authenticated students application', function () {
     $this->actingAs(User::find(2))->get('/comprehensive-exam')->assertOk()->assertInertia(fn (Assert $p) => $p->where('application', null));
 });
 it('does not claim verified eligibility without a school portal session', function () {
-    $this->actingAs(User::find(1))->getJson('/api/comprehensive-exam/eligibility')->assertOk()->assertJson(['eligible' => false, 'error' => 'Legacy session not available']);
+    $this->actingAs(User::find(1))->getJson('/api/comprehensive-exam/eligibility')->assertOk()->assertJson(['eligible' => false, 'error' => 'No verified academic snapshot is available.']);
+    Http::assertNothingSent();
+});
+it('disables request-time legacy academic scraping', function () {
+    $this->actingAs(User::find(1))->postJson('/api/comprehensive-exam/scrape-data')->assertGone();
     Http::assertNothingSent();
 });
 it('does not allow Finance to submit a student exam application', function () {

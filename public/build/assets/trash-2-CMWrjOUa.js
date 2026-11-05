@@ -1,4 +1,8 @@
+<<<<<<<< Updated upstream:public/build/assets/trash-2-CMWrjOUa.js
 import{c as e}from"./createLucideIcon-DpXoXoOC.js";/**
+========
+import{c as e}from"./createLucideIcon-D3veN5a6.js";/**
+>>>>>>>> Stashed changes:public/build/assets/trash-2-7m6GUVnE.js
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.

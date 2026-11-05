@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { format, parse } from 'date-fns';
-import { Calendar as CalendarIcon, Image as ImageIcon, Paperclip } from 'lucide-react';
+import { Calendar as CalendarIcon, ExternalLink, Paperclip } from 'lucide-react';
 import React, { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -22,11 +22,12 @@ type Payment = {
 
 type Props = {
     canSubmit: boolean;
+    fee: number;
     payment: Payment;
     onSuccess?: () => void;
 };
 
-export default function PaymentForm({ canSubmit, payment, onSuccess }: Props) {
+export default function PaymentForm({ canSubmit, fee, payment, onSuccess }: Props) {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [fileName, setFileName] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -65,14 +66,6 @@ export default function PaymentForm({ canSubmit, payment, onSuccess }: Props) {
             setData('payment_date', '');
         }
     }, [uiDate, setData]);
-
-    useEffect(() => {
-        // set default shown filename from existing receipt if any
-        if (!fileName && payment?.receipt_image) {
-            const base = payment.receipt_image.split('/').pop() || payment.receipt_image;
-            setFileName(base);
-        }
-    }, [payment?.receipt_image, fileName]);
 
     useEffect(() => {
         return () => {
@@ -149,11 +142,11 @@ export default function PaymentForm({ canSubmit, payment, onSuccess }: Props) {
 
                     {/* Amount Paid */}
                     <div>
-                        <Label className="text-sm">Amount Paid</Label>
+                        <Label className="text-sm">Amount Paid (minimum ₱{fee.toFixed(2)})</Label>
                         <Input
                             type="number"
                             step="0.01"
-                            min="0"
+                            min={fee}
                             className="mt-1 h-9"
                             value={data.amount_paid ?? ''} // keep controlled; empty when null
                             placeholder="e.g. 100.00"
@@ -161,7 +154,7 @@ export default function PaymentForm({ canSubmit, payment, onSuccess }: Props) {
                             onChange={(e) => {
                                 const raw = e.target.value;
                                 const parsed = raw === '' ? null : Number.parseFloat(raw);
-                                setData('amount_paid', Number.isFinite(parsed as number) ? (parsed as number) : null);
+                                setData('amount_paid', parsed !== null && Number.isFinite(parsed) ? parsed : null);
                             }}
                             disabled={!canSubmit || processing}
                             required
@@ -205,9 +198,9 @@ export default function PaymentForm({ canSubmit, payment, onSuccess }: Props) {
                         {errors.payment_date && <p className="mt-1 text-xs text-red-600">{errors.payment_date}</p>}
                     </div>
 
-                    {/* Receipt image (attachment-style UI) */}
+                    {/* Receipt attachment */}
                     <div className="md:col-span-2">
-                        <Label className="text-sm">Receipt image</Label>
+                        <Label className="text-sm">Receipt file (PDF, JPG, or PNG)</Label>
                         <div className="mt-1 mb-2 flex items-center gap-2">
                             <Input readOnly value={fileName || ''} placeholder="No file chosen" className="h-9 flex-1" />
                             <Button variant="outline" type="button" onClick={handleChooseFile} disabled={!canSubmit || processing} className="h-9">
@@ -217,12 +210,11 @@ export default function PaymentForm({ canSubmit, payment, onSuccess }: Props) {
                             <input
                                 ref={fileInputRef}
                                 type="file"
-                                accept="image/*"
+                                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
                                 name="receipt_image"
                                 className="hidden"
                                 onChange={handleFileChange}
-                                // Required if no existing receipt and nothing selected
-                                required={!payment?.receipt_image}
+                                required
                             />
                         </div>
                         {errors.receipt_image && <p className="mt-1 text-xs text-red-600">{errors.receipt_image}</p>}
@@ -230,22 +222,26 @@ export default function PaymentForm({ canSubmit, payment, onSuccess }: Props) {
                         {/* Preview or existing image link; reduced preview height */}
                         {previewUrl ? (
                             <div className="mt-2">
-                                <img
-                                    src={previewUrl}
-                                    alt="Receipt preview"
-                                    className="h-36 w-auto rounded-md border border-slate-200 bg-white object-contain dark:border-slate-700"
-                                />
+                                {data.receipt_image?.type === 'application/pdf' ? (
+                                    <p className="text-muted-foreground text-sm">PDF selected: {fileName}</p>
+                                ) : (
+                                    <img
+                                        src={previewUrl}
+                                        alt="Receipt preview"
+                                        className="h-36 w-auto rounded-md border border-slate-200 bg-white object-contain dark:border-slate-700"
+                                    />
+                                )}
                             </div>
                         ) : payment?.receipt_image ? (
                             <div className="mt-2 text-sm">
                                 <a
                                     className="text-primary inline-flex items-center gap-1 underline hover:no-underline"
-                                    href={`/storage/${payment.receipt_image}`}
+                                    href={payment.receipt_image}
                                     target="_blank"
                                     rel="noreferrer"
                                 >
-                                    <ImageIcon className="h-4 w-4" />
-                                    View current receipt
+                                    <ExternalLink className="h-4 w-4" />
+                                    View previous receipt
                                 </a>
                             </div>
                         ) : null}
@@ -270,7 +266,7 @@ export default function PaymentForm({ canSubmit, payment, onSuccess }: Props) {
                             Clear
                         </Button>
                         <Button type="submit" className="h-9 bg-rose-500" disabled={!canSubmit || processing}>
-                            {processing ? 'Submitting…' : payment ? 'Update Payment' : 'Submit Payment'}
+                            {processing ? 'Submitting…' : payment?.status === 'rejected' ? 'Submit New Attempt' : 'Submit Payment'}
                         </Button>
                     </div>
                 </form>

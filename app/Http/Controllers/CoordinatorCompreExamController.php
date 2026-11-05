@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\ExamApplication;
-use App\Models\Notification;
 use App\Models\User;
 use App\Services\ExamReviewAccess;
 use Illuminate\Http\Request;
@@ -118,33 +117,8 @@ class CoordinatorCompreExamController extends Controller
         $user = $request->user();
         $access = app(ExamReviewAccess::class);
         $access->authorize($user);
-        $data = $request->validate(['decision' => 'required|in:approved,rejected', 'remarks' => 'nullable|required_if:decision,rejected|string|min:3|max:2000']);
-
-        return DB::transaction(function () use ($application, $user, $access, $data) {
-            $application = ExamApplication::whereKey($application->getKey())->lockForUpdate()->firstOrFail();
-            $student = User::where('role', 'Student')->where('school_id', (string) $application->student_id)->first();
-            if (! $student && ctype_digit((string) $application->student_id)) {
-                $student = User::where('role', 'Student')->find((int) $application->student_id);
-            }
-            abort_unless($student, 404, 'The student account was not found.');
-            if ($user->role !== 'Administrative Assistant') {
-                abort_unless(in_array($student->program, $access->programs($user), true), 403);
-            }
-            abort_unless(strtolower($application->final_approval_status ?? 'pending') === 'pending', 409, 'This application has already been reviewed.');
-            $application->update([
-                'final_approval_status' => $data['decision'], 'final_approval_DATE' => now(),
-                'approved_by' => $data['decision'] === 'approved' ? $user->id : null,
-                'reviewed_by' => $user->id, 'reviewed_at' => now(), 'review_remarks' => $data['remarks'] ?? null,
-            ]);
-            Notification::create([
-                'user_id' => $student->id, 'type' => 'comprehensive-exam-reviewed',
-                'title' => 'Comprehensive exam application '.$data['decision'],
-                'message' => $user->display_name.' '.$data['decision'].' your comprehensive exam application.'.(! empty($data['remarks']) ? ' '.$data['remarks'] : ''),
-                'link' => '/comprehensive-exam', 'read' => false,
-            ]);
-
-            return response()->json(['ok' => true, 'status' => $data['decision']]);
-        });
+        abort_unless($user->role === 'Administrative Assistant', 403);
+        abort(410, 'The one-step review action is retired. Use the AA requirement review and Registrar approval workflow.');
     }
 
     // Simulation-friendly eligibility (set COMPRE_BYPASS_RULES=true in .env for local dev)

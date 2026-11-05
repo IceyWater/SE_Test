@@ -35,7 +35,7 @@ it('preserves profiles and data on restart and rotates the testing password', fu
     $this->artisan('demo:hosted-accounts')->assertSuccessful();
     expect($user->fresh()->first_name)->toBe('Edited');
     expect(Hash::check('a-new-private-testing-password', $user->fresh()->password))->toBeTrue();
-    $this->assertDatabaseCount('users', 7);
+    $this->assertDatabaseCount('users', 8);
     $this->assertDatabaseMissing('users', ['email' => 'superadmin@uic.edu.ph']);
 });
 

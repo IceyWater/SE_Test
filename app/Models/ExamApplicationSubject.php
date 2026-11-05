@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ExamApplicationSubject extends Model
 {
@@ -22,5 +23,10 @@ class ExamApplicationSubject extends Model
     public function application(): BelongsTo
     {
         return $this->belongsTo(ExamApplication::class, 'application_id', 'application_id');
+    }
+
+    public function schedule(): HasOne
+    {
+        return $this->hasOne(ExamSchedule::class, 'exam_application_subject_id');
     }
 }

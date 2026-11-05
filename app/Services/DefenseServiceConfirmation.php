@@ -42,7 +42,7 @@ class DefenseServiceConfirmation
     {
         $record = $this->current($request);
         if (! $record) {
-            throw ValidationException::withMessages(['service' => 'Confirm defense completion and each recipient’s service in the Defense Register before preparing honoraria.']);
+            throw ValidationException::withMessages(['service' => 'Confirm defense completion and each recipient’s service in the Defense Register before preparing honorarium.']);
         }
 
         return $record;

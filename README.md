@@ -23,3 +23,5 @@ Finance demo: `finance@uic.edu.ph` / `password`. Existing local demo logins rema
 See [integration setup and limitations](docs/integration-setup.md) for the module handoff, running workers, Google OAuth redirect configuration, and the Comprehensive Exam audit findings.
 
 Validation on October 24, 2026: payment-ledger, re-verification, scheduling and eligibility improvements are documented in docs/implemented-improvements-2026-10-24.md. The role-page checks include existing Defense Request pages and the new Finance pages. Live school-portal eligibility and final honorarium disbursement remain outside those validated paths.
+
+The current Comprehensive Exam workflow stages, role access, required environment settings, and deployment limitations are described in [the workflow guide](docs/comprehensive-exam-workflow.md). Run migrations and configure the fee before enabling payment; academic eligibility remains fail-closed until verified snapshots and exam-window settings are provisioned.

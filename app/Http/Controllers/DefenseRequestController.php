@@ -192,6 +192,7 @@ class DefenseRequestController extends Controller
 
         // Fallback (not the dashboard, separate page)
         return Inertia::render('student/submissions/defense-requirements/Index', [
+            'defenseFees' => config('student_defense_fees.'.ProgramLevel::getLevel($user->program), []),
             'defenseRequest' => $defenseRequest,
             'defenseRequests' => $requirements->map(fn ($r) => [
                 'id' => $r->id,

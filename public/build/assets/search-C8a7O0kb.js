@@ -1,4 +1,8 @@
+<<<<<<<< Updated upstream:public/build/assets/search-C8a7O0kb.js
 import{c}from"./createLucideIcon-DpXoXoOC.js";/**
+========
+import{c}from"./createLucideIcon-D3veN5a6.js";/**
+>>>>>>>> Stashed changes:public/build/assets/search-B40Wr9TR.js
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.

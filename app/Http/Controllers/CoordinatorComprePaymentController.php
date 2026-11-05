@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ExamApplicationStatus;
+use App\Models\ExamApplication;
+use App\Services\Exam\ExamWorkflowService;
 use App\Services\ExamReviewAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -89,8 +92,12 @@ class CoordinatorComprePaymentController extends Controller
             $q->orderByDesc("p.$createdCol");
         }
 
-        $rows = $q->get()->map(function ($r) {
+        $rows = $q->get()->map(function ($r) use ($table) {
             $status = in_array($r->status, ['approved', 'rejected', 'pending']) ? $r->status : 'pending';
+            $proofUrl = $r->proof_url ?? null;
+            if ($table === 'payment_submissions' && $proofUrl) {
+                $proofUrl = route('payment.receipt', (int) $r->id);
+            }
 
             return [
                 'id' => (int) $r->id,
@@ -105,7 +112,7 @@ class CoordinatorComprePaymentController extends Controller
                 'submitted_at' => $r->submitted_at ?? null,
                 'status' => $status,
                 'remarks' => $r->remarks ?? null,
-                'proof_url' => $r->proof_url ?? null,
+                'proof_url' => $proofUrl,
             ];
         });
 
@@ -126,7 +133,7 @@ class CoordinatorComprePaymentController extends Controller
         ]);
     }
 
-    public function approve(Request $request, int $id): RedirectResponse
+    public function approve(Request $request, int $id, ExamWorkflowService $workflow): RedirectResponse
     {
         $user = $request->user();
         app(ExamReviewAccess::class)->authorize($user);
@@ -144,7 +151,7 @@ class CoordinatorComprePaymentController extends Controller
             ->where('p.payment_id', $id)
             ->where('p.payment_type', 'exam')
             ->when($user->role !== 'Administrative Assistant', fn ($query) => $query->whereIn('u.program', $programs))
-            ->select('p.payment_id', 'p.status')
+            ->select('p.payment_id', 'p.status', 'p.exam_application_id')
             ->first();
 
         if (! $row) {
@@ -154,22 +161,30 @@ class CoordinatorComprePaymentController extends Controller
             return back()->withErrors(['status' => 'Only pending payments can be approved.']);
         }
 
-        $changed = DB::table('payment_submissions')
-            ->where('payment_id', $id)->where('status', 'pending')
-            ->update([
+        DB::transaction(function () use ($id, $user, $row, $workflow) {
+            $payment = DB::table('payment_submissions')->where('payment_id', $id)->lockForUpdate()->first();
+            abort_unless($payment && strtolower($payment->status) === 'pending', 409, 'This payment has already been reviewed.');
+            if ($row->exam_application_id) {
+                $application = ExamApplication::findOrFail($row->exam_application_id);
+                abort_unless(
+                    $application->workflow_status === ExamApplicationStatus::PaymentPending->value,
+                    409,
+                    'The application is not awaiting payment verification.'
+                );
+                $workflow->paymentVerified($application, $user);
+            }
+
+            DB::table('payment_submissions')->where('payment_id', $id)->update([
                 'status' => 'approved',
                 'checked_by' => $user->id, 'checked_at' => now(),
                 'updated_at' => now(),
             ]);
-
-        if ($changed !== 1) {
-            return back()->withErrors(['status' => 'This payment has already been reviewed.']);
-        }
+        });
 
         return redirect()->route('coordinator.compre-payment.index')->with('success', 'Payment approved.');
     }
 
-    public function reject(Request $request, int $id): RedirectResponse
+    public function reject(Request $request, int $id, ExamWorkflowService $workflow): RedirectResponse
     {
         $user = $request->user();
         app(ExamReviewAccess::class)->authorize($user);
@@ -190,7 +205,7 @@ class CoordinatorComprePaymentController extends Controller
             ->where('p.payment_id', $id)
             ->where('p.payment_type', 'exam')
             ->when($user->role !== 'Administrative Assistant', fn ($query) => $query->whereIn('u.program', $programs))
-            ->select('p.payment_id', 'p.status')
+            ->select('p.payment_id', 'p.status', 'p.exam_application_id')
             ->first();
 
         if (! $row) {
@@ -200,18 +215,26 @@ class CoordinatorComprePaymentController extends Controller
             return back()->withErrors(['status' => 'Only pending payments can be rejected.']);
         }
 
-        $changed = DB::table('payment_submissions')
-            ->where('payment_id', $id)->where('status', 'pending')
-            ->update([
+        DB::transaction(function () use ($id, $user, $row, $workflow, $request) {
+            $payment = DB::table('payment_submissions')->where('payment_id', $id)->lockForUpdate()->first();
+            abort_unless($payment && strtolower($payment->status) === 'pending', 409, 'This payment has already been reviewed.');
+            if ($row->exam_application_id) {
+                $application = ExamApplication::findOrFail($row->exam_application_id);
+                abort_unless(
+                    $application->workflow_status === ExamApplicationStatus::PaymentPending->value,
+                    409,
+                    'The application is not awaiting payment verification.'
+                );
+                $workflow->paymentRejected($application, $user, $request->input('remarks'));
+            }
+
+            DB::table('payment_submissions')->where('payment_id', $id)->update([
                 'status' => 'rejected',
                 'checked_by' => $user->id, 'checked_at' => now(),
                 'remarks' => $request->input('remarks'),
                 'updated_at' => now(),
             ]);
-
-        if ($changed !== 1) {
-            return back()->withErrors(['status' => 'This payment has already been reviewed.']);
-        }
+        });
 
         return redirect()->route('coordinator.compre-payment.index')->with('success', 'Payment rejected.');
     }

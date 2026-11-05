@@ -75,6 +75,7 @@ const coordinatorNavItems: MainNavItem[] = [
         subItems: [
             { title: 'Comprehensive Exams', href: '/coordinator/compre-exam' },
             { title: 'Payment Receipt', href: '/coordinator/compre-payment' },
+            { title: 'Exam Scheduling', href: '/coordinator/exam-schedules' },
         ],
     },
     { title: 'Student Records', href: '/student-records', icon: Users },
@@ -91,7 +92,7 @@ const assistantNavItems: MainNavItem[] = [
         href: '/defense',
         icon: FileText,
         subItems: [
-            { title: 'Comprehensive Exams', href: '/coordinator/compre-exam' },
+            { title: 'Comprehensive Exams', href: '/exam/aa/reviews' },
             { title: 'Exam Receipts', href: '/coordinator/compre-payment' },
             { title: 'Defense Receipts', href: '/aa/payment-verifications' },
         ],
@@ -104,6 +105,7 @@ const assistantNavItems: MainNavItem[] = [
 
 const adviserNavItems: MainNavItem[] = [
     { title: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
+    { title: 'Exam Proctor Invitations', href: '/exam/proctor-invitations', icon: GraduationCap },
     { title: 'Schedules', href: '/schedules', icon: CalendarFold },
 ];
 
@@ -113,6 +115,12 @@ const deanNavItems: MainNavItem[] = [
     { title: 'Schedules', href: '/schedules', icon: CalendarFold },
     { title: 'Payment Rates', href: '/dean/payment-rates', icon: DollarSign },
     { title: 'Document Templates', href: '/settings/documents', icon: FileText },
+];
+
+const registrarNavItems: MainNavItem[] = [
+    { title: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
+    { title: 'Comprehensive Exams', href: '/exam/registrar/reviews', icon: GraduationCap },
+    { title: 'Schedules', href: '/schedules', icon: CalendarFold },
 ];
 
 export function AppSidebar() {
@@ -128,6 +136,8 @@ export function AppSidebar() {
         navItems = coordinatorNavItems;
     } else if (user.role === 'Dean') {
         navItems = deanNavItems;
+    } else if (user.role === 'Registrar') {
+        navItems = registrarNavItems;
     } else if (user.role === 'Administrative Assistant') {
         navItems = assistantNavItems;
     } else if (user.role === 'Adviser') {

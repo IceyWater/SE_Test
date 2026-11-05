@@ -32,6 +32,7 @@ class CreateHostedDemoAccounts extends Command
 
         $accounts = config('demo.accounts', []) + [
             'finance@uic.edu.ph' => ['role' => 'Finance', 'first_name' => 'Demo', 'last_name' => 'Finance', 'school_id' => 'DEMO-FINANCE'],
+            'registrar@uic.edu.ph' => ['role' => 'Registrar', 'first_name' => 'Demo', 'last_name' => 'Registrar', 'school_id' => 'DEMO-REGISTRAR'],
         ];
 
         return DB::transaction(function () use ($accounts, $password) {

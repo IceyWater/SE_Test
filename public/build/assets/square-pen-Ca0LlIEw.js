@@ -1,4 +1,8 @@
+<<<<<<<< Updated upstream:public/build/assets/square-pen-Ca0LlIEw.js
 import{c as a}from"./createLucideIcon-DpXoXoOC.js";/**
+========
+import{c as a}from"./createLucideIcon-D3veN5a6.js";/**
+>>>>>>>> Stashed changes:public/build/assets/square-pen-BneYmYcZ.js
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.

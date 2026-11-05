@@ -53,7 +53,7 @@ class HonorariumLedgerService
             $recipients[] = ['recipient_key' => 'adviser:'.$adviser->id, 'recipient_name' => $adviser->full_name, 'recipient_email' => $adviser->email, 'recipient_role' => 'Adviser'];
         }
         if (! $recipients) {
-            throw ValidationException::withMessages(['panelists' => 'Assign recipients before preparing honoraria.']);
+            throw ValidationException::withMessages(['panelists' => 'Assign recipients before preparing honorarium.']);
         }
 
         return $recipients;
@@ -100,7 +100,7 @@ class HonorariumLedgerService
                 }
                 HonorariumDisbursement::create($recipient + ['recipient_affiliation' => $participant['affiliation'], 'service_evidence' => ['participant' => $participant, 'completed_on' => $service->completed_on->format('Y-m-d'), 'confirmed_by' => $service->confirmed_by, 'confirmed_at' => $service->confirmed_at->toIso8601String(), 'snapshot_hash' => $service->snapshot_hash], 'defense_request_id' => $dr->id, 'amount' => $rates->first()->amount, 'school_year' => $data['school_year'], 'semester' => $data['semester'], 'status' => 'prepared', 'prepared_by' => $actor->id, 'history' => [$this->entry('prepared', $actor, 'Prepared from confirmed service and configured payment rates.')]]);
             }
-            $this->notify($dr, 'Honoraria Prepared', 'Honorarium records are ready for Finance approval.', ['Finance', 'Finance Office', 'Finance Officer']);
+            $this->notify($dr, 'honorarium Prepared', 'Honorarium records are ready for Finance approval.', ['Finance', 'Finance Office', 'Finance Officer']);
         });
     }
 

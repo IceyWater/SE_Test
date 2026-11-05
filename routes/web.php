@@ -12,6 +12,7 @@ use App\Http\Controllers\ComprehensiveExamController;
 use App\Http\Controllers\CoordinatorAdviserController;
 use App\Http\Controllers\CoordinatorCompreExamController;
 use App\Http\Controllers\CoordinatorComprePaymentController;
+use App\Http\Controllers\CoordinatorExamScheduleController;
 use App\Http\Controllers\CoordinatorDefenseController;
 use App\Http\Controllers\CoordinatorProgramAssignmentController;
 use App\Http\Controllers\DashboardController;
@@ -24,6 +25,8 @@ use App\Http\Controllers\DefenseRequestController;
 use App\Http\Controllers\DefenseRequirementController;
 use App\Http\Controllers\DefenseScheduleController;
 use App\Http\Controllers\DocumentTemplateController;
+use App\Http\Controllers\Exam\AaExamReviewController;
+use App\Http\Controllers\Exam\RegistrarExamApprovalController;
 use App\Http\Controllers\EmailsController;
 use App\Http\Controllers\FinanceDocumentWorkflowController;
 use App\Http\Controllers\GeneratedDocumentController;
@@ -242,6 +245,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::redirect('/payments', '/payment')->name('payment.legacy');
     Route::get('/payment', [PaymentSubmissionController::class, 'index'])->name('payment.index');
     Route::post('/payment', [PaymentSubmissionController::class, 'store'])->name('payment.store');
+    Route::get('/payment/{id}/receipt', [PaymentSubmissionController::class, 'receipt'])->whereNumber('id')->name('payment.receipt');
 
     /* Student schedule page */
     Route::get('/schedule', [ScheduleController::class, 'index'])->name('schedule.index');
@@ -359,6 +363,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     /* Comprehensive Exam (student) */
     Route::get('/comprehensive-exam', [ComprehensiveExamController::class, 'index'])->name('comprehensive-exam.index');
     Route::post('/comprehensive-exam', [ComprehensiveExamController::class, 'store'])->name('comprehensive-exam.store');
+    Route::post('/comprehensive-exam/{application}/resubmit', [ComprehensiveExamController::class, 'resubmit'])->name('comprehensive-exam.resubmit');
+    Route::get('/exam/proctor-invitations', [CoordinatorExamScheduleController::class, 'invitations'])->name('exam.proctor-invitations.index');
+    Route::post('/exam/proctor-invitations/{invitation}/respond', [CoordinatorExamScheduleController::class, 'respond'])->name('exam.proctor-invitations.respond');
+    Route::get('/exam/aa/reviews', [AaExamReviewController::class, 'index'])->name('exam.aa.index');
+    Route::post('/exam/aa/reviews/{application}/requirements', [AaExamReviewController::class, 'checkRequirement'])->name('exam.aa.requirements');
+    Route::post('/exam/aa/reviews/{application}/lacking', [AaExamReviewController::class, 'markLacking'])->name('exam.aa.lacking');
+    Route::post('/exam/aa/reviews/{application}/evaluated', [AaExamReviewController::class, 'markEvaluated'])->name('exam.aa.evaluated');
+    Route::post('/exam/aa/reviews/{application}/undo', [AaExamReviewController::class, 'undo'])
+        ->middleware('throttle:10,1')->name('exam.aa.undo');
+    Route::get('/exam/registrar/reviews', [RegistrarExamApprovalController::class, 'index'])->name('exam.registrar.index');
+    Route::post('/exam/registrar/reviews/{application}/approve', [RegistrarExamApprovalController::class, 'approve'])->name('exam.registrar.approve');
+    Route::post('/exam/registrar/reviews/{application}/reject', [RegistrarExamApprovalController::class, 'reject'])->name('exam.registrar.reject');
 
     Route::get('/dean/defense-requests', function () {
         abort_unless(in_array(Auth::user()->role, ['Dean', 'Super Admin'], true), 403);
@@ -376,6 +392,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('coordinator.compre-payment.approve');
     Route::post('/coordinator/compre-payment/{id}/reject', [CoordinatorComprePaymentController::class, 'reject'])
         ->name('coordinator.compre-payment.reject');
+    Route::get('/coordinator/exam-schedules', [CoordinatorExamScheduleController::class, 'index'])
+        ->name('coordinator.exam-schedules.index');
+    Route::post('/coordinator/exam-schedules/rooms', [CoordinatorExamScheduleController::class, 'storeRoom'])
+        ->name('coordinator.exam-schedules.rooms.store');
+    Route::post('/coordinator/exam-schedules/{application}/subjects/{subject}', [CoordinatorExamScheduleController::class, 'assign'])
+        ->name('coordinator.exam-schedules.assign');
 
     /* Honorarium / Reports */
     Route::get('/generate-report', function () {

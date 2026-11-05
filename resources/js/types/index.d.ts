@@ -49,6 +49,15 @@ export interface SharedData {
     [key: string]: unknown;
 }
 
+export interface AdviserSummary {
+    id: number;
+    first_name: string;
+    middle_name: string | null;
+    last_name: string;
+    name: string;
+    email: string;
+}
+
 export interface User {
     id: number;
     first_name: string;
@@ -63,6 +72,7 @@ export interface User {
     avatar?: string;
     email_verified_at: string | null;
     role: string;
+    advisers?: AdviserSummary[];
     created_at: string;
     updated_at: string;
     [key: string]: unknown;

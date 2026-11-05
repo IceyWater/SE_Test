@@ -470,7 +470,7 @@ export default function HonorariumWorkspace() {
                                                                             {doc.finance_notes && <div>Note: {doc.finance_notes}</div>}
                                                                         </div>
                                                                     ))}
-                                                                    <div className="text-foreground font-medium">Panel honoraria</div>
+                                                                    <div className="text-foreground font-medium">Panel honorarium</div>
                                                                     {item.honorarium_recipients.length ? (
                                                                         item.honorarium_recipients.map((recipient) => (
                                                                             <div

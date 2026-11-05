@@ -6,6 +6,8 @@ use App\Models\DefenseRequest;
 use App\Models\Notification;
 use App\Observers\DefenseRequestObserver;
 use App\Services\DefenseReminderService;
+use App\Services\Exam\ExamSmsSender;
+use App\Services\Exam\LogOnlyExamSmsSender;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
@@ -17,7 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(ExamSmsSender::class, LogOnlyExamSmsSender::class);
     }
 
     /**

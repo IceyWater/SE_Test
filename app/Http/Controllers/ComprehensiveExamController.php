@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ExamApplication;
 use App\Services\ComprehensiveEligibilityService;
+use App\Services\Exam\ExamWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -16,25 +17,11 @@ class ComprehensiveExamController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $studentId = $user->student_id ?? $user->school_id ?? $user->id;
+        abort_unless($user->role === 'Student', 403);
+        $studentId = $user->student_id ?: $user->school_id ?: $user->id;
 
-        // COORDINATOR VIEW
-        if (method_exists($user, 'isCoordinator') && $user->isCoordinator()) {
-            $programs = method_exists($user, 'allowedProgramNames') ? $user->allowedProgramNames() : [];
-            $applications = ExamApplication::withCount('subjects')
-                ->whereIn('program', $programs)
-                ->latest('application_id')
-                ->paginate(20);
-
-            return Inertia::render('coordinator/compre-exam/Index', [
-                'applications' => $applications,
-                'programs' => $programs,
-            ]);
-        }
-
-        // STUDENT VIEW
-        $application = ExamApplication::with('subjects')
-            ->where('student_id', $studentId)
+        $application = ExamApplication::with(['subjects.schedule.room', 'subjects.schedule.proctors.user', 'events.actor', 'requirementChecks'])
+            ->whereIn('student_id', array_values(array_unique(array_filter([$studentId, $user->school_id, $user->id]))))
             ->latest('created_at')
             ->first();
 
@@ -42,9 +29,28 @@ class ComprehensiveExamController extends Controller
         if ($application) {
             $response = [
                 'application_id' => $application->application_id,
+                'application_no' => $application->application_no,
                 'school_year' => $application->school_year,
+                'workflow_status' => $application->workflow_status,
                 'permit_status' => $application->permit_status,
                 'final_approval_status' => $application->final_approval_status,
+                'payment_status' => $application->payment_status,
+                'aa_remarks' => $application->aa_remarks,
+                'registrar_remarks' => $application->registrar_remarks,
+                'submitted_at' => $application->submitted_at,
+                'events' => $application->events->map(fn ($event) => [
+                    'action' => $event->action,
+                    'status' => $event->to_status,
+                    'remarks' => $event->remarks,
+                    'actor' => $event->actor?->full_name,
+                    'created_at' => $event->created_at,
+                ])->values(),
+                'requirement_checks' => $application->requirementChecks->map(fn ($check) => [
+                    'key' => $check->requirement_key,
+                    'status' => $check->status,
+                    'remarks' => $check->remarks,
+                    'checked_at' => $check->checked_at,
+                ])->values(),
                 'contact_number' => $application->contact_number,
                 'telephone_number' => $application->telephone_number,
                 'office_address' => $application->office_address,
@@ -53,9 +59,14 @@ class ComprehensiveExamController extends Controller
                 // subjects show up now
                 'subjects' => $application->subjects->map(fn ($s) => [
                     'subject' => $s->subject_name,
-                    'date' => $s->exam_date,
-                    'startTime' => $s->start_time,
-                    'endTime' => $s->end_time,
+                    'date' => $s->schedule?->starts_at?->toDateString() ?? $s->exam_date,
+                    'startTime' => $s->schedule?->starts_at?->format('H:i') ?? $s->start_time,
+                    'endTime' => $s->schedule?->ends_at?->format('H:i') ?? $s->end_time,
+                    'room' => $s->schedule?->room?->name,
+                    'proctors' => $s->schedule?->proctors->map(fn ($proctor) => [
+                        'name' => $proctor->user->full_name,
+                        'status' => $proctor->status,
+                    ])->values() ?? [],
                 ]),
                 // personal info from users table
                 'first_name' => $user->first_name ?? '',
@@ -67,30 +78,21 @@ class ComprehensiveExamController extends Controller
         }
 
         return Inertia::render('student/submissions/comprehensive-exam/Index', [
-            // 👇 pass the built response instead of null
             'application' => $response,
-            // Remove hardcoded eligibility - let frontend call API dynamically
+            'eligibility' => app(ComprehensiveEligibilityService::class)->check($request),
         ]);
     }
 
     public function store(Request $request)
     {
         abort_unless($request->user()?->role === 'Student', 403);
-        $validated = $request->validate([
-            'schoolYear' => ['required', 'string', 'max:20'],
-            'program' => ['required', 'string', 'max:255'],
-            'officeAddress' => ['nullable', 'string', 'max:255'],
-            'mobileNo' => ['required', 'string', 'max:50'],
-            'telephoneNo' => ['nullable', 'string', 'max:50'],
-            'subjects' => ['required', 'array', 'min:1'],
-            'subjects.*.subject' => ['required', 'string', 'max:255'],
-            'subjects.*.date' => ['required', 'date'],
-            'subjects.*.startTime' => ['required', 'date_format:H:i'],
-            'subjects.*.endTime' => ['required', 'date_format:H:i', 'after:subjects.*.startTime'],
-        ]);
-
+        $validated = $this->validatedApplicationData($request);
         $user = $request->user();
-        $studentId = $user->student_id ?? $user->school_id ?? $user->id;
+        if ($validated['program'] !== $user->program) {
+            throw ValidationException::withMessages(['program' => 'The application program must match your account.']);
+        }
+
+        $studentId = $user->student_id ?: $user->school_id ?: $user->id;
         if (! $studentId) {
             return back()->withErrors(['student_id' => 'Your account has no student ID associated.']);
         }
@@ -103,8 +105,7 @@ class ComprehensiveExamController extends Controller
             throw ValidationException::withMessages(['eligibility' => 'Eligibility has not been verified. Check your grades, documents, tuition clearance, and school portal session before applying.']);
         }
 
-        return DB::transaction(function () use ($studentId, $validated) {
-            // Enforce one application per student per school year
+        return DB::transaction(function () use ($studentId, $validated, $user) {
             $application = ExamApplication::firstOrCreate(
                 ['student_id' => $studentId, 'school_year' => $validated['schoolYear']],
                 [
@@ -113,26 +114,57 @@ class ComprehensiveExamController extends Controller
                     'contact_number' => $validated['mobileNo'],
                     'telephone_number' => $validated['telephoneNo'] ?? null,
                     'office_address' => $validated['officeAddress'] ?? null,
-                    'program' => $validated['program'],
+                    'program' => $user->program,
                 ]
             );
 
-            // Only create subjects if this is a new application
             if (! $application->wasRecentlyCreated) {
                 return to_route('comprehensive-exam.index')
                     ->with('info', 'You already have an application for this school year.');
             }
 
-            foreach ($validated['subjects'] as $s) {
+            foreach ($validated['subjects'] as $subject) {
                 $application->subjects()->create([
-                    'subject_name' => $s['subject'],
-                    'exam_date' => $s['date'],
-                    'start_time' => $s['startTime'],
-                    'end_time' => $s['endTime'],
+                    'subject_name' => $subject['subject'],
+                    'exam_date' => $subject['date'] ?? null,
+                    'start_time' => $subject['startTime'] ?? null,
+                    'end_time' => $subject['endTime'] ?? null,
                 ]);
             }
 
+            app(ExamWorkflowService::class)->recordSubmission($application, $user);
+
             return to_route('comprehensive-exam.index')->with('success', 'Application submitted.');
         });
+    }
+
+    public function resubmit(Request $request, ExamApplication $application, ExamWorkflowService $workflow)
+    {
+        abort_unless($request->user()?->role === 'Student', 403);
+        $request->user()->can('view', $application) || abort(403);
+        $validated = $this->validatedApplicationData($request);
+        if ($validated['program'] !== $request->user()->program) {
+            throw ValidationException::withMessages(['program' => 'The application program must match your account.']);
+        }
+
+        $workflow->studentResubmit($application, $request->user(), $validated);
+
+        return to_route('comprehensive-exam.index')->with('success', 'Application corrections were resubmitted for review.');
+    }
+
+    private function validatedApplicationData(Request $request): array
+    {
+        return $request->validate([
+            'schoolYear' => ['required', 'string', 'max:20'],
+            'program' => ['required', 'string', 'max:255'],
+            'officeAddress' => ['nullable', 'string', 'max:255'],
+            'mobileNo' => ['required', 'string', 'max:50'],
+            'telephoneNo' => ['nullable', 'string', 'max:50'],
+            'subjects' => ['required', 'array', 'min:1'],
+            'subjects.*.subject' => ['required', 'string', 'max:255'],
+            'subjects.*.date' => ['nullable', 'date'],
+            'subjects.*.startTime' => ['nullable', 'date_format:H:i'],
+            'subjects.*.endTime' => ['nullable', 'date_format:H:i', 'after:subjects.*.startTime'],
+        ]);
     }
 }

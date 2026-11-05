@@ -13,11 +13,14 @@ class PaymentSubmission extends Model
 
     protected $fillable = [
         'student_id',
+        'exam_application_id',
+        'attempt',
         'or_number',
         'amount_paid',
         'payment_date',
         'payment_type',
         'receipt_image',
+        'receipt_sha256',
         'checked_by',
         'checked_at',
         'status',
@@ -38,5 +41,10 @@ class PaymentSubmission extends Model
     public function checker(): BelongsTo
     {
         return $this->belongsTo(User::class, 'checked_by');
+    }
+
+    public function examApplication(): BelongsTo
+    {
+        return $this->belongsTo(ExamApplication::class, 'exam_application_id', 'application_id');
     }
 }

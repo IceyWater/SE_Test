@@ -11,6 +11,8 @@ export type ExamSubject = {
     date: string;
     startTime: string;
     endTime: string;
+    room?: string | null;
+    proctors?: { name: string; status: string }[];
 };
 
 export type ExamApplicationFull = {
@@ -164,6 +166,13 @@ export default function DisplayApplication({ application }: Props) {
                                                 <div className="text-muted-foreground text-xs">
                                                     {s.date ? format(new Date(s.date), 'PPP') : '—'} • {s.startTime || '—'} - {s.endTime || '—'}
                                                 </div>
+                                                {s.room && <div className="text-muted-foreground text-xs">Room: {s.room}</div>}
+                                                {s.proctors?.length ? (
+                                                    <div className="text-muted-foreground text-xs">
+                                                        Proctor{s.proctors.length > 1 ? 's' : ''}:{' '}
+                                                        {s.proctors.map((proctor) => `${proctor.name} (${proctor.status})`).join(', ')}
+                                                    </div>
+                                                ) : null}
                                             </div>
                                         </div>
                                     ))}

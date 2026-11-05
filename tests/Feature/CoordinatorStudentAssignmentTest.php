@@ -130,3 +130,18 @@ test('invalid email choice cannot update a pending assignment', function () {
     $this->assertDatabaseCount('notifications', 0);
     Mail::assertNothingSent();
 });
+
+test('accepted adviser assignment is shared on the student defense requirements page', function () {
+    $adviser = User::factory()->create(['role' => 'Adviser']);
+    $student = User::factory()->create(['role' => 'Student', 'program' => 'Master of Arts in Education']);
+    $adviser->advisedStudents()->attach($student->id, ['status' => 'accepted']);
+
+    $this->actingAs($student)
+        ->get('/defense-request')
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('auth.user.advisers', 1)
+            ->where('auth.user.advisers.0.id', $adviser->id)
+            ->where('auth.user.advisers.0.first_name', $adviser->first_name)
+            ->where('defenseFees.Proposal', config('student_defense_fees.Masteral.Proposal')));
+});

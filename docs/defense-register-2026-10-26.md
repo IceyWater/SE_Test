@@ -24,9 +24,9 @@ Use **Save panel classifications** before sending the current panel breakdown to
 
 After the scheduled end time, authorized staff explicitly confirm that the defense was held, enter its actual completion date, and record Rendered service or Absent for every assigned panelist and adviser. A registered roster, saved classifications, and recorded start/end times are required. Future completion dates and dates preceding the scheduled defense are rejected.
 
-Confirmation marks the defense Completed. It does not mark any honorarium approved, disbursed, or claimed. Revisions require an explanation and retain the previous attendance record, actor, timestamp, and notes. Earlier unpaid prepared/approved honoraria are voided for preparation again. Disbursed/claimed records remain intact and are flagged for Finance reconciliation.
+Confirmation marks the defense Completed. It does not mark any honorarium approved, disbursed, or claimed. Revisions require an explanation and retain the previous attendance record, actor, timestamp, and notes. Earlier unpaid prepared/approved honorarium are voided for preparation again. Disbursed/claimed records remain intact and are flagged for Finance reconciliation.
 
-## Prepare honoraria
+## Prepare honorarium
 
 Both current Finance documents must still be verified. Honorarium preparation also requires matching current completion/service evidence. Only recipients marked Rendered service are included. Payment rows snapshot the recipient's classification, confirmed service evidence, and configured amount.
 

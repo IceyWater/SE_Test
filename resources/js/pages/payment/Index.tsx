@@ -11,6 +11,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 type PageProps = {
     student: { name: string; program: string | null; email?: string | null };
     canSubmit: boolean;
+    fee: number;
+    paymentGateMessage: string | null;
     payment: {
         payment_id: number;
         or_number: string;
@@ -22,33 +24,11 @@ type PageProps = {
     } | null;
 };
 
-// DEV ONLY: simulate approval/opening the form (remove when API is ready)
-const DEV_SIMULATE_PAYMENT = false;
-// Default simulation values (used when no URL params are provided)
-const SIM_DEFAULTS = {
-    canSubmit: true, // pretend the comprehensive application is approved
-    debugOpen: false, // force-enable the button even if not allowed
-};
-
 export default function Index() {
     const { props } = usePage<PageProps>();
-    const { student, canSubmit, payment } = props;
+    const { student, canSubmit, fee, payment, paymentGateMessage } = props;
 
-    // DEV: read optional overrides from the query string (?pay_can=1&pay_debug=1)
-    const devOverrides = useMemo(() => {
-        if (!DEV_SIMULATE_PAYMENT || typeof window === 'undefined') {
-            return { canSubmit: null as boolean | null, debugOpen: false };
-        }
-        const qs = new URLSearchParams(window.location.search);
-        const can = qs.has('pay_can') ? qs.get('pay_can') === '1' : SIM_DEFAULTS.canSubmit; // fallback to SIM_DEFAULTS
-        const dbg = qs.get('pay_debug') === '1' || SIM_DEFAULTS.debugOpen;
-        return { canSubmit: can, debugOpen: dbg };
-    }, []);
-
-    // Effective ability to open the form
-    const effectiveCanSubmit = DEV_SIMULATE_PAYMENT && devOverrides.canSubmit !== null ? devOverrides.canSubmit : canSubmit;
-
-    const canOpenForm = effectiveCanSubmit && (!payment || payment.status === 'rejected');
+    const canOpenForm = canSubmit && (!payment || payment.status === 'rejected');
 
     const [open, setOpen] = useState(false);
     const [showSuccessPanel, setShowSuccessPanel] = useState(false); // ensure this exists
@@ -77,6 +57,8 @@ export default function Index() {
                             <div>
                                 <span className="text-base font-semibold">Comprehensive Exam Payment</span>
                                 <p className="text-muted-foreground block text-xs">Submit your official receipt for verification.</p>
+                                {fee > 0 && <p className="text-muted-foreground mt-1 text-xs">Required fee: ₱{fee.toFixed(2)}</p>}
+                                {paymentGateMessage && <p className="mt-1 text-xs text-amber-700">{paymentGateMessage}</p>}
                                 <div className="mt-1 text-xs">{statusBadge}</div>
                             </div>
                         </div>
@@ -84,14 +66,8 @@ export default function Index() {
                         <Button
                             className="rounded-md bg-rose-500 px-5 text-sm"
                             onClick={() => setOpen(true)}
-                            disabled={!canOpenForm && !devOverrides.debugOpen} // DEV: allow force-open
-                            title={
-                                canOpenForm || devOverrides.debugOpen
-                                    ? 'Submit payment'
-                                    : !effectiveCanSubmit
-                                      ? 'You can submit payment only after your comprehensive application is approved.'
-                                      : 'Payment already submitted'
-                            }
+                            disabled={!canOpenForm}
+                            title={canOpenForm ? 'Submit payment' : (paymentGateMessage ?? 'Payment already submitted')}
                         >
                             Submit payment
                         </Button>
@@ -152,7 +128,8 @@ export default function Index() {
                     ) : (
                         <div className="flex-1 overflow-auto px-2">
                             <PaymentForm
-                                canSubmit={canOpenForm || devOverrides.debugOpen}
+                                canSubmit={canOpenForm}
+                                fee={fee}
                                 payment={payment}
                                 onSuccess={() => setShowSuccessPanel(true)} // show success card
                             />

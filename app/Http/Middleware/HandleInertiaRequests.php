@@ -62,6 +62,21 @@ class HandleInertiaRequests extends Middleware
             'program' => $u->program ?? '',
         ] : null;
 
+        if ($u && $u->role === 'Student') {
+            $sharedUser['advisers'] = $u->advisers()
+                ->wherePivot('status', 'accepted')
+                ->get(['users.id', 'users.first_name', 'users.middle_name', 'users.last_name', 'users.email'])
+                ->map(fn ($adviser) => [
+                    'id' => $adviser->id,
+                    'first_name' => $adviser->first_name,
+                    'middle_name' => $adviser->middle_name,
+                    'last_name' => $adviser->last_name,
+                    'name' => $adviser->name,
+                    'email' => $adviser->email,
+                ])
+                ->all();
+        }
+
         return array_merge(parent::share($request), [
             'auth' => ['user' => $sharedUser],
             'flash' => ['success' => fn () => $request->session()->get('success')],

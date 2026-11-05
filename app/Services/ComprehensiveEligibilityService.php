@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
-use App\Http\Controllers\Api\ComprehensiveExamEligibilityController;
 use Illuminate\Http\Request;
+use App\Services\Exam\ExamEligibilityService;
 
 class ComprehensiveEligibilityService
 {
     public function check(Request $request): array
     {
-        return app(ComprehensiveExamEligibilityController::class)->checkEligibility($request)->getData(true);
+        return app(ExamEligibilityService::class)->for($request->user());
     }
 }

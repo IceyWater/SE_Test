@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Models\User;
 use App\Observers\UserObserver;
+use App\Events\ExamStatusChanged;
+use App\Listeners\SendExamWorkflowNotifications;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
@@ -14,6 +16,9 @@ class EventServiceProvider extends ServiceProvider
      * @var array
      */
     protected $listen = [
+        ExamStatusChanged::class => [
+            SendExamWorkflowNotifications::class,
+        ],
         'App\Events\SomeEvent' => [
             'App\Listeners\SomeListener',
         ],

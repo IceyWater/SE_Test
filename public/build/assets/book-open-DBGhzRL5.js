@@ -1,4 +1,8 @@
+<<<<<<<< Updated upstream:public/build/assets/book-open-DBGhzRL5.js
 import{c as a}from"./createLucideIcon-DpXoXoOC.js";/**
+========
+import{c as a}from"./createLucideIcon-D3veN5a6.js";/**
+>>>>>>>> Stashed changes:public/build/assets/book-open-v6m_oA61.js
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.

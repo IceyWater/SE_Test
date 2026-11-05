@@ -271,7 +271,7 @@ export default function DefenseRegister() {
                     </table>
                 </div>
                 <p className="text-muted-foreground text-sm">
-                    A schedule is not proof of attendance or payment. Only recipients confirmed as having rendered service are included when honoraria
+                    A schedule is not proof of attendance or payment. Only recipients confirmed as having rendered service are included when honorarium
                     are prepared. External recipients require their own configured rates.
                 </p>
             </main>
@@ -377,7 +377,7 @@ export default function DefenseRegister() {
                             </label>
                             <p className="text-muted-foreground text-xs">
                                 Confirm after the scheduled session ends. This marks the defense completed. Revisions preserve prior evidence, void
-                                unpaid honoraria, and flag paid records for Finance review.
+                                unpaid honorarium, and flag paid records for Finance review.
                             </p>
                             <Button
                                 disabled={

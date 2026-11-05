@@ -1,9 +1,9 @@
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, usePage } from '@inertiajs/react';
-import { CalendarX, GraduationCap, Info, Plus, RefreshCcw, ShieldAlert, ShieldCheck } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { CalendarX, Check, GraduationCap, Info, Plus, RefreshCcw, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import CompreExamForm from './compre-exam-form';
 import DisplayApplication from './display-applications';
 
@@ -14,14 +14,44 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Comprehensive Exam', href: '/comprehensive-exam' },
 ];
+const workflowSteps = ['Submitted', 'AA Review', 'Registrar Verification', 'Payment', 'Scheduling'];
 
-type Subject = { subject: string; date: string; startTime: string; endTime: string };
+function workflowStepIndex(status: string): number {
+    if (['submitted', 'aa_lacking'].includes(status)) return 1;
+    if (status === 'aa_evaluated') return 2;
+    if (['registrar_approved', 'registrar_rejected'].includes(status)) return 3;
+    if (['payment_pending', 'payment_rejected'].includes(status)) return 3;
+    if (status === 'payment_verified') return 4;
+    if (['scheduled', 'completed'].includes(status)) return 5;
+
+    return 0;
+}
+
+const formatDateTime = (value?: string | null) =>
+    value ? new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' }).format(new Date(value)) : '—';
+
+type Subject = {
+    subject: string;
+    date?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
+    room?: string | null;
+    proctors?: { name: string; status: string }[];
+};
+type ExamEvent = { action: string; status: string | null; remarks?: string | null; actor?: string | null; created_at?: string | null };
 
 type ApplicationVM = {
     application_id: number;
+    application_no: string;
     school_year: string;
+    workflow_status: string;
     permit_status: string;
     final_approval_status: string;
+    payment_status: string;
+    aa_remarks?: string | null;
+    registrar_remarks?: string | null;
+    submitted_at?: string | null;
+    events: ExamEvent[];
     contact_number?: string | null;
     telephone_number?: string | null;
     office_address?: string | null;
@@ -37,47 +67,44 @@ type ApplicationVM = {
 
 type PageProps = {
     application?: ApplicationVM | null;
+    eligibility?: Omit<Eligibility, 'loading' | 'error'>;
 };
 
 type Eligibility = {
-    examOpen: boolean | null;
-    gradesComplete: boolean | null;
-    documentsComplete: boolean | null;
-    noOutstandingBalance: boolean | null;
+    eligible: boolean;
+    exam_open: boolean | null;
+    stale: boolean;
+    source?: string | null;
+    as_of?: string | null;
+    requirements: { key: string; name: string; completed: boolean | null }[];
     loading: boolean;
     error?: string | null;
 };
 
 export default function ComprehensiveExamIndex() {
     const { props } = usePage<PageProps>();
-    const { application } = props;
+    const { application, eligibility: initialEligibility } = props;
 
     const [open, setOpen] = useState(false);
 
-    // Eligibility state (student side only)
     const [elig, setElig] = useState<Eligibility>({
-        examOpen: null,
-        gradesComplete: null,
-        documentsComplete: null,
-        noOutstandingBalance: null,
+        eligible: initialEligibility?.eligible ?? false,
+        exam_open: initialEligibility?.exam_open ?? null,
+        stale: initialEligibility?.stale ?? false,
+        source: initialEligibility?.source,
+        as_of: initialEligibility?.as_of,
+        requirements: initialEligibility?.requirements ?? [],
         loading: true,
         error: null,
     });
 
     const [showEligDialog, setShowEligDialog] = useState(false);
-    const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const mounted = useRef(true);
 
-    const fetchEligibility = useCallback(async function checkEligibility(attempt = 0) {
-        if (!mounted.current) return;
-        if (retryTimer.current) clearTimeout(retryTimer.current);
+    const fetchEligibility = useCallback(async function checkEligibility() {
         setElig((e) => ({ ...e, loading: true, error: null }));
 
         try {
-            // Get CSRF token
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-            // Call the comprehensive exam eligibility API
             const response = await fetch('/api/comprehensive-exam/eligibility', {
                 credentials: 'include',
                 headers: {
@@ -92,44 +119,22 @@ export default function ComprehensiveExamIndex() {
             }
 
             const data = await response.json();
-
-            // Extract eligibility from the requirements array
-            const requirements: { name: string; completed: boolean | null }[] = data.requirements || [];
-            const documentsReq = requirements.find((r) => r.name === 'Complete documents submitted');
-            const gradesReq = requirements.find((r) => r.name === 'Complete grades (registrar verified)');
-            const balanceReq = requirements.find((r) => r.name === 'No outstanding tuition balance');
-
-            const newElig = {
-                examOpen: true, // This would need to be determined from semester settings
-                gradesComplete: gradesReq?.completed ?? null,
-                documentsComplete: documentsReq?.completed ?? null,
-                noOutstandingBalance: balanceReq?.completed ?? null,
+            setElig({
+                eligible: data.eligible === true,
+                exam_open: data.exam_open ?? null,
+                stale: data.stale === true,
+                source: data.source ?? null,
+                as_of: data.as_of ?? null,
+                requirements: data.requirements ?? [],
                 loading: false,
                 error: null,
-            };
-
-            setElig(newElig);
-
-            // If data is still loading (all null) and we haven't retried too many times, retry after 3 seconds
-            if (newElig.gradesComplete === null && newElig.documentsComplete === null && newElig.noOutstandingBalance === null) {
-                if (attempt < 5) {
-                    console.log(`Data still loading, will retry in 3 seconds (attempt ${attempt + 1}/5)`);
-                    retryTimer.current = setTimeout(() => {
-                        checkEligibility(attempt + 1);
-                    }, 3000);
-                }
-            } else {
-                // Reset retry count on success
-            }
+            });
         } catch (error) {
-            console.error('=== API ERROR ===', error);
-
-            // Set all to null (Unknown) when API fails
             setElig({
-                examOpen: null,
-                gradesComplete: null,
-                documentsComplete: null,
-                noOutstandingBalance: null,
+                eligible: false,
+                exam_open: null,
+                stale: false,
+                requirements: [],
                 loading: false,
                 error: error instanceof Error ? error.message : 'API call failed',
             });
@@ -137,31 +142,20 @@ export default function ComprehensiveExamIndex() {
     }, []);
 
     useEffect(() => {
-        mounted.current = true;
         fetchEligibility();
-        return () => {
-            mounted.current = false;
-            if (retryTimer.current) clearTimeout(retryTimer.current);
-        };
     }, [fetchEligibility]);
 
     const canApply = useMemo(() => {
-        return !!(elig.examOpen && elig.gradesComplete && elig.documentsComplete && elig.noOutstandingBalance);
+        return elig.eligible;
     }, [elig]);
 
-    const examClosed = elig.examOpen === false; // NEW
-    const hasPending = application ? application.final_approval_status?.toLowerCase() === 'pending' : false;
+    const examClosed = elig.exam_open === false;
+    const needsResubmission = !!application && ['aa_lacking', 'registrar_rejected'].includes(application.workflow_status);
+    const canStartApplication = needsResubmission || (!application && canApply && !examClosed);
 
-    // Reasons to show when not eligible
     const blockers = useMemo(() => {
-        const arr: { label: string; ok: boolean | null }[] = [
-            { label: 'Exam window is open', ok: elig.examOpen },
-            { label: 'Complete grades (registrar verified)', ok: elig.gradesComplete },
-            { label: 'Complete documents submitted', ok: elig.documentsComplete },
-            { label: 'No outstanding tuition balance', ok: elig.noOutstandingBalance },
-        ];
-        return arr;
-    }, [elig]);
+        return elig.requirements.map((requirement) => ({ label: requirement.name, ok: requirement.completed }));
+    }, [elig.requirements]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -225,42 +219,118 @@ export default function ComprehensiveExamIndex() {
                         <Button
                             className="w-full shrink-0 rounded-md bg-rose-500 px-5 text-sm text-white hover:bg-rose-600 sm:w-auto"
                             onClick={() => setOpen(true)}
-                            disabled={!canApply || (!!application && hasPending)}
+                            disabled={!canStartApplication}
                             title={
-                                examClosed
-                                    ? 'Exam is closed'
-                                    : !canApply
-                                      ? 'You are not eligible yet'
-                                      : hasPending
-                                        ? 'Application pending'
-                                        : 'Submit application'
+                                needsResubmission
+                                    ? 'Update your application and resubmit it for review'
+                                    : examClosed
+                                      ? 'Exam is closed'
+                                      : !canApply
+                                        ? 'You are not eligible yet'
+                                        : application
+                                          ? 'An application already exists for this school year'
+                                          : 'Submit application'
                             }
                         >
-                            <Plus className="mr-1 h-4 w-4" />
-                            Submit application
+                            {needsResubmission ? <RefreshCcw className="mr-1 h-4 w-4" /> : <Plus className="mr-1 h-4 w-4" />}
+                            {needsResubmission ? 'Resubmit corrections' : 'Submit application'}
                         </Button>
                     </div>
                     <div className="flex flex-col gap-4">
-                        <CompreExamForm open={open} onOpenChange={setOpen} />
+                        <CompreExamForm open={open} onOpenChange={setOpen} resubmission={needsResubmission ? application : null} />
                         <div>
                             {application ? (
-                                <DisplayApplication
-                                    application={{
-                                        id: application.application_id,
-                                        first_name: application.first_name,
-                                        middle_initial: application.middle_name ? application.middle_name[0] : null,
-                                        last_name: application.last_name,
-                                        program: application.program,
-                                        school_year: application.school_year,
-                                        office_address: application.office_address ?? null,
-                                        mobile_no: application.contact_number ?? null,
-                                        telephone_no: application.telephone_number ?? null,
-                                        email: application.email,
-                                        status: application.final_approval_status || 'Pending',
-                                        subjects: application.subjects,
-                                        created_at: application.created_at ?? null,
-                                    }}
-                                />
+                                <>
+                                    <DisplayApplication
+                                        application={{
+                                            id: application.application_id,
+                                            first_name: application.first_name,
+                                            middle_initial: application.middle_name ? application.middle_name[0] : null,
+                                            last_name: application.last_name,
+                                            program: application.program,
+                                            school_year: application.school_year,
+                                            office_address: application.office_address ?? null,
+                                            mobile_no: application.contact_number ?? null,
+                                            telephone_no: application.telephone_number ?? null,
+                                            email: application.email,
+                                            status: application.workflow_status,
+                                            subjects: application.subjects.map((subject) => ({
+                                                subject: subject.subject,
+                                                date: subject.date ?? '',
+                                                startTime: subject.startTime ?? '',
+                                                endTime: subject.endTime ?? '',
+                                                room: subject.room,
+                                                proctors: subject.proctors,
+                                            })),
+                                            created_at: application.created_at ?? null,
+                                        }}
+                                    />
+                                    <section className="mx-5 mb-5 rounded-xl border p-5" aria-label="Application progress">
+                                        <div className="flex flex-wrap items-start justify-between gap-3">
+                                            <div>
+                                                <h2 className="font-semibold">Application progress</h2>
+                                                <p className="text-muted-foreground mt-1 text-xs">
+                                                    Reference {application.application_no} · Submitted {formatDateTime(application.submitted_at)}
+                                                </p>
+                                            </div>
+                                            <Badge variant={application.workflow_status === 'registrar_rejected' ? 'destructive' : 'outline'}>
+                                                {application.workflow_status.replaceAll('_', ' ')}
+                                            </Badge>
+                                        </div>
+                                        <ol className="mt-5 grid gap-3 sm:grid-cols-5">
+                                            {workflowSteps.map((step, index) => {
+                                                const current = workflowStepIndex(application.workflow_status);
+                                                const rejected = ['aa_lacking', 'registrar_rejected', 'payment_rejected'].includes(
+                                                    application.workflow_status,
+                                                );
+                                                const complete = index < current || (application.workflow_status === 'completed' && index === 4);
+                                                const isCurrent = index === current && application.workflow_status !== 'completed';
+                                                return (
+                                                    <li className="flex items-start gap-2 text-sm" key={step}>
+                                                        <span
+                                                            className={`flex size-6 shrink-0 items-center justify-center rounded-full border text-xs ${
+                                                                complete
+                                                                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                                                                    : isCurrent && rejected
+                                                                      ? 'border-destructive bg-destructive text-white'
+                                                                      : isCurrent
+                                                                        ? 'border-primary bg-primary text-primary-foreground'
+                                                                        : 'text-muted-foreground'
+                                                            }`}
+                                                        >
+                                                            {complete ? <Check className="size-3.5" /> : index + 1}
+                                                        </span>
+                                                        <span className={isCurrent ? 'font-medium' : 'text-muted-foreground'}>{step}</span>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ol>
+                                        {application.aa_remarks && <p className="mt-4 text-sm">AA note: {application.aa_remarks}</p>}
+                                        {application.registrar_remarks && (
+                                            <p className="mt-2 text-sm">Registrar note: {application.registrar_remarks}</p>
+                                        )}
+                                        {['registrar_approved', 'payment_rejected'].includes(application.workflow_status) && (
+                                            <Button asChild size="sm" className="mt-4">
+                                                <Link href="/payment">Continue to exam payment</Link>
+                                            </Button>
+                                        )}
+                                        {application.events.length > 0 && (
+                                            <details className="mt-4">
+                                                <summary className="text-muted-foreground cursor-pointer text-sm">View application history</summary>
+                                                <ul className="mt-2 space-y-2 border-l pl-4">
+                                                    {application.events.map((event, index) => (
+                                                        <li className="text-sm" key={`${event.action}-${index}`}>
+                                                            <span className="font-medium">{event.action.replaceAll('_', ' ')}</span>
+                                                            <span className="text-muted-foreground"> · {formatDateTime(event.created_at)}</span>
+                                                            {event.actor && <p className="text-muted-foreground text-xs">By {event.actor}</p>}
+                                                            {event.remarks && <p className="text-muted-foreground text-xs">{event.remarks}</p>}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </details>
+                                        )}
+                                    </section>
+                                </>
                             ) : (
                                 <div className="text-muted-foreground p-6 text-center text-sm">No application submitted yet.</div>
                             )}
@@ -301,11 +371,11 @@ export default function ComprehensiveExamIndex() {
                                 <Button
                                     onClick={() => {
                                         setShowEligDialog(false);
-                                        if (canApply && !hasPending) setOpen(true);
+                                        if (canStartApplication) setOpen(true);
                                     }}
-                                    disabled={!canApply || hasPending}
+                                    disabled={!canStartApplication}
                                 >
-                                    Apply Now
+                                    {needsResubmission ? 'Resubmit corrections' : 'Apply Now'}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>

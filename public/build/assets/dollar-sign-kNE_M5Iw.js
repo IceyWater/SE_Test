@@ -1,0 +1,10 @@
+<<<<<<<< Updated upstream:public/build/assets/dollar-sign-B-Yg9aXJ.js
+import{c as o}from"./createLucideIcon-DpXoXoOC.js";/**
+========
+import{c as o}from"./createLucideIcon-D3veN5a6.js";/**
+>>>>>>>> Stashed changes:public/build/assets/dollar-sign-kNE_M5Iw.js
+ * @license lucide-react v0.475.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const e=[["line",{x1:"12",x2:"12",y1:"2",y2:"22",key:"7eqyqh"}],["path",{d:"M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",key:"1b0p4s"}]],c=o("DollarSign",e);export{c as D};

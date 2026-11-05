@@ -1,4 +1,8 @@
+<<<<<<<< Updated upstream:public/build/assets/receipt-DCR8iCU5.js
 import{c as e}from"./createLucideIcon-DpXoXoOC.js";/**
+========
+import{c as e}from"./createLucideIcon-D3veN5a6.js";/**
+>>>>>>>> Stashed changes:public/build/assets/receipt-CLs57MNP.js
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.
