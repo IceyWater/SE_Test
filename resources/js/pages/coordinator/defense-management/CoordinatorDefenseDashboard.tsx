@@ -1,3 +1,4 @@
+import { DefenseSlotControl } from '@/components/defense-scheduling-controls';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -767,36 +768,16 @@ export default function CoordinatorDefenseDashboard({ defenseRequests, adviserMe
                         </div>
 
                         <div>
-                            <Label htmlFor="time">Defense Start Time *</Label>
-                            <Input
-                                type="time"
-                                value={scheduleForm.data.scheduled_time}
-                                onChange={(e) => scheduleForm.setData('scheduled_time', e.target.value)}
-                                className={scheduleForm.errors.scheduled_time ? 'border-red-300' : ''}
+                            <DefenseSlotControl
+                                start={scheduleForm.data.scheduled_time}
+                                end={scheduleForm.data.scheduled_end_time}
+                                onChange={(start, end) =>
+                                    scheduleForm.setData((data) => ({ ...data, scheduled_time: start, scheduled_end_time: end }))
+                                }
                             />
-                            {scheduleForm.errors.scheduled_time && !scheduleForm.errors.scheduled_time.includes('Conflict Detected') && (
-                                <p className="mt-1 text-xs text-red-500">{scheduleForm.errors.scheduled_time}</p>
-                            )}
-                            {scheduleForm.errors.scheduled_time && scheduleForm.errors.scheduled_time.includes('Conflict Detected') && (
-                                <p className="mt-1 text-xs text-red-500">⚠️ Time conflict detected - see details above</p>
-                            )}
-                        </div>
-
-                        <div>
-                            <Label htmlFor="end_time">Defense End Time *</Label>
-                            <Input
-                                type="time"
-                                value={scheduleForm.data.scheduled_end_time}
-                                onChange={(e) => scheduleForm.setData('scheduled_end_time', e.target.value)}
-                                className={scheduleForm.errors.scheduled_end_time ? 'border-red-300' : ''}
-                            />
+                            {scheduleForm.errors.scheduled_time && <p className="mt-1 text-xs text-red-500">{scheduleForm.errors.scheduled_time}</p>}
                             {scheduleForm.errors.scheduled_end_time && (
                                 <p className="mt-1 text-xs text-red-500">{scheduleForm.errors.scheduled_end_time}</p>
-                            )}
-                            {scheduleForm.data.scheduled_time && scheduleForm.data.scheduled_end_time && (
-                                <p className="mt-1 text-sm text-gray-600">
-                                    Defense Schedule: {scheduleForm.data.scheduled_time} - {scheduleForm.data.scheduled_end_time}
-                                </p>
                             )}
                         </div>
 

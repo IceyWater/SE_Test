@@ -12,6 +12,15 @@ use Illuminate\Validation\ValidationException;
 
 class DefenseSchedulingService
 {
+    public const TIME_SLOTS = ['08:00' => '10:00', '10:00' => '12:00', '13:00' => '15:00', '15:00' => '17:00'];
+
+    private function assertTimeSlot(?string $start, ?string $end): void
+    {
+        if (! isset(self::TIME_SLOTS[$start ?? '']) || self::TIME_SLOTS[$start] !== $end) {
+            throw ValidationException::withMessages(['scheduled_time' => 'Choose a required defense slot: 8:00–10:00 AM, 10:00 AM–12:00 PM, 1:00–3:00 PM, or 3:00–5:00 PM (Philippine time).']);
+        }
+    }
+
     public function authorize(DefenseRequest $dr, ?User $user): void
     {
         abort_unless($user && $user->role === 'Coordinator' && (int) $dr->coordinator_user_id === (int) $user->id, 403);
@@ -27,6 +36,12 @@ class DefenseSchedulingService
             $this->authorize($dr, $user);
             if (! in_array($dr->workflow_state, $schedule ? ['coordinator-approved', 'panels-assigned', 'scheduled'] : ['adviser-approved', 'coordinator-review', 'coordinator-approved', 'panels-assigned', 'scheduled'], true)) {
                 throw ValidationException::withMessages(['workflow' => 'This request is not ready for this action.']);
+            }
+            if ($schedule) {
+                $this->assertTimeSlot($data['scheduled_time'] ?? null, $data['scheduled_end_time'] ?? null);
+            }
+            if (! empty($data['availability_date'])) {
+                $this->assertTimeSlot($data['availability_time'] ?? null, $data['availability_end_time'] ?? null);
             }
             $from = $dr->workflow_state;
             foreach (DefenseConflictService::PANEL_FIELDS as $field) {

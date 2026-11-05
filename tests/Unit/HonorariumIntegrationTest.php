@@ -244,7 +244,7 @@ it('scopes recipient payment history by email and denies student access', functi
 });
 function integrationScheduleData(array $extra = []): array
 {
-    return $extra + ['scheduled_date' => '2026-10-26', 'scheduled_time' => '09:30', 'scheduled_end_time' => '10:30', 'defense_mode' => 'face-to-face', 'defense_venue' => 'Room B'];
+    return $extra + ['scheduled_date' => '2026-10-26', 'scheduled_time' => '08:00', 'scheduled_end_time' => '10:00', 'defense_mode' => 'face-to-face', 'defense_venue' => 'Room B'];
 }
 function scheduleCandidate(array $extra = []): DefenseRequest
 {
@@ -263,7 +263,7 @@ it('blocks overlapping defenses for a shared panelist through the actual save en
 it('allows back to back defenses and preserves the existing request on rescheduling', function () {
     scheduleCandidate(['workflow_state' => 'scheduled', 'scheduled_date' => '2026-10-26', 'scheduled_time' => '09:00', 'scheduled_end_time' => '10:00', 'defense_venue' => 'Room A']);
     $other = scheduleCandidate();
-    $this->actingAs(User::find(5))->postJson('/coordinator/defense-requests/'.$other->id.'/schedule-json', integrationScheduleData(['scheduled_time' => '10:00', 'scheduled_end_time' => '11:00']))->assertOk();
+    $this->actingAs(User::find(5))->postJson('/coordinator/defense-requests/'.$other->id.'/schedule-json', integrationScheduleData(['scheduled_time' => '10:00', 'scheduled_end_time' => '12:00']))->assertOk();
     expect($other->fresh()->workflow_state)->toBe('scheduled');
     $this->postJson('/coordinator/defense-requests/'.$other->id.'/schedule-json', integrationScheduleData(['scheduled_date' => '2026-10-27']))->assertOk();
     expect(DefenseRequest::count())->toBe(2)->and(collect($other->fresh()->workflow_history)->last()['action'])->toBe('rescheduled');

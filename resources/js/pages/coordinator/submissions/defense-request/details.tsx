@@ -1,4 +1,4 @@
-import { DefenseDateControl, DefenseTimeControl } from '@/components/defense-scheduling-controls';
+import { DefenseDateControl, DefenseSlotControl } from '@/components/defense-scheduling-controls';
 import { csrfHeaders } from '@/lib/csrf';
 import { errorMessage } from '@/lib/error-message';
 import type { RequestActionResponse, WorkflowHistoryEntry } from '@/types/workflows';
@@ -1193,16 +1193,12 @@ function LoadedDefenseRequestDetailsPage(rawProps: PageProps) {
                                             onChange={(value) => setSchedule((state) => ({ ...state, scheduled_date: value }))}
                                             disabled={!canEdit || awaitingCorrections}
                                         />
-                                        <DefenseTimeControl
-                                            label="Start time"
-                                            value={schedule.scheduled_time}
-                                            onChange={(value) => setSchedule((state) => ({ ...state, scheduled_time: value }))}
-                                            disabled={!canEdit || awaitingCorrections}
-                                        />
-                                        <DefenseTimeControl
-                                            label="End time"
-                                            value={schedule.scheduled_end_time}
-                                            onChange={(value) => setSchedule((state) => ({ ...state, scheduled_end_time: value }))}
+                                        <DefenseSlotControl
+                                            start={schedule.scheduled_time}
+                                            end={schedule.scheduled_end_time}
+                                            onChange={(start, end) =>
+                                                setSchedule((state) => ({ ...state, scheduled_time: start, scheduled_end_time: end }))
+                                            }
                                             disabled={!canEdit || awaitingCorrections}
                                         />
                                         <div>

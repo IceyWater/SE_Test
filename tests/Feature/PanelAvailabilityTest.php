@@ -24,7 +24,7 @@ beforeEach(function () {
     $this->otherPanel = Panelist::create(['name' => 'Other Panel', 'email' => 'other@example.test', 'status' => 'Not Assigned']);
     $this->current = panelAvailabilityDefense($this->coordinator);
     $this->endpoint = '/coordinator/defense-requests/'.$this->current->id.'/panel-availability';
-    $this->slot = ['date' => '2099-05-10', 'time' => '09:30', 'end_time' => '10:30'];
+    $this->slot = ['date' => '2099-05-10', 'time' => '08:00', 'end_time' => '10:00'];
     $this->booking = fn ($attributes = []) => panelAvailabilityDefense($this->coordinator, array_merge([
         'workflow_state' => 'scheduled', 'scheduled_date' => '2099-05-10',
         'scheduled_time' => '09:00', 'scheduled_end_time' => '10:00',
@@ -46,6 +46,7 @@ it('allows adjacent slots and other-day bookings', function () {
     ($this->booking)();
     ($this->booking)(['scheduled_date' => '2099-05-11']);
     $this->slot['time'] = '10:00';
+    $this->slot['end_time'] = '12:00';
     $response = $this->actingAs($this->coordinator)->getJson($this->endpoint.'?'.http_build_query($this->slot))->assertOk();
     $panel = collect($response->json('options'))->firstWhere('id', 'panelist-'.$this->panel->id);
     expect($panel['is_available'])->toBeTrue()->and($panel['daily_defenses'])->toBe(1);
@@ -102,13 +103,13 @@ it('can save a new schedule and selected panels together with no artificial dail
     for ($hour = 8; $hour < 13; $hour++) {
         ($this->booking)(['scheduled_time' => sprintf('%02d:00', $hour), 'scheduled_end_time' => sprintf('%02d:00', $hour + 1)]);
     }
-    $this->slot['time'] = '14:00';
+    $this->slot['time'] = '13:00';
     $this->slot['end_time'] = '15:00';
     $response = $this->actingAs($this->coordinator)->getJson($this->endpoint.'?'.http_build_query($this->slot))->assertOk();
     $panel = collect($response->json('options'))->firstWhere('id', 'panelist-'.$this->panel->id);
     expect($panel['daily_defenses'])->toBe(5)->and($panel['is_available'])->toBeTrue();
     $this->actingAs($this->coordinator)->postJson('/coordinator/defense-requests/'.$this->current->id.'/schedule-json', [
-        'scheduled_date' => $this->slot['date'], 'scheduled_time' => '14:00', 'scheduled_end_time' => '15:00',
+        'scheduled_date' => $this->slot['date'], 'scheduled_time' => '13:00', 'scheduled_end_time' => '15:00',
         'defense_mode' => 'online', 'defense_venue' => 'Fixture meeting',
         'defense_chairperson' => 'panelist-'.$this->panel->id, 'defense_panelist1' => 'panelist-'.$this->otherPanel->id,
     ])->assertOk();
@@ -124,3 +125,26 @@ it('rejects an overlapping combined schedule even if availability was previously
     ])->assertUnprocessable()->assertJsonValidationErrors('scheduled_time');
     expect($this->current->fresh()->workflow_state)->toBe('coordinator-approved');
 });
+
+it('accepts each mandatory two-hour defense slot', function (string $start, string $end) {
+    $this->actingAs($this->coordinator)->postJson('/coordinator/defense-requests/'.$this->current->id.'/schedule-json', [
+        'scheduled_date' => $this->slot['date'], 'scheduled_time' => $start, 'scheduled_end_time' => $end,
+        'defense_mode' => 'online', 'defense_venue' => 'Fixture meeting',
+        'defense_chairperson' => (string) $this->panel->id, 'defense_panelist1' => (string) $this->otherPanel->id,
+    ])->assertOk();
+    expect(substr($this->current->fresh()->scheduled_time, 0, 5))->toBe($start)
+        ->and(substr($this->current->fresh()->scheduled_end_time, 0, 5))->toBe($end);
+})->with([['08:00', '10:00'], ['10:00', '12:00'], ['13:00', '15:00'], ['15:00', '17:00']]);
+
+it('rejects custom times through scheduling and draft panel assignment', function (string $start, string $end) {
+    $before = $this->current->fresh()->getAttributes();
+    $panels = ['defense_chairperson' => (string) $this->panel->id, 'defense_panelist1' => (string) $this->otherPanel->id];
+    $this->actingAs($this->coordinator)->postJson('/coordinator/defense-requests/'.$this->current->id.'/schedule-json', $panels + [
+        'scheduled_date' => $this->slot['date'], 'scheduled_time' => $start, 'scheduled_end_time' => $end,
+        'defense_mode' => 'online', 'defense_venue' => 'Fixture meeting',
+    ])->assertUnprocessable()->assertJsonValidationErrors('scheduled_time');
+    $this->actingAs($this->coordinator)->postJson('/coordinator/defense-requests/'.$this->current->id.'/panels', $panels + [
+        'availability_date' => $this->slot['date'], 'availability_time' => $start, 'availability_end_time' => $end,
+    ])->assertUnprocessable()->assertJsonValidationErrors('scheduled_time');
+    expect($this->current->fresh()->getAttributes())->toBe($before);
+})->with([['09:00', '11:00'], ['08:00', '12:00'], ['12:00', '14:00'], ['17:00', '19:00'], ['08:00', '10:15']]);

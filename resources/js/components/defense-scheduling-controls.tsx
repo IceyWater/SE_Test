@@ -140,3 +140,51 @@ export function DefenseTimeControl({
         </label>
     );
 }
+
+export const DEFENSE_TIME_SLOTS = [
+    { start: '08:00', end: '10:00', label: '8:00 AM – 10:00 AM' },
+    { start: '10:00', end: '12:00', label: '10:00 AM – 12:00 PM' },
+    { start: '13:00', end: '15:00', label: '1:00 PM – 3:00 PM' },
+    { start: '15:00', end: '17:00', label: '3:00 PM – 5:00 PM' },
+];
+
+export function DefenseSlotControl({
+    start,
+    end,
+    onChange,
+    disabled,
+}: {
+    start: string;
+    end: string;
+    onChange: (start: string, end: string) => void;
+    disabled?: boolean;
+}) {
+    const selected = DEFENSE_TIME_SLOTS.find((slot) => slot.start === start.slice(0, 5) && slot.end === end.slice(0, 5));
+    return (
+        <label className="block space-y-2">
+            <span className="text-muted-foreground block text-xs">Defense time slot (Philippine time)</span>
+            <select
+                className={selectClass}
+                aria-label="Defense time slot"
+                disabled={disabled}
+                value={selected?.start ?? ''}
+                onChange={(event) => {
+                    const slot = DEFENSE_TIME_SLOTS.find((item) => item.start === event.target.value);
+                    onChange(slot?.start ?? '', slot?.end ?? '');
+                }}
+            >
+                <option value="">Select defense time slot</option>
+                {DEFENSE_TIME_SLOTS.map((slot) => (
+                    <option key={slot.start} value={slot.start}>
+                        {slot.label}
+                    </option>
+                ))}
+            </select>
+            {start && end && !selected && (
+                <span className="text-muted-foreground block text-xs">
+                    Previously saved: {start.slice(0, 5)}–{end.slice(0, 5)}. Choose a required slot to save a new schedule.
+                </span>
+            )}
+        </label>
+    );
+}
