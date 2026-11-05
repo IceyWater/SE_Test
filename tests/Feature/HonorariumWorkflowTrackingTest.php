@@ -2,10 +2,7 @@
 
 use App\Mail\HonorariumFollowUp;
 use App\Models\DefenseRequest;
-<<<<<<< Updated upstream
 use App\Models\FinanceDocumentSubmission;
-=======
->>>>>>> Stashed changes
 use App\Models\HonorariumActivity;
 use App\Models\HonorariumDisbursement;
 use App\Models\User;
@@ -17,7 +14,6 @@ beforeEach(function () {
     Mail::fake();
 });
 
-<<<<<<< Updated upstream
 function trackedDefenseRequest(array $attributes = []): DefenseRequest
 {
     $student = User::factory()->create(['role' => 'Student']);
@@ -118,6 +114,24 @@ it('does not allow students to create honorarium follow-ups', function () {
     expect(HonorariumActivity::where('defense_request_id', $request->id)->count())->toBe(0);
 });
 
+it('denies advisers and rejects follow-up recipient roles outside the honorarium workflow', function () {
+    $request = trackedDefenseRequest();
+    $adviser = User::factory()->create(['role' => 'Adviser']);
+    $assistant = User::factory()->create(['role' => 'Administrative Assistant']);
+
+    $this->actingAs($adviser)->postJson("/honorarium-workspace/{$request->id}/follow-ups", [
+        'recipient_role' => 'Finance',
+        'notes' => 'Please confirm the payment status.',
+    ])->assertForbidden();
+
+    $this->actingAs($assistant)->postJson("/honorarium-workspace/{$request->id}/follow-ups", [
+        'recipient_role' => 'Adviser',
+        'notes' => 'Please review this request.',
+    ])->assertUnprocessable()->assertJsonValidationErrors('recipient_role');
+
+    expect(HonorariumActivity::where('defense_request_id', $request->id)->count())->toBe(0);
+});
+
 it('allows Dean report downloads and denies other roles', function () {
     $request = trackedDefenseRequest();
     $dean = User::factory()->create(['role' => 'Dean']);
@@ -149,114 +163,4 @@ it('requires a meaningful follow-up note', function () {
     ])->assertUnprocessable()->assertJsonValidationErrors('notes');
 
     expect(HonorariumActivity::where('defense_request_id', $request->id)->count())->toBe(0);
-=======
-function trackingDefense(User $student): DefenseRequest
-{
-    return DefenseRequest::withoutEvents(fn () => DefenseRequest::create([
-        'submitted_by' => $student->id,
-        'first_name' => $student->first_name,
-        'last_name' => $student->last_name,
-        'school_id' => $student->school_id ?: 'TRACKING-TEST-'.$student->id,
-        'program' => 'Master of Arts in Education',
-        'thesis_title' => 'Honorarium tracking test',
-        'date_of_defense' => now()->toDateString(),
-        'mode_defense' => 'Face-to-face',
-        'defense_type' => 'Proposal',
-        'defense_adviser' => 'Test Adviser',
-        'defense_chairperson' => 'Test Chair',
-        'defense_panelist1' => 'Test Panelist',
-        'proof_of_payment' => 'defense_requirements/receipt.pdf',
-        'workflow_state' => 'coordinator-approved',
-        'status' => 'Approved',
-    ]));
-}
-
-function trackingPayment(DefenseRequest $defense, User $preparedBy, string $status, string $key): HonorariumDisbursement
-{
-    return HonorariumDisbursement::create([
-        'defense_request_id' => $defense->id,
-        'recipient_key' => $key,
-        'recipient_name' => 'Panel Member '.$key,
-        'recipient_email' => 'panel-'.$key.'@example.test',
-        'recipient_role' => 'Panel Member',
-        'amount' => 1000,
-        'school_year' => '2026-2027',
-        'semester' => '1st',
-        'status' => $status,
-        'requires_review' => false,
-        'history' => [],
-        'prepared_by' => $preparedBy->id,
-    ]);
-}
-
-it('records manual follow-ups, timestamps them, creates notifications, and emails the selected office', function () {
-    $student = User::factory()->create(['role' => 'Student', 'first_name' => 'Test', 'last_name' => 'Student']);
-    $aa = User::factory()->create(['role' => 'Administrative Assistant']);
-    $finance = User::factory()->create(['role' => 'Finance']);
-    $defense = trackingDefense($student);
-
-    $this->actingAs($aa)->post('/honorarium-workspace/'.$defense->id.'/follow-ups', [
-        'recipient_role' => 'Finance',
-        'notes' => 'Please verify the submitted receipt.',
-    ])->assertRedirect()->assertSessionHas('success', 'Follow-up emailed and recorded.');
-
-    Mail::assertSent(HonorariumFollowUp::class, fn ($mail) => $mail->hasTo($finance->email)
-        && $mail->recipientRole === 'Finance'
-        && $mail->requestId === $defense->id);
-    $activity = HonorariumActivity::where('activity_type', 'follow_up')->firstOrFail();
-    expect($activity->recipient_role)->toBe('Finance')
-        ->and($activity->description)->toBe('Please verify the submitted receipt.')
-        ->and($activity->occurred_at)->not->toBeNull();
-    $this->assertDatabaseHas('notifications', [
-        'user_id' => $finance->id,
-        'defense_request_id' => $defense->id,
-        'type' => 'honorarium',
-        'title' => 'Honorarium follow-up',
-    ]);
-    $this->actingAs($aa)->get('/honorarium-workspace')->assertInertia(fn (Assert $page) => $page
-        ->where('items.0.follow_ups.0.recipient_role', 'Finance')
-        ->where('items.0.follow_ups.0.notes', 'Please verify the submitted receipt.'));
-});
-
-it('denies student follow-ups and requires a meaningful note', function () {
-    $student = User::factory()->create(['role' => 'Student']);
-    $finance = User::factory()->create(['role' => 'Finance']);
-    $defense = trackingDefense($student);
-
-    $this->actingAs($student)->postJson('/honorarium-workspace/'.$defense->id.'/follow-ups', [
-        'recipient_role' => 'Finance',
-        'notes' => 'Please check.',
-    ])->assertForbidden();
-    $this->actingAs($finance)->postJson('/honorarium-workspace/'.$defense->id.'/follow-ups', [
-        'recipient_role' => 'Dean',
-        'notes' => 'x',
-    ])->assertUnprocessable()->assertJsonValidationErrors('notes');
-    expect(HonorariumActivity::count())->toBe(0);
-    Mail::assertNothingSent();
-});
-
-it('provides Dean program and semester summaries and restricts report downloads', function () {
-    $student = User::factory()->create(['role' => 'Student']);
-    $aa = User::factory()->create(['role' => 'Administrative Assistant']);
-    $dean = User::factory()->create(['role' => 'Dean']);
-    $defense = trackingDefense($student);
-    trackingPayment($defense, $aa, 'prepared', 'one');
-    trackingPayment($defense, $aa, 'claimed', 'two');
-    trackingPayment($defense, $aa, 'voided', 'void');
-
-    $this->actingAs($dean)->get('/honorarium-workspace')->assertOk()->assertInertia(fn (Assert $page) => $page
-        ->where('canViewReports', true)
-        ->has('programReports', 1)
-        ->where('programReports.0.program', 'Master of Arts in Education')
-        ->where('programReports.0.school_year', '2026-2027')
-        ->where('programReports.0.semester', '1st')
-        ->where('programReports.0.recipients_count', 2)
-        ->where('programReports.0.total_amount', 2000)
-        ->where('programReports.0.prepared_amount', 1000)
-        ->where('programReports.0.claimed_amount', 1000));
-    $this->get('/honorarium-workspace/reports.csv')->assertDownload('honorarium-program-report.csv');
-
-    $this->actingAs($aa)->get('/honorarium-workspace')->assertInertia(fn (Assert $page) => $page->where('canViewReports', false));
-    $this->get('/honorarium-workspace/reports.csv')->assertForbidden();
->>>>>>> Stashed changes
 });

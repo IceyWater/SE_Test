@@ -11,7 +11,6 @@ This audit fixes reproducible defects in the local integrated project and adds r
 - Document generation now returns the JSON expected by the dialog, supports authorized inline PDF previews, preserves PDF page dimensions and orientation, and retains the previous document if replacement fails. Regeneration keeps the attached endorsement link current. PDF uploads are parsed before saving, actual page counts are recorded, and invalid mapping dimensions are rejected. Empty mapping lists can be saved.
 - My Documents includes AI detection certificates and endorsements and uses the correct storage disk for metadata. Student records enforce staff permissions and correctly combine search with filters.
 - Schedule responses handle stored string times. Broken Dean and legacy report links now redirect to the working screens. An obsolete sample-mail endpoint no longer sends to a hardcoded third-party address. Unused jsPDF was removed and compatible frontend dependency security updates were installed.
-- Honorarium tracking uses the current Finance/payment milestones in a compact stepper. Authorized staff can record manual follow-ups with an emailed notice and timestamped activity; Dean reporting groups disbursements by program, school year, and semester with CSV export. No automatic reminder schedule was added.
 
 ## Verification
 
@@ -30,9 +29,7 @@ Covered regression areas include authentication and role boundaries, adviser ass
 
 After pulling this commit, run `npm ci` and `php artisan migrate`. Restart the local development process. Compiled frontend assets are included in the repository; use the current build or restart Vite rather than retaining a stale dev process.
 
-The earlier migration adds application review tracking and was applied to the working local database after a private SQL backup. The honorarium follow-up migration adds a nullable recipient role; it is already recorded as applied on the current local database. Existing local records were preserved. The supplied older SQL backup was not imported, and database dumps, environment credentials, and uploaded files are not included in the commit.
-
-The November 4 honorarium restoration was checked separately: 63 focused honorarium/regression tests passed (800 assertions), and the Honorarium workspace passed TypeScript, ESLint, and Prettier checks. Manual follow-up mail was tested with fake mail; this does not verify production SMTP delivery.
+The new migration adds application review tracking. It has already been applied to the working local database after a private SQL backup. Existing local records were preserved. The supplied older SQL backup was not imported, and database dumps, environment credentials, and uploaded files are not included in the commit.
 
 ## Remaining client and environment acceptance
 

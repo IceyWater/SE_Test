@@ -225,12 +225,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/honorarium-ledger/{disbursement}', [HonorariumLedgerController::class, 'update'])->name('honorarium-ledger.update');
     // Honorarium module additions, preserving the defense and comprehensive exam routes.
     Route::get('/honorarium-workspace', [HonorariumWorkspaceController::class, 'index'])->name('honorarium-workspace.index');
-<<<<<<< Updated upstream
     Route::get('/honorarium-workspace/reports.csv', [HonorariumWorkspaceController::class, 'downloadReport'])->name('honorarium-workspace.reports');
-=======
-    Route::post('/honorarium-workspace/{defenseRequest}/follow-ups', [HonorariumWorkspaceController::class, 'followUp'])->name('honorarium-workspace.follow-ups.store');
-    Route::get('/honorarium-workspace/reports.csv', [HonorariumWorkspaceController::class, 'downloadReport'])->name('honorarium-workspace.reports.csv');
->>>>>>> Stashed changes
     Route::post('/honorarium-workspace/{defenseRequest}/submit-to-finance', [HonorariumWorkspaceController::class, 'submitToFinance'])->name('honorarium-workspace.submit-to-finance');
     Route::post('/honorarium-workspace/{defenseRequest}/follow-ups', [HonorariumWorkspaceController::class, 'followUp'])->name('honorarium-workspace.follow-up');
     Route::post('/honorarium-workspace/finance/{submission}/status', [HonorariumWorkspaceController::class, 'updateFinanceStatus'])->name('honorarium-workspace.finance-status');
