@@ -12,7 +12,7 @@ class AcademicProgressAccess
     public function students(User $actor): Builder
     {
         $query = User::where('role', 'Student');
-        if ($actor->role === 'Dean') {
+        if (in_array($actor->role, ['Dean', 'Administrative Assistant'], true)) {
             return $query;
         }
         if ($actor->role === 'Adviser') {

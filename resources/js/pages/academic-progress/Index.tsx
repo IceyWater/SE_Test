@@ -34,7 +34,7 @@ export default function AcademicProgress({ students }: { students: Student[] }) 
             <main className="space-y-5 p-6">
                 <h1 className="text-2xl font-semibold">Academic Progress</h1>
                 <p className="text-muted-foreground">
-                    Coordinators record school-verified information and defense outcomes. Advisers and the Dean can view.
+                    Coordinators record school-verified information and defense outcomes. Advisers, the Dean, and administrative assistants can view.
                 </p>
                 <div className="flex flex-wrap gap-3">
                     <Input className="max-w-sm" placeholder="Search student or program" value={search} onChange={(e) => setSearch(e.target.value)} />

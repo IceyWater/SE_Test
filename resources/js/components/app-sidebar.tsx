@@ -165,7 +165,7 @@ export function AppSidebar() {
         }
     }
 
-    if (['Coordinator', 'Adviser', 'Dean'].includes(user.role))
+    if (['Coordinator', 'Adviser', 'Dean', 'Administrative Assistant'].includes(user.role))
         navItems.push({ title: 'Academic Progress', href: '/academic-progress', icon: Users });
     if (['Student', 'Administrative Assistant'].includes(user.role)) navItems.push({ title: 'Certificates', href: '/certificates', icon: FileText });
 

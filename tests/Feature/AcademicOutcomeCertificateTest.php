@@ -36,9 +36,13 @@ it('separates the academic outcome and explicit next stage from service and grad
     $this->assertDatabaseCount('student_progress_records', 0);
     $this->assertDatabaseCount('defense_requests', 1);
     $this->get('/academic-progress/'.$this->student->id)->assertOk()->assertInertia(fn (Assert $p) => $p->where('progress.stage', 'Prefinal')->where('canEdit', true));
-    foreach ([$this->adviser, $this->dean] as $reader) {
+    foreach ([$this->adviser, $this->dean, $this->aa] as $reader) {
         $this->actingAs($reader)->get('/academic-progress/'.$this->student->id)->assertOk()->assertInertia(fn (Assert $p) => $p->where('canEdit', false)->where('progress.defenses.0.outcome.result', 'passed'));
     }
+});
+it('lists student academic progress for the administrative assistant', function () {
+    $this->actingAs($this->aa)->get('/academic-progress')->assertOk()->assertInertia(fn (Assert $p) => $p
+        ->component('academic-progress/Index')->where('students.0.id', $this->student->id));
 });
 it('allows only the assigned coordinator to record outcomes or edit academic information', function () {
     foreach ([$this->student, $this->adviser, $this->dean, $this->aa, User::factory()->create(['role' => 'Coordinator'])] as $other) {
